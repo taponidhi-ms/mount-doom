@@ -67,15 +67,19 @@ class AzureAIService:
         cache_key = f"{agent_name}_{instructions_hash}_{model}"
         
         # Thread-safe cache access
+        agent_id = None
         with self._cache_lock:
             # Check if agent already exists in cache
             if cache_key in self._agents_cache:
                 agent_id = self._agents_cache[cache_key]
-                logger.info("Using cached agent", 
-                           agent_name=agent_name,
-                           agent_id=agent_id,
-                           cache_key=cache_key)
-                return agent_id
+        
+        # Log cache hit outside critical section
+        if agent_id is not None:
+            logger.info("Using cached agent", 
+                       agent_name=agent_name,
+                       agent_id=agent_id,
+                       cache_key=cache_key)
+            return agent_id
         
         # Create new agent using the agents API (outside lock to avoid blocking)
         try:
@@ -179,13 +183,18 @@ class AzureAIService:
             
             # Get the assistant's response using get_last_text_message_by_role
             response_text = None
-            try:
-                # Try to use the helper method if available
-                assistant_message = messages.get_last_text_message_by_role("assistant")
-                if assistant_message and hasattr(assistant_message, 'text'):
-                    response_text = assistant_message.text.value
-            except AttributeError:
-                # Fallback: manually iterate through messages if helper method doesn't exist
+            
+            # Try to use the helper method if available
+            if hasattr(messages, 'get_last_text_message_by_role'):
+                try:
+                    assistant_message = messages.get_last_text_message_by_role("assistant")
+                    if assistant_message and hasattr(assistant_message, 'text'):
+                        response_text = assistant_message.text.value
+                except AttributeError as e:
+                    logger.warning(f"Error using get_last_text_message_by_role: {e}")
+            
+            # Fallback: manually iterate through messages if helper method failed or doesn't exist
+            if response_text is None:
                 for msg in messages:
                     if msg.role == "assistant":
                         # The content is in msg.content - it's a list of content items
@@ -201,7 +210,7 @@ class AzureAIService:
                         break
             
             if response_text is None:
-                raise Exception("No assistant response found in thread")
+                raise ValueError("No assistant response found in thread")
             
             # Extract token usage from run if available
             tokens_used = None
