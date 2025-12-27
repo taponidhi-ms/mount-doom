@@ -1,7 +1,9 @@
 from azure.identity import DefaultAzureCredential
 from azure.ai.projects import AIProjectClient
+from azure.ai.projects.models import PromptAgentDefinition
 from app.core.config import settings
-from typing import Optional
+from typing import Optional, Tuple
+from datetime import datetime
 import structlog
 
 logger = structlog.get_logger()
@@ -44,65 +46,76 @@ class AzureAIService:
     
     async def get_agent_response(
         self,
-        agent_id: str,
+        agent_name: str,
+        instructions: str,
         prompt: str,
+        model: str,
         stream: bool = False
-    ) -> tuple[str, Optional[int]]:
+    ) -> tuple[str, Optional[int], str, datetime]:
         """
-        Get response from an agent.
+        Get response from an agent using Azure AI Foundry versioning pattern.
         
         Args:
-            agent_id: The ID of the agent to use
+            agent_name: The fixed name of the agent (e.g., "C1Agent", "PersonaAgent")
+            instructions: The instruction set for the agent
             prompt: The prompt to send to the agent
+            model: The model to use (e.g., "gpt-4")
             stream: Whether to stream the response
             
         Returns:
-            Tuple of (response_text, tokens_used)
+            Tuple of (response_text, tokens_used, agent_version, timestamp)
         """
         try:
-            # Create agent with the specified agent_id
-            agent = self.client.agents.create_agent(
-                model=agent_id,
-                name="agent",
-                instructions=prompt
-            )
+            timestamp = datetime.utcnow()
             
-            # Create thread
-            thread = self.client.agents.create_thread()
-            
-            # Create message
-            message = self.client.agents.create_message(
-                thread_id=thread.id,
-                role="user",
-                content=prompt
-            )
-            
-            # Run agent
-            run = self.client.agents.create_run(
-                thread_id=thread.id,
-                agent_id=agent.id
-            )
-            
-            # Wait for completion
-            while run.status in ["queued", "in_progress"]:
-                run = self.client.agents.get_run(
-                    thread_id=thread.id,
-                    run_id=run.id
+            # Create or get agent version using the Azure AI Foundry pattern
+            agent = self.client.agents.create_version(
+                agent_name=agent_name,
+                definition=PromptAgentDefinition(
+                    model=model,
+                    instructions=instructions,
                 )
+            )
             
-            # Get messages
-            messages = self.client.agents.list_messages(thread_id=thread.id)
-            response_text = messages.data[0].content[0].text.value if messages.data else ""
+            logger.info(f"Agent version created/retrieved", 
+                       agent_name=agent.name, 
+                       agent_id=agent.id,
+                       agent_version=agent.version)
             
-            # Extract token usage
-            tokens_used = None
-            if hasattr(run, 'usage') and run.usage:
-                tokens_used = run.usage.total_tokens
-            
-            return response_text, tokens_used
+            # Use OpenAI client for conversation
+            with self.client.get_openai_client() as openai_client:
+                # Create conversation
+                conversation = openai_client.conversations.create(
+                    items=[{
+                        "type": "message",
+                        "role": "user",
+                        "content": prompt
+                    }],
+                )
+                
+                # Get response using agent reference
+                response = openai_client.responses.create(
+                    conversation=conversation.id,
+                    extra_body={"agent": {"name": agent.name, "type": "agent_reference"}},
+                    input="",
+                )
+                
+                response_text = response.output_text
+                
+                # Extract token usage
+                tokens_used = None
+                if hasattr(response, 'usage') and response.usage:
+                    tokens_used = response.usage.total_tokens
+                
+                # Clean up conversation
+                openai_client.conversations.delete(conversation_id=conversation.id)
+                
+                return response_text, tokens_used, agent.version, timestamp
             
         except Exception as e:
-            logger.error(f"Error getting agent response: {e}")
+            logger.error(f"Error getting agent response: {e}", 
+                        agent_name=agent_name,
+                        error=str(e))
             raise
     
     async def get_model_response(

@@ -22,6 +22,15 @@ class BaseRequest(BaseModel):
     pass
 
 
+class AgentDetails(BaseModel):
+    """Details about the agent used for a request."""
+    agent_name: str
+    agent_version: Optional[str] = None
+    instructions: str
+    model: str
+    timestamp: datetime
+
+
 class BaseResponse(BaseModel):
     """Base response with timing and token information."""
     response_text: str
@@ -29,18 +38,19 @@ class BaseResponse(BaseModel):
     time_taken_ms: float
     start_time: datetime
     end_time: datetime
+    agent_details: AgentDetails
 
 
 class PersonaGenerationRequest(BaseRequest):
     """Request for persona generation use case."""
-    agent_id: str
     prompt: str
+    model: str = "gpt-4"  # Allow specifying model
     stream: bool = False
 
 
 class PersonaGenerationResponse(BaseResponse):
     """Response for persona generation use case."""
-    agent_id: str
+    pass
 
 
 class GeneralPromptRequest(BaseRequest):
@@ -57,14 +67,14 @@ class GeneralPromptResponse(BaseResponse):
 
 class PromptValidatorRequest(BaseRequest):
     """Request for prompt validator use case."""
-    agent_id: str
     prompt: str
+    model: str = "gpt-4"  # Allow specifying model
     stream: bool = False
 
 
 class PromptValidatorResponse(BaseResponse):
     """Response for prompt validator use case."""
-    agent_id: str
+    pass
 
 
 class ConversationProperties(BaseModel):
@@ -80,7 +90,8 @@ class ConversationProperties(BaseModel):
 class ConversationMessage(BaseModel):
     """A single message in a conversation."""
     role: str  # "C1Agent" or "C2Agent"
-    agent_id: str
+    agent_name: str
+    agent_version: Optional[str] = None
     message: str
     tokens_used: Optional[int] = None
     time_taken_ms: float
@@ -89,9 +100,8 @@ class ConversationMessage(BaseModel):
 
 class ConversationSimulationRequest(BaseRequest):
     """Request for conversation simulation use case."""
-    c1_agent_id: str
-    c2_agent_id: str
     conversation_properties: ConversationProperties
+    model: str = "gpt-4"  # Model to use for both agents
     max_turns: int = Field(default=10, le=20)
     stream: bool = False
 
@@ -104,8 +114,9 @@ class ConversationSimulationResponse(BaseModel):
     total_time_taken_ms: float
     start_time: datetime
     end_time: datetime
-    c1_agent_id: str
-    c2_agent_id: str
+    c1_agent_details: AgentDetails
+    c2_agent_details: AgentDetails
+    orchestrator_agent_details: AgentDetails
 
 
 class AvailableAgentsResponse(BaseModel):
