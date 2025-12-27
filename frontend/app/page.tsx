@@ -6,7 +6,7 @@ export default function Home() {
     <div className="min-h-screen p-8">
       <div className="max-w-6xl mx-auto">
         <h1 className="text-4xl font-bold mb-2">Mount Doom</h1>
-        <p className="text-muted-foreground mb-8">
+        <p className="text-gray-600 dark:text-gray-400 mb-8">
           AI Agent Simulation Platform - Multi-agent conversation simulation and prompt generation
         </p>
 
@@ -17,7 +17,7 @@ export default function Home() {
                 <CardTitle>Persona Generation</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-sm text-gray-600 dark:text-gray-400">
                   Generate personas from simulation prompts using specialized AI agents.
                   Transform your ideas into detailed character profiles.
                 </p>
@@ -31,7 +31,7 @@ export default function Home() {
                 <CardTitle>General Prompt</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-sm text-gray-600 dark:text-gray-400">
                   Get responses for any general prompt using LLM models directly.
                   Flexible AI assistance for various tasks.
                 </p>
@@ -45,7 +45,7 @@ export default function Home() {
                 <CardTitle>Prompt Validator</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-sm text-gray-600 dark:text-gray-400">
                   Validate simulation prompts to ensure they meet quality standards.
                   Get feedback on prompt effectiveness.
                 </p>
@@ -59,7 +59,7 @@ export default function Home() {
                 <CardTitle>Conversation Simulation</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-sm text-gray-600 dark:text-gray-400">
                   Simulate multi-turn conversations between customer service representatives
                   and customers with intelligent orchestration.
                 </p>
@@ -68,9 +68,9 @@ export default function Home() {
           </Link>
         </div>
 
-        <div className="mt-12 p-6 border rounded-lg bg-muted/50">
+        <div className="mt-12 p-6 border border-gray-200 dark:border-gray-800 rounded-lg bg-gray-50 dark:bg-gray-900">
           <h2 className="text-xl font-semibold mb-2">About This Platform</h2>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-gray-600 dark:text-gray-400">
             This platform leverages Azure AI Projects to provide advanced simulation capabilities.
             Each use case is powered by specialized agents and models, with full tracking of
             tokens used, response times, and conversation history. All interactions are

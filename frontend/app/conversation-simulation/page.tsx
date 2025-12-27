@@ -82,13 +82,13 @@ export default function ConversationSimulationPage() {
   return (
     <div className="min-h-screen p-8">
       <div className="max-w-4xl mx-auto">
-        <Link href="/" className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground mb-6">
+        <Link href="/" className="inline-flex items-center text-sm text-gray-600 dark:text-gray-400 hover:text-foreground mb-6">
           <ArrowLeft className="h-4 w-4 mr-2" />
           Back to Home
         </Link>
 
         <h1 className="text-3xl font-bold mb-2">Conversation Simulation</h1>
-        <p className="text-muted-foreground mb-6">
+        <p className="text-gray-600 dark:text-gray-400 mb-6">
           Simulate multi-turn conversations between customer service representatives and customers.
         </p>
 
@@ -184,7 +184,7 @@ export default function ConversationSimulationPage() {
                   onChange={(e) => setMaxTurns(parseInt(e.target.value) || 10)}
                   disabled={loading}
                 />
-                <p className="text-xs text-muted-foreground mt-1">
+                <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
                   Maximum number of conversation turns allowed
                 </p>
               </div>

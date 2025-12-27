@@ -50,7 +50,7 @@ export function ResultDisplay({ result, title = "Result" }: ResultDisplayProps) 
           {result.response_text && (
             <div>
               <h3 className="font-semibold mb-2">Response:</h3>
-              <div className="p-4 bg-muted rounded-md whitespace-pre-wrap">
+              <div className="p-4 bg-gray-100 dark:bg-gray-800 rounded-md whitespace-pre-wrap">
                 {result.response_text}
               </div>
             </div>
@@ -74,7 +74,7 @@ export function ResultDisplay({ result, title = "Result" }: ResultDisplayProps) 
                       <span className="font-semibold text-sm">
                         {msg.role === 'C1Agent' ? '🎧 Customer Service Rep' : '👤 Customer'}
                       </span>
-                      <span className="text-xs text-muted-foreground">
+                      <span className="text-xs text-gray-600 dark:text-gray-400">
                         {msg.time_taken_ms.toFixed(0)}ms
                         {msg.tokens_used && ` • ${msg.tokens_used} tokens`}
                       </span>
@@ -87,28 +87,28 @@ export function ResultDisplay({ result, title = "Result" }: ResultDisplayProps) 
           )}
 
           {/* Metrics */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 bg-muted rounded-md">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 bg-gray-100 dark:bg-gray-800 rounded-md">
             {result.tokens_used !== undefined && (
               <div>
-                <div className="text-xs text-muted-foreground">Tokens Used</div>
+                <div className="text-xs text-gray-600 dark:text-gray-400">Tokens Used</div>
                 <div className="text-lg font-semibold">{result.tokens_used || 'N/A'}</div>
               </div>
             )}
             {result.total_tokens_used !== undefined && (
               <div>
-                <div className="text-xs text-muted-foreground">Total Tokens</div>
+                <div className="text-xs text-gray-600 dark:text-gray-400">Total Tokens</div>
                 <div className="text-lg font-semibold">{result.total_tokens_used || 'N/A'}</div>
               </div>
             )}
             {result.time_taken_ms !== undefined && (
               <div>
-                <div className="text-xs text-muted-foreground">Time Taken</div>
+                <div className="text-xs text-gray-600 dark:text-gray-400">Time Taken</div>
                 <div className="text-lg font-semibold">{result.time_taken_ms.toFixed(0)}ms</div>
               </div>
             )}
             {result.total_time_taken_ms !== undefined && (
               <div>
-                <div className="text-xs text-muted-foreground">Total Time</div>
+                <div className="text-xs text-gray-600 dark:text-gray-400">Total Time</div>
                 <div className="text-lg font-semibold">
                   {(result.total_time_taken_ms / 1000).toFixed(2)}s
                 </div>
@@ -116,7 +116,7 @@ export function ResultDisplay({ result, title = "Result" }: ResultDisplayProps) 
             )}
             {result.start_time && (
               <div>
-                <div className="text-xs text-muted-foreground">Start Time</div>
+                <div className="text-xs text-gray-600 dark:text-gray-400">Start Time</div>
                 <div className="text-sm font-mono">
                   {new Date(result.start_time).toLocaleTimeString()}
                 </div>
@@ -124,7 +124,7 @@ export function ResultDisplay({ result, title = "Result" }: ResultDisplayProps) 
             )}
             {result.end_time && (
               <div>
-                <div className="text-xs text-muted-foreground">End Time</div>
+                <div className="text-xs text-gray-600 dark:text-gray-400">End Time</div>
                 <div className="text-sm font-mono">
                   {new Date(result.end_time).toLocaleTimeString()}
                 </div>
@@ -132,7 +132,7 @@ export function ResultDisplay({ result, title = "Result" }: ResultDisplayProps) 
             )}
             {result.conversation_status && (
               <div>
-                <div className="text-xs text-muted-foreground">Status</div>
+                <div className="text-xs text-gray-600 dark:text-gray-400">Status</div>
                 <div className="text-lg font-semibold">{result.conversation_status}</div>
               </div>
             )}
@@ -143,7 +143,7 @@ export function ResultDisplay({ result, title = "Result" }: ResultDisplayProps) 
             <summary className="cursor-pointer text-sm font-semibold mb-2">
               View Full JSON
             </summary>
-            <pre className="p-4 bg-muted rounded-md text-xs overflow-auto max-h-96">
+            <pre className="p-4 bg-gray-100 dark:bg-gray-800 rounded-md text-xs overflow-auto max-h-96">
               {JSON.stringify(result, null, 2)}
             </pre>
           </details>

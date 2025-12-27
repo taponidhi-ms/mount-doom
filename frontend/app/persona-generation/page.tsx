@@ -59,13 +59,13 @@ export default function PersonaGenerationPage() {
   return (
     <div className="min-h-screen p-8">
       <div className="max-w-4xl mx-auto">
-        <Link href="/" className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground mb-6">
+        <Link href="/" className="inline-flex items-center text-sm text-gray-600 dark:text-gray-400 hover:text-foreground mb-6">
           <ArrowLeft className="h-4 w-4 mr-2" />
           Back to Home
         </Link>
 
         <h1 className="text-3xl font-bold mb-2">Persona Generation</h1>
-        <p className="text-muted-foreground mb-6">
+        <p className="text-gray-600 dark:text-gray-400 mb-6">
           Generate personas from simulation prompts using specialized AI agents.
         </p>
 
