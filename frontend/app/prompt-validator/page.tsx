@@ -8,36 +8,36 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Textarea } from '@/components/ui/textarea'
 import { Select } from '@/components/ui/select'
 import { ResultDisplay } from '@/components/result-display'
-import { apiClient, AgentInfo, PromptValidatorResponse } from '@/lib/api-client'
+import { apiClient, ModelInfo, PromptValidatorResponse } from '@/lib/api-client'
 
 export default function PromptValidatorPage() {
-  const [agents, setAgents] = useState<AgentInfo[]>([])
-  const [selectedAgent, setSelectedAgent] = useState('')
+  const [models, setModels] = useState<ModelInfo[]>([])
+  const [selectedModel, setSelectedModel] = useState('gpt-4')
   const [prompt, setPrompt] = useState('')
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<PromptValidatorResponse | null>(null)
   const [error, setError] = useState('')
 
   useEffect(() => {
-    loadAgents()
+    loadModels()
   }, [])
 
-  const loadAgents = async () => {
-    const response = await apiClient.getValidatorAgents()
+  const loadModels = async () => {
+    const response = await apiClient.getPromptValidatorModels()
     if (response.data) {
-      setAgents(response.data.agents)
-      if (response.data.agents.length > 0) {
-        setSelectedAgent(response.data.agents[0].agent_id)
+      setModels(response.data.models)
+      if (response.data.models.length > 0) {
+        setSelectedModel(response.data.models[0].model_id)
       }
     } else if (response.error) {
-      setError(`Failed to load agents: ${response.error}`)
+      setError(`Failed to load models: ${response.error}`)
     }
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!selectedAgent || !prompt.trim()) {
-      setError('Please select an agent and enter a prompt')
+    if (!selectedModel || !prompt.trim()) {
+      setError('Please select a model and enter a prompt')
       return
     }
 
@@ -45,7 +45,7 @@ export default function PromptValidatorPage() {
     setError('')
     setResult(null)
 
-    const response = await apiClient.validatePrompt(selectedAgent, prompt)
+    const response = await apiClient.validatePrompt(prompt, selectedModel)
     setLoading(false)
 
     if (response.data) {
@@ -65,7 +65,7 @@ export default function PromptValidatorPage() {
 
         <h1 className="text-3xl font-bold mb-2">Prompt Validator</h1>
         <p className="text-gray-600 dark:text-gray-400 mb-6">
-          Validate simulation prompts to ensure they meet quality standards.
+          Validate simulation prompts using the PromptValidatorAgent to ensure they meet quality standards.
         </p>
 
         <Card>
@@ -75,18 +75,18 @@ export default function PromptValidatorPage() {
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium mb-2">Select Agent</label>
+                <label className="block text-sm font-medium mb-2">Select Model</label>
                 <Select
-                  value={selectedAgent}
-                  onChange={(e) => setSelectedAgent(e.target.value)}
-                  disabled={loading || agents.length === 0}
+                  value={selectedModel}
+                  onChange={(e) => setSelectedModel(e.target.value)}
+                  disabled={loading || models.length === 0}
                 >
-                  {agents.length === 0 ? (
-                    <option>No agents available</option>
+                  {models.length === 0 ? (
+                    <option>No models available</option>
                   ) : (
-                    agents.map((agent) => (
-                      <option key={agent.agent_id} value={agent.agent_id}>
-                        {agent.agent_name} {agent.description && `- ${agent.description}`}
+                    models.map((model) => (
+                      <option key={model.model_id} value={model.model_id}>
+                        {model.model_name} {model.description && `- ${model.description}`}
                       </option>
                     ))
                   )}
@@ -110,7 +110,7 @@ export default function PromptValidatorPage() {
                 </div>
               )}
 
-              <Button type="submit" disabled={loading || !selectedAgent || !prompt.trim()}>
+              <Button type="submit" disabled={loading || !selectedModel || !prompt.trim()}>
                 {loading ? (
                   <>
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
