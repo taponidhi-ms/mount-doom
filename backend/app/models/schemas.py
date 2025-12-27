@@ -3,6 +3,15 @@ from pydantic import BaseModel, Field
 from datetime import datetime
 
 
+class AgentResponseData(BaseModel):
+    """Data returned from an agent response."""
+    response_text: str
+    tokens_used: Optional[int] = None
+    agent_version: str
+    timestamp: datetime
+    thread_id: str  # Conversation/thread ID for stateful interactions
+
+
 class AgentInfo(BaseModel):
     """Information about an available agent."""
     agent_id: str

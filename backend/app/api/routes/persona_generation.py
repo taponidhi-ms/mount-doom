@@ -43,7 +43,7 @@ async def generate_persona(request: PersonaGenerationRequest):
     
     try:
         # Get response from agent using fixed agent name and instructions
-        response_text, tokens_used, agent_version, agent_timestamp = await azure_ai_service.get_agent_response(
+        agent_response = await azure_ai_service.get_agent_response(
             agent_name=PERSONA_AGENT_NAME,
             instructions=PERSONA_AGENT_INSTRUCTIONS,
             prompt=request.prompt,
@@ -57,27 +57,27 @@ async def generate_persona(request: PersonaGenerationRequest):
         # Save to Cosmos DB
         await cosmos_db_service.save_persona_generation(
             prompt=request.prompt,
-            response=response_text,
-            tokens_used=tokens_used,
+            response=agent_response.response_text,
+            tokens_used=agent_response.tokens_used,
             time_taken_ms=time_taken_ms,
             agent_name=PERSONA_AGENT_NAME,
-            agent_version=agent_version,
+            agent_version=agent_response.agent_version,
             agent_instructions=PERSONA_AGENT_INSTRUCTIONS,
             model=request.model,
-            agent_timestamp=agent_timestamp
+            agent_timestamp=agent_response.timestamp
         )
         
         agent_details = AgentDetails(
             agent_name=PERSONA_AGENT_NAME,
-            agent_version=agent_version,
+            agent_version=agent_response.agent_version,
             instructions=PERSONA_AGENT_INSTRUCTIONS,
             model=request.model,
-            timestamp=agent_timestamp
+            timestamp=agent_response.timestamp
         )
         
         return PersonaGenerationResponse(
-            response_text=response_text,
-            tokens_used=tokens_used,
+            response_text=agent_response.response_text,
+            tokens_used=agent_response.tokens_used,
             time_taken_ms=time_taken_ms,
             start_time=start_time,
             end_time=end_time,

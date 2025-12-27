@@ -78,7 +78,7 @@ async def simulate_conversation(request: ConversationSimulationRequest):
 ConversationProperties: {conv_props_str}
 messages: {messages_str}"""
             
-            c1_response, c1_tokens, c1_version, c1_timestamp = await azure_ai_service.get_agent_response(
+            c1_agent_response = await azure_ai_service.get_agent_response(
                 agent_name=C1_AGENT_NAME,
                 instructions=C1_AGENT_INSTRUCTIONS,
                 prompt=c1_prompt,
@@ -89,10 +89,10 @@ messages: {messages_str}"""
             if c1_agent_details is None:
                 c1_agent_details = AgentDetails(
                     agent_name=C1_AGENT_NAME,
-                    agent_version=c1_version,
+                    agent_version=c1_agent_response.agent_version,
                     instructions=C1_AGENT_INSTRUCTIONS,
                     model=request.model,
-                    timestamp=c1_timestamp
+                    timestamp=c1_agent_response.timestamp
                 )
             
             c1_end_ms = time.time() * 1000
@@ -101,16 +101,16 @@ messages: {messages_str}"""
             c1_message = ConversationMessage(
                 role="C1Agent",
                 agent_name=C1_AGENT_NAME,
-                agent_version=c1_version,
-                message=c1_response,
-                tokens_used=c1_tokens,
+                agent_version=c1_agent_response.agent_version,
+                message=c1_agent_response.response_text,
+                tokens_used=c1_agent_response.tokens_used,
                 time_taken_ms=c1_time_taken,
                 timestamp=datetime.utcnow()
             )
             conversation_history.append(c1_message)
             
-            if c1_tokens:
-                total_tokens += c1_tokens
+            if c1_agent_response.tokens_used:
+                total_tokens += c1_agent_response.tokens_used
             
             # Check conversation status with orchestrator
             messages_str = json.dumps([{
@@ -118,7 +118,7 @@ messages: {messages_str}"""
                 "message": msg.message
             } for msg in conversation_history], indent=2)
             
-            orchestrator_response, orch_tokens, orch_version, orch_timestamp = await azure_ai_service.get_agent_response(
+            orch_agent_response = await azure_ai_service.get_agent_response(
                 agent_name=ORCHESTRATOR_AGENT_NAME,
                 instructions=ORCHESTRATOR_AGENT_INSTRUCTIONS,
                 prompt=f"ConversationProperties: {conv_props_str}\nmessages: {messages_str}",
@@ -129,18 +129,18 @@ messages: {messages_str}"""
             if orchestrator_agent_details is None:
                 orchestrator_agent_details = AgentDetails(
                     agent_name=ORCHESTRATOR_AGENT_NAME,
-                    agent_version=orch_version,
+                    agent_version=orch_agent_response.agent_version,
                     instructions=ORCHESTRATOR_AGENT_INSTRUCTIONS,
                     model=request.model,
-                    timestamp=orch_timestamp
+                    timestamp=orch_agent_response.timestamp
                 )
             
-            if orch_tokens:
-                total_tokens += orch_tokens
+            if orch_agent_response.tokens_used:
+                total_tokens += orch_agent_response.tokens_used
             
             # Parse orchestrator response
             try:
-                orch_data = json.loads(orchestrator_response)
+                orch_data = json.loads(orch_agent_response.response_text)
                 conversation_status = orch_data.get("ConversationStatus", "Ongoing")
             except json.JSONDecodeError:
                 # If response is not valid JSON, check for keywords
@@ -163,7 +163,7 @@ messages: {messages_str}"""
 ConversationProperties: {conv_props_str}
 messages: {messages_str}"""
             
-            c2_response, c2_tokens, c2_version, c2_timestamp = await azure_ai_service.get_agent_response(
+            c2_agent_response = await azure_ai_service.get_agent_response(
                 agent_name=C2_AGENT_NAME,
                 instructions=C2_AGENT_INSTRUCTIONS,
                 prompt=c2_prompt,
@@ -174,10 +174,10 @@ messages: {messages_str}"""
             if c2_agent_details is None:
                 c2_agent_details = AgentDetails(
                     agent_name=C2_AGENT_NAME,
-                    agent_version=c2_version,
+                    agent_version=c2_agent_response.agent_version,
                     instructions=C2_AGENT_INSTRUCTIONS,
                     model=request.model,
-                    timestamp=c2_timestamp
+                    timestamp=c2_agent_response.timestamp
                 )
             
             c2_end_ms = time.time() * 1000
@@ -186,16 +186,16 @@ messages: {messages_str}"""
             c2_message = ConversationMessage(
                 role="C2Agent",
                 agent_name=C2_AGENT_NAME,
-                agent_version=c2_version,
-                message=c2_response,
-                tokens_used=c2_tokens,
+                agent_version=c2_agent_response.agent_version,
+                message=c2_agent_response.response_text,
+                tokens_used=c2_agent_response.tokens_used,
                 time_taken_ms=c2_time_taken,
                 timestamp=datetime.utcnow()
             )
             conversation_history.append(c2_message)
             
-            if c2_tokens:
-                total_tokens += c2_tokens
+            if c2_agent_response.tokens_used:
+                total_tokens += c2_agent_response.tokens_used
             
             # Check conversation status again
             messages_str = json.dumps([{
@@ -203,22 +203,22 @@ messages: {messages_str}"""
                 "message": msg.message
             } for msg in conversation_history], indent=2)
             
-            orchestrator_response, orch_tokens, orch_version, orch_timestamp = await azure_ai_service.get_agent_response(
+            orch_agent_response_2 = await azure_ai_service.get_agent_response(
                 agent_name=ORCHESTRATOR_AGENT_NAME,
                 instructions=ORCHESTRATOR_AGENT_INSTRUCTIONS,
                 prompt=f"ConversationProperties: {conv_props_str}\nmessages: {messages_str}",
                 model=request.model
             )
             
-            if orch_tokens:
-                total_tokens += orch_tokens
+            if orch_agent_response_2.tokens_used:
+                total_tokens += orch_agent_response_2.tokens_used
             
             # Parse orchestrator response
             try:
-                orch_data = json.loads(orchestrator_response)
+                orch_data = json.loads(orch_agent_response_2.response_text)
                 conversation_status = orch_data.get("ConversationStatus", "Ongoing")
             except json.JSONDecodeError:
-                if "Completed" in orchestrator_response:
+                if "Completed" in orch_agent_response_2.response_text:
                     conversation_status = "Completed"
                 else:
                     conversation_status = "Ongoing"

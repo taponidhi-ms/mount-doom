@@ -1,6 +1,7 @@
 from azure.identity import DefaultAzureCredential
 from azure.ai.projects import AIProjectClient
 from app.core.config import settings
+from app.models.schemas import AgentResponseData
 from typing import Optional, Tuple, Dict
 from datetime import datetime
 import structlog
@@ -114,7 +115,7 @@ class AzureAIService:
         instructions: str,
         prompt: str,
         model: str
-    ) -> tuple[str, Optional[int], str, datetime]:
+    ) -> AgentResponseData:
         """
         Get response from an agent with instructions using Azure AI Agent workflow.
         
@@ -133,7 +134,7 @@ class AzureAIService:
             model: The model to use (e.g., "gpt-4")
             
         Returns:
-            Tuple of (response_text, tokens_used, agent_version, timestamp)
+            AgentResponseData with response_text, tokens_used, agent_version, timestamp, and thread_id
         """
         try:
             timestamp = datetime.utcnow()
@@ -219,9 +220,16 @@ class AzureAIService:
             
             logger.info("Agent response retrieved successfully",
                        response_length=len(response_text),
-                       tokens_used=tokens_used)
+                       tokens_used=tokens_used,
+                       thread_id=thread_id)
             
-            return response_text, tokens_used, agent_version, timestamp
+            return AgentResponseData(
+                response_text=response_text,
+                tokens_used=tokens_used,
+                agent_version=agent_version,
+                timestamp=timestamp,
+                thread_id=thread_id
+            )
             
         except Exception as e:
             logger.error(f"Error getting agent response: {e}", 
