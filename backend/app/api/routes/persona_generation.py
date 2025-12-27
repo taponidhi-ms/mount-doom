@@ -47,8 +47,7 @@ async def generate_persona(request: PersonaGenerationRequest):
             agent_name=PERSONA_AGENT_NAME,
             instructions=PERSONA_AGENT_INSTRUCTIONS,
             prompt=request.prompt,
-            model=request.model,
-            stream=request.stream
+            model=request.model
         )
         
         end_time = datetime.utcnow()

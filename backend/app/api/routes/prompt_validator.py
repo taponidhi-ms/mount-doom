@@ -47,8 +47,7 @@ async def validate_prompt(request: PromptValidatorRequest):
             agent_name=PROMPT_VALIDATOR_AGENT_NAME,
             instructions=PROMPT_VALIDATOR_AGENT_INSTRUCTIONS,
             prompt=request.prompt,
-            model=request.model,
-            stream=request.stream
+            model=request.model
         )
         
         end_time = datetime.utcnow()

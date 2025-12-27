@@ -82,8 +82,7 @@ messages: {messages_str}"""
                 agent_name=C1_AGENT_NAME,
                 instructions=C1_AGENT_INSTRUCTIONS,
                 prompt=c1_prompt,
-                model=request.model,
-                stream=request.stream
+                model=request.model
             )
             
             # Store C1 agent details on first turn
@@ -123,8 +122,7 @@ messages: {messages_str}"""
                 agent_name=ORCHESTRATOR_AGENT_NAME,
                 instructions=ORCHESTRATOR_AGENT_INSTRUCTIONS,
                 prompt=f"ConversationProperties: {conv_props_str}\nmessages: {messages_str}",
-                model=request.model,
-                stream=False
+                model=request.model
             )
             
             # Store orchestrator agent details on first use
@@ -169,8 +167,7 @@ messages: {messages_str}"""
                 agent_name=C2_AGENT_NAME,
                 instructions=C2_AGENT_INSTRUCTIONS,
                 prompt=c2_prompt,
-                model=request.model,
-                stream=request.stream
+                model=request.model
             )
             
             # Store C2 agent details on first turn
@@ -210,8 +207,7 @@ messages: {messages_str}"""
                 agent_name=ORCHESTRATOR_AGENT_NAME,
                 instructions=ORCHESTRATOR_AGENT_INSTRUCTIONS,
                 prompt=f"ConversationProperties: {conv_props_str}\nmessages: {messages_str}",
-                model=request.model,
-                stream=False
+                model=request.model
             )
             
             if orch_tokens:

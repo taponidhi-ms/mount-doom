@@ -6,6 +6,7 @@ from datetime import datetime
 import structlog
 import hashlib
 import json
+import threading
 
 logger = structlog.get_logger()
 
@@ -16,6 +17,7 @@ class AzureAIService:
     _instance: Optional['AzureAIService'] = None
     _client: Optional[AIProjectClient] = None
     _agents_cache: Dict[str, str] = {}  # Cache: agent_key -> agent_id
+    _cache_lock = threading.Lock()  # Thread-safe access to cache
     
     def __new__(cls):
         if cls._instance is None:
@@ -25,7 +27,6 @@ class AzureAIService:
     def __init__(self):
         if self._client is None:
             self._initialize_client()
-            self._agents_cache = {}
     
     def _initialize_client(self):
         """Initialize the Azure AI Project Client."""
@@ -51,6 +52,7 @@ class AzureAIService:
         """
         Get or create an agent based on name, instructions, and model.
         Agents are cached to avoid recreating them on every request.
+        Thread-safe implementation using a lock.
         
         Args:
             agent_name: The fixed name of the agent (e.g., "C1Agent", "PersonaAgent")
@@ -64,16 +66,18 @@ class AzureAIService:
         instructions_hash = hashlib.sha256(instructions.encode()).hexdigest()[:8]
         cache_key = f"{agent_name}_{instructions_hash}_{model}"
         
-        # Check if agent already exists in cache
-        if cache_key in self._agents_cache:
-            agent_id = self._agents_cache[cache_key]
-            logger.info("Using cached agent", 
-                       agent_name=agent_name,
-                       agent_id=agent_id,
-                       cache_key=cache_key)
-            return agent_id
+        # Thread-safe cache access
+        with self._cache_lock:
+            # Check if agent already exists in cache
+            if cache_key in self._agents_cache:
+                agent_id = self._agents_cache[cache_key]
+                logger.info("Using cached agent", 
+                           agent_name=agent_name,
+                           agent_id=agent_id,
+                           cache_key=cache_key)
+                return agent_id
         
-        # Create new agent using the agents API
+        # Create new agent using the agents API (outside lock to avoid blocking)
         try:
             created_agent = self.client.agents.create_agent(
                 model=model,
@@ -83,8 +87,9 @@ class AzureAIService:
             )
             agent_id = created_agent.id
             
-            # Cache the agent ID
-            self._agents_cache[cache_key] = agent_id
+            # Cache the agent ID (with lock)
+            with self._cache_lock:
+                self._agents_cache[cache_key] = agent_id
             
             logger.info("Created new agent", 
                        agent_name=agent_name,
@@ -104,8 +109,7 @@ class AzureAIService:
         agent_name: str,
         instructions: str,
         prompt: str,
-        model: str,
-        stream: bool = False
+        model: str
     ) -> tuple[str, Optional[int], str, datetime]:
         """
         Get response from an agent with instructions using Azure AI Agent workflow.
@@ -123,7 +127,6 @@ class AzureAIService:
             instructions: The instruction set for the agent
             prompt: The prompt to send to the agent
             model: The model to use (e.g., "gpt-4")
-            stream: Whether to stream the response (currently not implemented)
             
         Returns:
             Tuple of (response_text, tokens_used, agent_version, timestamp)
@@ -181,8 +184,8 @@ class AzureAIService:
                 assistant_message = messages.get_last_text_message_by_role("assistant")
                 if assistant_message and hasattr(assistant_message, 'text'):
                     response_text = assistant_message.text.value
-            except (AttributeError, Exception):
-                # Fallback: manually iterate through messages
+            except AttributeError:
+                # Fallback: manually iterate through messages if helper method doesn't exist
                 for msg in messages:
                     if msg.role == "assistant":
                         # The content is in msg.content - it's a list of content items
