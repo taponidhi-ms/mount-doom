@@ -1,10 +1,11 @@
 from azure.identity import DefaultAzureCredential
 from azure.ai.projects import AIProjectClient
-from azure.ai.projects.models import PromptAgentDefinition
 from app.core.config import settings
 from typing import Optional, Tuple
 from datetime import datetime
 import structlog
+import hashlib
+import json
 
 logger = structlog.get_logger()
 
@@ -53,7 +54,7 @@ class AzureAIService:
         stream: bool = False
     ) -> tuple[str, Optional[int], str, datetime]:
         """
-        Get response from an agent using Azure AI Foundry versioning pattern.
+        Get response from an agent with instructions.
         
         Args:
             agent_name: The fixed name of the agent (e.g., "C1Agent", "PersonaAgent")
@@ -68,49 +69,39 @@ class AzureAIService:
         try:
             timestamp = datetime.utcnow()
             
-            # Create or get agent version using the Azure AI Foundry pattern
-            agent = self.client.agents.create_version(
-                agent_name=agent_name,
-                definition=PromptAgentDefinition(
-                    model=model,
-                    instructions=instructions,
-                )
-            )
+            # Generate version hash from instructions
+            # This ensures that whenever instructions change, a new version is created
+            instructions_hash = hashlib.sha256(instructions.encode()).hexdigest()[:8]
+            agent_version = f"v{instructions_hash}"
             
-            logger.info(f"Agent version created/retrieved", 
-                       agent_name=agent.name, 
-                       agent_id=agent.id,
-                       agent_version=agent.version)
+            logger.info(f"Using agent", 
+                       agent_name=agent_name,
+                       agent_version=agent_version,
+                       model=model)
             
-            # Use OpenAI client for conversation
+            # Use OpenAI client for conversation with instructions
+            # The instructions are passed as a system message
             with self.client.get_openai_client() as openai_client:
-                # Create conversation
-                conversation = openai_client.conversations.create(
-                    items=[{
-                        "type": "message",
-                        "role": "user",
-                        "content": prompt
-                    }],
+                # Create messages with instructions as system message
+                messages = [
+                    {"role": "system", "content": instructions},
+                    {"role": "user", "content": prompt}
+                ]
+                
+                # Get chat completion
+                response = openai_client.chat.completions.create(
+                    model=model,
+                    messages=messages
                 )
                 
-                # Get response using agent reference
-                response = openai_client.responses.create(
-                    conversation=conversation.id,
-                    extra_body={"agent": {"name": agent.name, "type": "agent_reference"}},
-                    input="",
-                )
-                
-                response_text = response.output_text
+                response_text = response.choices[0].message.content
                 
                 # Extract token usage
                 tokens_used = None
                 if hasattr(response, 'usage') and response.usage:
                     tokens_used = response.usage.total_tokens
                 
-                # Clean up conversation
-                openai_client.conversations.delete(conversation_id=conversation.id)
-                
-                return response_text, tokens_used, agent.version, timestamp
+                return response_text, tokens_used, agent_version, timestamp
             
         except Exception as e:
             logger.error(f"Error getting agent response: {e}", 
