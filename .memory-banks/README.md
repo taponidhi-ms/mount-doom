@@ -1,5 +1,8 @@
 # Memory Banks
 
+## What are Memory Banks?
+Memory banks are structured documentation files that serve as the project's "institutional memory" - capturing important context, decisions, and patterns that may not be immediately obvious from reading code alone. Think of them as the project's knowledge base that helps both human developers and AI assistants understand the "why" behind the "what".
+
 ## Overview
 This directory contains the "memory banks" for the Mount Doom project - living documentation that must stay synchronized with the codebase.
 
