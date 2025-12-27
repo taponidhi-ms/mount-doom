@@ -76,22 +76,32 @@ class CosmosDBService:
     
     async def save_persona_generation(
         self,
-        agent_id: str,
         prompt: str,
         response: str,
         tokens_used: Optional[int],
-        time_taken_ms: float
+        time_taken_ms: float,
+        agent_name: str,
+        agent_version: str,
+        agent_instructions: str,
+        model: str,
+        agent_timestamp: datetime
     ):
         """Save persona generation use case data."""
         container = await self.ensure_container(self.PERSONA_GENERATION_CONTAINER)
         
         document = {
-            "id": f"{datetime.utcnow().isoformat()}_{agent_id}",
-            "agent_id": agent_id,
+            "id": f"{datetime.utcnow().isoformat()}_{agent_name}",
             "prompt": prompt,
             "response": response,
             "tokens_used": tokens_used,
             "time_taken_ms": time_taken_ms,
+            "agent_details": {
+                "agent_name": agent_name,
+                "agent_version": agent_version,
+                "instructions": agent_instructions,
+                "model": model,
+                "timestamp": agent_timestamp.isoformat()
+            },
             "timestamp": datetime.utcnow().isoformat()
         }
         
@@ -124,22 +134,32 @@ class CosmosDBService:
     
     async def save_prompt_validator(
         self,
-        agent_id: str,
         prompt: str,
         response: str,
         tokens_used: Optional[int],
-        time_taken_ms: float
+        time_taken_ms: float,
+        agent_name: str,
+        agent_version: str,
+        agent_instructions: str,
+        model: str,
+        agent_timestamp: datetime
     ):
         """Save prompt validator use case data."""
         container = await self.ensure_container(self.PROMPT_VALIDATOR_CONTAINER)
         
         document = {
-            "id": f"{datetime.utcnow().isoformat()}_{agent_id}",
-            "agent_id": agent_id,
+            "id": f"{datetime.utcnow().isoformat()}_{agent_name}",
             "prompt": prompt,
             "response": response,
             "tokens_used": tokens_used,
             "time_taken_ms": time_taken_ms,
+            "agent_details": {
+                "agent_name": agent_name,
+                "agent_version": agent_version,
+                "instructions": agent_instructions,
+                "model": model,
+                "timestamp": agent_timestamp.isoformat()
+            },
             "timestamp": datetime.utcnow().isoformat()
         }
         
@@ -148,26 +168,28 @@ class CosmosDBService:
     
     async def save_conversation_simulation(
         self,
-        c1_agent_id: str,
-        c2_agent_id: str,
         conversation_properties: Dict[str, Any],
         conversation_history: list,
         conversation_status: str,
         total_tokens_used: Optional[int],
-        total_time_taken_ms: float
+        total_time_taken_ms: float,
+        c1_agent_details: Dict[str, Any],
+        c2_agent_details: Dict[str, Any],
+        orchestrator_agent_details: Dict[str, Any]
     ):
         """Save conversation simulation use case data."""
         container = await self.ensure_container(self.CONVERSATION_SIMULATION_CONTAINER)
         
         document = {
-            "id": f"{datetime.utcnow().isoformat()}_{c1_agent_id}_{c2_agent_id}",
-            "c1_agent_id": c1_agent_id,
-            "c2_agent_id": c2_agent_id,
+            "id": f"{datetime.utcnow().isoformat()}_conversation",
             "conversation_properties": conversation_properties,
             "conversation_history": conversation_history,
             "conversation_status": conversation_status,
             "total_tokens_used": total_tokens_used,
             "total_time_taken_ms": total_time_taken_ms,
+            "c1_agent_details": c1_agent_details,
+            "c2_agent_details": c2_agent_details,
+            "orchestrator_agent_details": orchestrator_agent_details,
             "timestamp": datetime.utcnow().isoformat()
         }
         

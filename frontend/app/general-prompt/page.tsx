@@ -23,7 +23,7 @@ export default function GeneralPromptPage() {
   }, [])
 
   const loadModels = async () => {
-    const response = await apiClient.getModels()
+    const response = await apiClient.getGeneralModels()
     if (response.data) {
       setModels(response.data.models)
       if (response.data.models.length > 0) {
@@ -45,7 +45,7 @@ export default function GeneralPromptPage() {
     setError('')
     setResult(null)
 
-    const response = await apiClient.generateResponse(selectedModel, prompt)
+    const response = await apiClient.generateGeneralResponse(selectedModel, prompt)
     setLoading(false)
 
     if (response.data) {

@@ -1,8 +1,11 @@
 from azure.identity import DefaultAzureCredential
 from azure.ai.projects import AIProjectClient
 from app.core.config import settings
-from typing import Optional
+from typing import Optional, Tuple
+from datetime import datetime
 import structlog
+import hashlib
+import json
 
 logger = structlog.get_logger()
 
@@ -44,65 +47,66 @@ class AzureAIService:
     
     async def get_agent_response(
         self,
-        agent_id: str,
+        agent_name: str,
+        instructions: str,
         prompt: str,
+        model: str,
         stream: bool = False
-    ) -> tuple[str, Optional[int]]:
+    ) -> tuple[str, Optional[int], str, datetime]:
         """
-        Get response from an agent.
+        Get response from an agent with instructions.
         
         Args:
-            agent_id: The ID of the agent to use
+            agent_name: The fixed name of the agent (e.g., "C1Agent", "PersonaAgent")
+            instructions: The instruction set for the agent
             prompt: The prompt to send to the agent
+            model: The model to use (e.g., "gpt-4")
             stream: Whether to stream the response
             
         Returns:
-            Tuple of (response_text, tokens_used)
+            Tuple of (response_text, tokens_used, agent_version, timestamp)
         """
         try:
-            # Create agent with the specified agent_id
-            agent = self.client.agents.create_agent(
-                model=agent_id,
-                name="agent",
-                instructions=prompt
-            )
+            timestamp = datetime.utcnow()
             
-            # Create thread
-            thread = self.client.agents.create_thread()
+            # Generate version hash from instructions
+            # This ensures that whenever instructions change, a new version is created
+            instructions_hash = hashlib.sha256(instructions.encode()).hexdigest()[:8]
+            agent_version = f"v{instructions_hash}"
             
-            # Create message
-            message = self.client.agents.create_message(
-                thread_id=thread.id,
-                role="user",
-                content=prompt
-            )
+            logger.info(f"Using agent", 
+                       agent_name=agent_name,
+                       agent_version=agent_version,
+                       model=model)
             
-            # Run agent
-            run = self.client.agents.create_run(
-                thread_id=thread.id,
-                agent_id=agent.id
-            )
-            
-            # Wait for completion
-            while run.status in ["queued", "in_progress"]:
-                run = self.client.agents.get_run(
-                    thread_id=thread.id,
-                    run_id=run.id
+            # Use OpenAI client for conversation with instructions
+            # The instructions are passed as a system message
+            with self.client.get_openai_client() as openai_client:
+                # Create messages with instructions as system message
+                messages = [
+                    {"role": "system", "content": instructions},
+                    {"role": "user", "content": prompt}
+                ]
+                
+                # Get chat completion
+                response = openai_client.chat.completions.create(
+                    model=model,
+                    messages=messages
                 )
-            
-            # Get messages
-            messages = self.client.agents.list_messages(thread_id=thread.id)
-            response_text = messages.data[0].content[0].text.value if messages.data else ""
-            
-            # Extract token usage
-            tokens_used = None
-            if hasattr(run, 'usage') and run.usage:
-                tokens_used = run.usage.total_tokens
-            
-            return response_text, tokens_used
+                
+                response_text = response.choices[0].message.content
+                
+                # Extract token usage
+                tokens_used = None
+                if hasattr(response, 'usage') and response.usage:
+                    tokens_used = response.usage.total_tokens
+                
+                return response_text, tokens_used, agent_version, timestamp
             
         except Exception as e:
-            logger.error(f"Error getting agent response: {e}")
+            logger.error(f"Error getting agent response: {e}", 
+                        agent_name=agent_name,
+                        error=str(e))
             raise
     
     async def get_model_response(

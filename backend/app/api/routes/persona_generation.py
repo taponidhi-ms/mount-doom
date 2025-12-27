@@ -2,38 +2,37 @@ from fastapi import APIRouter, HTTPException
 from app.models.schemas import (
     PersonaGenerationRequest,
     PersonaGenerationResponse,
-    AvailableAgentsResponse,
-    AgentInfo
+    AgentDetails,
+    AvailableModelsResponse,
+    ModelInfo
 )
 from app.services.azure_ai_service import azure_ai_service
 from app.services.cosmos_db_service import cosmos_db_service
 from app.core.config import settings
+from app.instruction_sets import PERSONA_AGENT_NAME, PERSONA_AGENT_INSTRUCTIONS
 from datetime import datetime
 import time
 
 router = APIRouter(prefix="/persona-generation", tags=["Persona Generation"])
 
 
-@router.get("/agents", response_model=AvailableAgentsResponse)
-async def get_available_agents():
-    """Get list of available agents for persona generation use case."""
-    agents = []
+@router.get("/models", response_model=AvailableModelsResponse)
+async def get_available_models():
+    """Get list of available models for persona generation use case."""
+    models = [
+        ModelInfo(
+            model_id="gpt-4",
+            model_name="GPT-4",
+            description="Advanced language model for complex persona generation"
+        ),
+        ModelInfo(
+            model_id="gpt-35-turbo",
+            model_name="GPT-3.5 Turbo",
+            description="Fast and efficient model for persona generation"
+        )
+    ]
     
-    if settings.persona_generation_agent_1:
-        agents.append(AgentInfo(
-            agent_id=settings.persona_generation_agent_1,
-            agent_name="Persona Generation Agent 1",
-            description="Primary agent for persona generation"
-        ))
-    
-    if settings.persona_generation_agent_2:
-        agents.append(AgentInfo(
-            agent_id=settings.persona_generation_agent_2,
-            agent_name="Persona Generation Agent 2",
-            description="Secondary agent for persona generation"
-        ))
-    
-    return AvailableAgentsResponse(agents=agents)
+    return AvailableModelsResponse(models=models)
 
 
 @router.post("/generate", response_model=PersonaGenerationResponse)
@@ -43,10 +42,12 @@ async def generate_persona(request: PersonaGenerationRequest):
     start_ms = time.time() * 1000
     
     try:
-        # Get response from agent
-        response_text, tokens_used = await azure_ai_service.get_agent_response(
-            agent_id=request.agent_id,
+        # Get response from agent using fixed agent name and instructions
+        response_text, tokens_used, agent_version, agent_timestamp = await azure_ai_service.get_agent_response(
+            agent_name=PERSONA_AGENT_NAME,
+            instructions=PERSONA_AGENT_INSTRUCTIONS,
             prompt=request.prompt,
+            model=request.model,
             stream=request.stream
         )
         
@@ -56,20 +57,32 @@ async def generate_persona(request: PersonaGenerationRequest):
         
         # Save to Cosmos DB
         await cosmos_db_service.save_persona_generation(
-            agent_id=request.agent_id,
             prompt=request.prompt,
             response=response_text,
             tokens_used=tokens_used,
-            time_taken_ms=time_taken_ms
+            time_taken_ms=time_taken_ms,
+            agent_name=PERSONA_AGENT_NAME,
+            agent_version=agent_version,
+            agent_instructions=PERSONA_AGENT_INSTRUCTIONS,
+            model=request.model,
+            agent_timestamp=agent_timestamp
+        )
+        
+        agent_details = AgentDetails(
+            agent_name=PERSONA_AGENT_NAME,
+            agent_version=agent_version,
+            instructions=PERSONA_AGENT_INSTRUCTIONS,
+            model=request.model,
+            timestamp=agent_timestamp
         )
         
         return PersonaGenerationResponse(
-            agent_id=request.agent_id,
             response_text=response_text,
             tokens_used=tokens_used,
             time_taken_ms=time_taken_ms,
             start_time=start_time,
-            end_time=end_time
+            end_time=end_time,
+            agent_details=agent_details
         )
     
     except Exception as e:

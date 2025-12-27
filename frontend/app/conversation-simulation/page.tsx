@@ -8,12 +8,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
 import { ResultDisplay } from '@/components/result-display'
-import { apiClient, AgentInfo, ConversationSimulationResponse } from '@/lib/api-client'
+import { apiClient, ModelInfo, ConversationSimulationResponse } from '@/lib/api-client'
 
 export default function ConversationSimulationPage() {
-  const [agents, setAgents] = useState<AgentInfo[]>([])
-  const [c1Agent, setC1Agent] = useState('')
-  const [c2Agent, setC2Agent] = useState('')
+  const [models, setModels] = useState<ModelInfo[]>([])
+  const [selectedModel, setSelectedModel] = useState('gpt-4')
   const [customerIntent, setCustomerIntent] = useState('')
   const [customerSentiment, setCustomerSentiment] = useState('')
   const [conversationSubject, setConversationSubject] = useState('')
@@ -23,26 +22,24 @@ export default function ConversationSimulationPage() {
   const [error, setError] = useState('')
 
   useEffect(() => {
-    loadAgents()
+    loadModels()
   }, [])
 
-  const loadAgents = async () => {
-    const response = await apiClient.getConversationAgents()
+  const loadModels = async () => {
+    const response = await apiClient.getConversationModels()
     if (response.data) {
-      setAgents(response.data.agents)
-      // Find C1 and C2 agents
-      const c1 = response.data.agents.find(a => a.agent_name.includes('C1'))
-      const c2 = response.data.agents.find(a => a.agent_name.includes('C2'))
-      if (c1) setC1Agent(c1.agent_id)
-      if (c2) setC2Agent(c2.agent_id)
+      setModels(response.data.models)
+      if (response.data.models.length > 0) {
+        setSelectedModel(response.data.models[0].model_id)
+      }
     } else if (response.error) {
-      setError(`Failed to load agents: ${response.error}`)
+      setError(`Failed to load models: ${response.error}`)
     }
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!c1Agent || !c2Agent || !customerIntent || !customerSentiment || !conversationSubject) {
+    if (!selectedModel || !customerIntent || !customerSentiment || !conversationSubject) {
       setError('Please fill in all required fields')
       return
     }
@@ -57,13 +54,12 @@ export default function ConversationSimulationPage() {
     setResult(null)
 
     const response = await apiClient.simulateConversation(
-      c1Agent,
-      c2Agent,
       {
         CustomerIntent: customerIntent,
         CustomerSentiment: customerSentiment,
         ConversationSubject: conversationSubject,
       },
+      selectedModel,
       maxTurns
     )
     setLoading(false)
@@ -75,10 +71,6 @@ export default function ConversationSimulationPage() {
     }
   }
 
-  // Filter agents for C1 and C2
-  const c1Agents = agents.filter(a => a.agent_name.includes('C1') || a.agent_name.includes('Representative'))
-  const c2Agents = agents.filter(a => a.agent_name.includes('C2') || a.agent_name.includes('Customer'))
-
   return (
     <div className="min-h-screen p-8">
       <div className="max-w-4xl mx-auto">
@@ -89,7 +81,7 @@ export default function ConversationSimulationPage() {
 
         <h1 className="text-3xl font-bold mb-2">Conversation Simulation</h1>
         <p className="text-gray-600 dark:text-gray-400 mb-6">
-          Simulate multi-turn conversations between customer service representatives and customers.
+          Simulate multi-turn conversations between C1Agent (customer service representative) and C2Agent (customer).
         </p>
 
         <Card>
@@ -98,48 +90,26 @@ export default function ConversationSimulationPage() {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium mb-2">
-                    C1 Agent (Customer Service Rep)
-                  </label>
-                  <Select
-                    value={c1Agent}
-                    onChange={(e) => setC1Agent(e.target.value)}
-                    disabled={loading || c1Agents.length === 0}
-                  >
-                    {c1Agents.length === 0 ? (
-                      <option>No C1 agents available</option>
-                    ) : (
-                      c1Agents.map((agent) => (
-                        <option key={agent.agent_id} value={agent.agent_id}>
-                          {agent.agent_name}
-                        </option>
-                      ))
-                    )}
-                  </Select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium mb-2">
-                    C2 Agent (Customer)
-                  </label>
-                  <Select
-                    value={c2Agent}
-                    onChange={(e) => setC2Agent(e.target.value)}
-                    disabled={loading || c2Agents.length === 0}
-                  >
-                    {c2Agents.length === 0 ? (
-                      <option>No C2 agents available</option>
-                    ) : (
-                      c2Agents.map((agent) => (
-                        <option key={agent.agent_id} value={agent.agent_id}>
-                          {agent.agent_name}
-                        </option>
-                      ))
-                    )}
-                  </Select>
-                </div>
+              <div>
+                <label className="block text-sm font-medium mb-2">Select Model</label>
+                <Select
+                  value={selectedModel}
+                  onChange={(e) => setSelectedModel(e.target.value)}
+                  disabled={loading || models.length === 0}
+                >
+                  {models.length === 0 ? (
+                    <option>No models available</option>
+                  ) : (
+                    models.map((model) => (
+                      <option key={model.model_id} value={model.model_id}>
+                        {model.model_name} {model.description && `- ${model.description}`}
+                      </option>
+                    ))
+                  )}
+                </Select>
+                <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
+                  This model will be used for both C1Agent and C2Agent
+                </p>
               </div>
 
               <div>
@@ -199,8 +169,7 @@ export default function ConversationSimulationPage() {
                 type="submit"
                 disabled={
                   loading ||
-                  !c1Agent ||
-                  !c2Agent ||
+                  !selectedModel ||
                   !customerIntent ||
                   !customerSentiment ||
                   !conversationSubject
