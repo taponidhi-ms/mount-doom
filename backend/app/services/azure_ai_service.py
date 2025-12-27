@@ -1,6 +1,5 @@
 from azure.identity import DefaultAzureCredential
 from azure.ai.projects import AIProjectClient
-from azure.ai.projects.models import PromptAgentDefinition
 from app.core.config import settings
 from typing import Optional, Tuple, Dict
 from datetime import datetime
@@ -74,16 +73,14 @@ class AzureAIService:
                        cache_key=cache_key)
             return agent_id
         
-        # Create new agent using PromptAgentDefinition
+        # Create new agent using the agents API
         try:
-            agent_definition = PromptAgentDefinition(
+            created_agent = self.client.agents.create_agent(
+                model=model,
                 name=agent_name,
-                description=f"Agent for {agent_name}",
                 instructions=instructions,
-                model=model
+                description=f"Agent for {agent_name}"
             )
-            
-            created_agent = self.client.agents.create_agent(agent_definition)
             agent_id = created_agent.id
             
             # Cache the agent ID
@@ -163,16 +160,12 @@ class AzureAIService:
                        thread_id=thread_id,
                        message_id=message.id)
             
-            # Step 4: Run the agent on the thread
-            run = self.client.agents.create_run(
+            # Step 4: Run the agent on the thread using create_and_process_run
+            # This method automatically polls for completion
+            run = self.client.agents.create_and_process_run(
                 thread_id=thread_id,
-                agent_id=agent_id
+                assistant_id=agent_id
             )
-            
-            logger.info("Created run", run_id=run.id)
-            
-            # Poll for completion
-            run = self.client.agents.poll_run(run.id, thread_id=thread_id)
             
             logger.info("Run completed", 
                        run_id=run.id,
@@ -181,21 +174,28 @@ class AzureAIService:
             # Step 5: Retrieve agent responses from the thread
             messages = self.client.agents.list_messages(thread_id=thread_id)
             
-            # Get the assistant's response (most recent message with role="assistant")
+            # Get the assistant's response using get_last_text_message_by_role
             response_text = None
-            for msg in messages:
-                if msg.role == "assistant":
-                    # The content is in msg.content - it's a list of content items
-                    if msg.content and len(msg.content) > 0:
-                        # Extract text from the first content item
-                        content_item = msg.content[0]
-                        if hasattr(content_item, 'text'):
-                            response_text = content_item.text.value
-                        elif hasattr(content_item, 'value'):
-                            response_text = content_item.value
-                        else:
-                            response_text = str(content_item)
-                    break
+            try:
+                # Try to use the helper method if available
+                assistant_message = messages.get_last_text_message_by_role("assistant")
+                if assistant_message and hasattr(assistant_message, 'text'):
+                    response_text = assistant_message.text.value
+            except (AttributeError, Exception):
+                # Fallback: manually iterate through messages
+                for msg in messages:
+                    if msg.role == "assistant":
+                        # The content is in msg.content - it's a list of content items
+                        if msg.content and len(msg.content) > 0:
+                            # Extract text from the first content item
+                            content_item = msg.content[0]
+                            if hasattr(content_item, 'text'):
+                                response_text = content_item.text.value
+                            elif hasattr(content_item, 'value'):
+                                response_text = content_item.value
+                            else:
+                                response_text = str(content_item)
+                        break
             
             if response_text is None:
                 raise Exception("No assistant response found in thread")
