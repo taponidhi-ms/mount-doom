@@ -54,7 +54,6 @@ class PersonaGenerationRequest(BaseRequest):
     """Request for persona generation use case."""
     prompt: str
     model_deployment_name: str = "gpt-4"  # Allow specifying model deployment
-    stream: bool = False
 
 
 class PersonaGenerationResponse(BaseResponse):
@@ -66,7 +65,6 @@ class GeneralPromptRequest(BaseRequest):
     """Request for general prompt use case."""
     model_deployment_name: str
     prompt: str
-    stream: bool = False
 
 
 class GeneralPromptResponse(BaseModel):
@@ -83,7 +81,6 @@ class PromptValidatorRequest(BaseRequest):
     """Request for prompt validator use case."""
     prompt: str
     model_deployment_name: str = "gpt-4"  # Allow specifying model deployment
-    stream: bool = False
 
 
 class PromptValidatorResponse(BaseResponse):
@@ -117,7 +114,6 @@ class ConversationSimulationRequest(BaseRequest):
     conversation_properties: ConversationProperties
     model_deployment_name: str = "gpt-4"  # Model deployment to use for all agents
     max_turns: int = Field(default=10, le=20)
-    stream: bool = False
 
 
 class ConversationSimulationResponse(BaseModel):
