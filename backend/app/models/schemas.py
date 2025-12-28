@@ -21,8 +21,8 @@ class AgentInfo(BaseModel):
 
 class ModelInfo(BaseModel):
     """Information about an available model."""
-    model_id: str
-    model_name: str
+    model_deployment_name: str
+    display_name: str
     description: Optional[str] = None
 
 
@@ -36,7 +36,7 @@ class AgentDetails(BaseModel):
     agent_name: str
     agent_version: Optional[str] = None
     instructions: str
-    model: str
+    model_deployment_name: str
     timestamp: datetime
 
 
@@ -53,7 +53,7 @@ class BaseResponse(BaseModel):
 class PersonaGenerationRequest(BaseRequest):
     """Request for persona generation use case."""
     prompt: str
-    model: str = "gpt-4"  # Allow specifying model
+    model_deployment_name: str = "gpt-4"  # Allow specifying model deployment
     stream: bool = False
 
 
@@ -64,20 +64,25 @@ class PersonaGenerationResponse(BaseResponse):
 
 class GeneralPromptRequest(BaseRequest):
     """Request for general prompt use case."""
-    model_id: str
+    model_deployment_name: str
     prompt: str
     stream: bool = False
 
 
-class GeneralPromptResponse(BaseResponse):
-    """Response for general prompt use case."""
-    model_id: str
+class GeneralPromptResponse(BaseModel):
+    """Response for general prompt use case (no agent, direct model)."""
+    model_deployment_name: str
+    response_text: str
+    tokens_used: Optional[int] = None
+    time_taken_ms: float
+    start_time: datetime
+    end_time: datetime
 
 
 class PromptValidatorRequest(BaseRequest):
     """Request for prompt validator use case."""
     prompt: str
-    model: str = "gpt-4"  # Allow specifying model
+    model_deployment_name: str = "gpt-4"  # Allow specifying model deployment
     stream: bool = False
 
 
@@ -110,7 +115,7 @@ class ConversationMessage(BaseModel):
 class ConversationSimulationRequest(BaseRequest):
     """Request for conversation simulation use case."""
     conversation_properties: ConversationProperties
-    model: str = "gpt-4"  # Model to use for both agents
+    model_deployment_name: str = "gpt-4"  # Model deployment to use for all agents
     max_turns: int = Field(default=10, le=20)
     stream: bool = False
 

@@ -1,5 +1,7 @@
 from pydantic_settings import BaseSettings
 from typing import List
+import json
+import os
 
 
 class Settings(BaseSettings):
@@ -12,17 +14,9 @@ class Settings(BaseSettings):
     cosmos_db_endpoint: str
     cosmos_db_database_name: str
     
-    # Agent IDs
-    persona_generation_agent_1: str = ""
-    persona_generation_agent_2: str = ""
-    prompt_validator_agent: str = ""
-    conversation_c1_agent: str = ""
-    conversation_c2_agent: str = ""
-    conversation_orchestrator_agent: str = ""
-    
-    # Model IDs
-    general_model_1: str = "gpt-4"
-    general_model_2: str = "gpt-35-turbo"
+    # Model Deployments Configuration (JSON string)
+    # Format: [{"model_deployment_name": "gpt-4", "display_name": "GPT-4", "description": "..."}]
+    models_config: str = '[{"model_deployment_name": "gpt-4", "display_name": "GPT-4", "description": "Advanced language model for complex tasks"}, {"model_deployment_name": "gpt-35-turbo", "display_name": "GPT-3.5 Turbo", "description": "Fast and efficient model for general tasks"}]'
     
     # API Configuration
     api_host: str = "0.0.0.0"
@@ -32,6 +26,17 @@ class Settings(BaseSettings):
     class Config:
         env_file = ".env"
         case_sensitive = False
+    
+    def get_models(self):
+        """Parse and return the list of model configurations."""
+        try:
+            return json.loads(self.models_config)
+        except json.JSONDecodeError:
+            # Fallback to default models if parsing fails
+            return [
+                {"model_deployment_name": "gpt-4", "display_name": "GPT-4", "description": "Advanced language model for complex tasks"},
+                {"model_deployment_name": "gpt-35-turbo", "display_name": "GPT-3.5 Turbo", "description": "Fast and efficient model for general tasks"}
+            ]
 
 
 settings = Settings()

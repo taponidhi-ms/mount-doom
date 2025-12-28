@@ -4,7 +4,8 @@ from app.api.routes import (
     persona_generation,
     general_prompt,
     prompt_validator,
-    conversation_simulation
+    conversation_simulation,
+    models
 )
 from app.core.config import settings
 import structlog
@@ -38,6 +39,7 @@ app.add_middleware(
 )
 
 # Include routers
+app.include_router(models.router, prefix="/api/v1")
 app.include_router(persona_generation.router, prefix="/api/v1")
 app.include_router(general_prompt.router, prefix="/api/v1")
 app.include_router(prompt_validator.router, prefix="/api/v1")

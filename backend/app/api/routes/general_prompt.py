@@ -1,9 +1,7 @@
 from fastapi import APIRouter, HTTPException
 from app.models.schemas import (
     GeneralPromptRequest,
-    GeneralPromptResponse,
-    AvailableModelsResponse,
-    ModelInfo
+    GeneralPromptResponse
 )
 from app.services.azure_ai_service import azure_ai_service
 from app.services.cosmos_db_service import cosmos_db_service
@@ -12,25 +10,6 @@ from datetime import datetime
 import time
 
 router = APIRouter(prefix="/general-prompt", tags=["General Prompt"])
-
-
-@router.get("/models", response_model=AvailableModelsResponse)
-async def get_available_models():
-    """Get list of available models for general prompt use case."""
-    models = [
-        ModelInfo(
-            model_id=settings.general_model_1,
-            model_name="GPT-4",
-            description="Advanced language model for complex tasks"
-        ),
-        ModelInfo(
-            model_id=settings.general_model_2,
-            model_name="GPT-3.5 Turbo",
-            description="Fast and efficient model for general tasks"
-        )
-    ]
-    
-    return AvailableModelsResponse(models=models)
 
 
 @router.post("/generate", response_model=GeneralPromptResponse)
@@ -42,7 +21,7 @@ async def generate_response(request: GeneralPromptRequest):
     try:
         # Get response from model
         response_text, tokens_used = await azure_ai_service.get_model_response(
-            model_id=request.model_id,
+            model_deployment_name=request.model_deployment_name,
             prompt=request.prompt,
             stream=request.stream
         )
@@ -53,7 +32,7 @@ async def generate_response(request: GeneralPromptRequest):
         
         # Save to Cosmos DB
         await cosmos_db_service.save_general_prompt(
-            model_id=request.model_id,
+            model_id=request.model_deployment_name,
             prompt=request.prompt,
             response=response_text,
             tokens_used=tokens_used,
@@ -61,7 +40,7 @@ async def generate_response(request: GeneralPromptRequest):
         )
         
         return GeneralPromptResponse(
-            model_id=request.model_id,
+            model_deployment_name=request.model_deployment_name,
             response_text=response_text,
             tokens_used=tokens_used,
             time_taken_ms=time_taken_ms,

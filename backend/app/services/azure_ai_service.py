@@ -49,23 +49,23 @@ class AzureAIService:
             self._initialize_client()
         return self._client
     
-    def _get_or_create_agent(self, agent_name: str, instructions: str, model: str) -> str:
+    def _get_or_create_agent(self, agent_name: str, instructions: str, model_deployment_name: str) -> str:
         """
-        Get or create an agent based on name, instructions, and model.
+        Get or create an agent based on name, instructions, and model deployment.
         Agents are cached to avoid recreating them on every request.
         Thread-safe implementation using a lock.
         
         Args:
             agent_name: The fixed name of the agent (e.g., "C1Agent", "PersonaAgent")
             instructions: The instruction set for the agent
-            model: The model to use (e.g., "gpt-4")
+            model_deployment_name: The model deployment to use (e.g., "gpt-4")
             
         Returns:
             agent_id: The ID of the created or cached agent
         """
         # Create a cache key based on agent name and instructions hash
         instructions_hash = hashlib.sha256(instructions.encode()).hexdigest()[:8]
-        cache_key = f"{agent_name}_{instructions_hash}_{model}"
+        cache_key = f"{agent_name}_{instructions_hash}_{model_deployment_name}"
         
         # Thread-safe cache access
         agent_id = None
@@ -85,7 +85,7 @@ class AzureAIService:
         # Create new agent using the agents API (outside lock to avoid blocking)
         try:
             created_agent = self.client.agents.create_agent(
-                model=model,
+                model=model_deployment_name,
                 name=agent_name,
                 instructions=instructions,
                 description=f"Agent for {agent_name}"
@@ -114,7 +114,7 @@ class AzureAIService:
         agent_name: str,
         instructions: str,
         prompt: str,
-        model: str
+        model_deployment_name: str
     ) -> AgentResponseData:
         """
         Get response from an agent with instructions using Azure AI Agent workflow.
@@ -131,7 +131,7 @@ class AzureAIService:
             agent_name: The fixed name of the agent (e.g., "C1Agent", "PersonaAgent")
             instructions: The instruction set for the agent
             prompt: The prompt to send to the agent
-            model: The model to use (e.g., "gpt-4")
+            model_deployment_name: The model deployment to use (e.g., "gpt-4")
             
         Returns:
             AgentResponseData with response_text, tokens_used, agent_version, timestamp, and thread_id
@@ -146,10 +146,10 @@ class AzureAIService:
             logger.info(f"Getting agent response", 
                        agent_name=agent_name,
                        agent_version=agent_version,
-                       model=model)
+                       model_deployment_name=model_deployment_name)
             
             # Step 1: Get or create agent
-            agent_id = self._get_or_create_agent(agent_name, instructions, model)
+            agent_id = self._get_or_create_agent(agent_name, instructions, model_deployment_name)
             
             # Step 2: Create a thread for this conversation
             thread = self.client.agents.create_thread()
@@ -239,15 +239,16 @@ class AzureAIService:
     
     async def get_model_response(
         self,
-        model_id: str,
+        model_deployment_name: str,
         prompt: str,
         stream: bool = False
     ) -> tuple[str, Optional[int]]:
         """
         Get response from a model directly (not using agent).
+        Uses the responses API for conversational context.
         
         Args:
-            model_id: The ID of the model to use
+            model_deployment_name: The deployment name of the model to use
             prompt: The prompt to send to the model
             stream: Whether to stream the response
             
@@ -255,18 +256,21 @@ class AzureAIService:
             Tuple of (response_text, tokens_used)
         """
         try:
-            # Use the chat completions API directly
-            response = self.client.inference.get_chat_completions(
-                model=model_id,
-                messages=[
-                    {"role": "user", "content": prompt}
-                ]
-            )
-            
-            response_text = response.choices[0].message.content
-            tokens_used = response.usage.total_tokens if hasattr(response, 'usage') else None
-            
-            return response_text, tokens_used
+            # Use the responses API via OpenAI client
+            with self.client.get_openai_client() as openai_client:
+                response = openai_client.responses.create(
+                    model=model_deployment_name,
+                    input=prompt
+                )
+                
+                response_text = response.output_text
+                # Note: The responses API may not provide token usage in the same way
+                # Check if usage information is available
+                tokens_used = None
+                if hasattr(response, 'usage') and response.usage:
+                    tokens_used = response.usage.total_tokens
+                
+                return response_text, tokens_used
             
         except Exception as e:
             logger.error(f"Error getting model response: {e}")
