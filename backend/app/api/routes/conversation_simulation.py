@@ -3,9 +3,7 @@ from app.models.schemas import (
     ConversationSimulationRequest,
     ConversationSimulationResponse,
     ConversationMessage,
-    AgentDetails,
-    AvailableModelsResponse,
-    ModelInfo
+    AgentDetails
 )
 from app.services.azure_ai_service import azure_ai_service
 from app.services.cosmos_db_service import cosmos_db_service
@@ -20,25 +18,6 @@ import time
 import json
 
 router = APIRouter(prefix="/conversation-simulation", tags=["Conversation Simulation"])
-
-
-@router.get("/models", response_model=AvailableModelsResponse)
-async def get_available_models():
-    """Get list of available models for conversation simulation use case."""
-    models = [
-        ModelInfo(
-            model_id="gpt-4",
-            model_name="GPT-4",
-            description="Advanced language model for realistic conversations"
-        ),
-        ModelInfo(
-            model_id="gpt-35-turbo",
-            model_name="GPT-3.5 Turbo",
-            description="Fast and efficient model for conversations"
-        )
-    ]
-    
-    return AvailableModelsResponse(models=models)
 
 
 @router.post("/simulate", response_model=ConversationSimulationResponse)
@@ -82,7 +61,7 @@ messages: {messages_str}"""
                 agent_name=C1_AGENT_NAME,
                 instructions=C1_AGENT_INSTRUCTIONS,
                 prompt=c1_prompt,
-                model=request.model
+                model_deployment_name=request.model_deployment_name
             )
             
             # Store C1 agent details on first turn
@@ -91,7 +70,7 @@ messages: {messages_str}"""
                     agent_name=C1_AGENT_NAME,
                     agent_version=c1_agent_response.agent_version,
                     instructions=C1_AGENT_INSTRUCTIONS,
-                    model=request.model,
+                    model_deployment_name=request.model_deployment_name,
                     timestamp=c1_agent_response.timestamp
                 )
             
@@ -122,7 +101,7 @@ messages: {messages_str}"""
                 agent_name=ORCHESTRATOR_AGENT_NAME,
                 instructions=ORCHESTRATOR_AGENT_INSTRUCTIONS,
                 prompt=f"ConversationProperties: {conv_props_str}\nmessages: {messages_str}",
-                model=request.model
+                model_deployment_name=request.model_deployment_name
             )
             
             # Store orchestrator agent details on first use
@@ -131,7 +110,7 @@ messages: {messages_str}"""
                     agent_name=ORCHESTRATOR_AGENT_NAME,
                     agent_version=orch_agent_response.agent_version,
                     instructions=ORCHESTRATOR_AGENT_INSTRUCTIONS,
-                    model=request.model,
+                    model_deployment_name=request.model_deployment_name,
                     timestamp=orch_agent_response.timestamp
                 )
             
@@ -167,7 +146,7 @@ messages: {messages_str}"""
                 agent_name=C2_AGENT_NAME,
                 instructions=C2_AGENT_INSTRUCTIONS,
                 prompt=c2_prompt,
-                model=request.model
+                model_deployment_name=request.model_deployment_name
             )
             
             # Store C2 agent details on first turn
@@ -176,7 +155,7 @@ messages: {messages_str}"""
                     agent_name=C2_AGENT_NAME,
                     agent_version=c2_agent_response.agent_version,
                     instructions=C2_AGENT_INSTRUCTIONS,
-                    model=request.model,
+                    model_deployment_name=request.model_deployment_name,
                     timestamp=c2_agent_response.timestamp
                 )
             
@@ -207,7 +186,7 @@ messages: {messages_str}"""
                 agent_name=ORCHESTRATOR_AGENT_NAME,
                 instructions=ORCHESTRATOR_AGENT_INSTRUCTIONS,
                 prompt=f"ConversationProperties: {conv_props_str}\nmessages: {messages_str}",
-                model=request.model
+                model_deployment_name=request.model_deployment_name
             )
             
             if orch_agent_response_2.tokens_used:

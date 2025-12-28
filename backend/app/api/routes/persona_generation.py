@@ -2,9 +2,7 @@ from fastapi import APIRouter, HTTPException
 from app.models.schemas import (
     PersonaGenerationRequest,
     PersonaGenerationResponse,
-    AgentDetails,
-    AvailableModelsResponse,
-    ModelInfo
+    AgentDetails
 )
 from app.services.azure_ai_service import azure_ai_service
 from app.services.cosmos_db_service import cosmos_db_service
@@ -14,25 +12,6 @@ from datetime import datetime
 import time
 
 router = APIRouter(prefix="/persona-generation", tags=["Persona Generation"])
-
-
-@router.get("/models", response_model=AvailableModelsResponse)
-async def get_available_models():
-    """Get list of available models for persona generation use case."""
-    models = [
-        ModelInfo(
-            model_id="gpt-4",
-            model_name="GPT-4",
-            description="Advanced language model for complex persona generation"
-        ),
-        ModelInfo(
-            model_id="gpt-35-turbo",
-            model_name="GPT-3.5 Turbo",
-            description="Fast and efficient model for persona generation"
-        )
-    ]
-    
-    return AvailableModelsResponse(models=models)
 
 
 @router.post("/generate", response_model=PersonaGenerationResponse)
@@ -47,7 +26,7 @@ async def generate_persona(request: PersonaGenerationRequest):
             agent_name=PERSONA_AGENT_NAME,
             instructions=PERSONA_AGENT_INSTRUCTIONS,
             prompt=request.prompt,
-            model=request.model
+            model_deployment_name=request.model_deployment_name
         )
         
         end_time = datetime.utcnow()
@@ -63,7 +42,7 @@ async def generate_persona(request: PersonaGenerationRequest):
             agent_name=PERSONA_AGENT_NAME,
             agent_version=agent_response.agent_version,
             agent_instructions=PERSONA_AGENT_INSTRUCTIONS,
-            model=request.model,
+            model=request.model_deployment_name,
             agent_timestamp=agent_response.timestamp
         )
         
@@ -71,7 +50,7 @@ async def generate_persona(request: PersonaGenerationRequest):
             agent_name=PERSONA_AGENT_NAME,
             agent_version=agent_response.agent_version,
             instructions=PERSONA_AGENT_INSTRUCTIONS,
-            model=request.model,
+            model_deployment_name=request.model_deployment_name,
             timestamp=agent_response.timestamp
         )
         
