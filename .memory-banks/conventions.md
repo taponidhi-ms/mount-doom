@@ -81,11 +81,20 @@
 
 ## Azure Integration
 
+### Azure AI Projects SDK Documentation
+**Important References** - Read these before making changes to Azure AI integration:
+- [AIProjectClient Class Documentation](https://learn.microsoft.com/en-us/python/api/azure-ai-projects/azure.ai.projects.aio.aiprojectclient?view=azure-python-preview)
+- [OpenAIClient Class Documentation](https://learn.microsoft.com/en-us/python/api/azure-ai-projects/azure.ai.projects.aio.openaiclient?view=azure-python-preview)
+- [Azure AI Projects Agents Code Samples](https://github.com/Azure/azure-sdk-for-python/tree/azure-ai-projects_2.0.0b2/sdk/ai/azure-ai-projects/samples/agents)
+
 ### Agent Usage
 - Use AIProjectClient from azure-ai-projects
 - DefaultAzureCredential for authentication
 - Agent IDs configured in environment variables
 - Separate agents for different use cases
+- Create agents using `client.agents.create_agent()` with PromptAgentDefinition
+- Manage conversation threads for stateful interactions
+- Use `create_and_process_run()` for automatic polling
 
 ### Model Usage
 - Direct model access for general prompts

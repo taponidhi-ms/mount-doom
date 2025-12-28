@@ -43,12 +43,11 @@ async def validate_prompt(request: PromptValidatorRequest):
     
     try:
         # Get response from agent using fixed agent name and instructions
-        response_text, tokens_used, agent_version, agent_timestamp = await azure_ai_service.get_agent_response(
+        agent_response = await azure_ai_service.get_agent_response(
             agent_name=PROMPT_VALIDATOR_AGENT_NAME,
             instructions=PROMPT_VALIDATOR_AGENT_INSTRUCTIONS,
             prompt=request.prompt,
-            model=request.model,
-            stream=request.stream
+            model=request.model
         )
         
         end_time = datetime.utcnow()
@@ -58,27 +57,27 @@ async def validate_prompt(request: PromptValidatorRequest):
         # Save to Cosmos DB
         await cosmos_db_service.save_prompt_validator(
             prompt=request.prompt,
-            response=response_text,
-            tokens_used=tokens_used,
+            response=agent_response.response_text,
+            tokens_used=agent_response.tokens_used,
             time_taken_ms=time_taken_ms,
             agent_name=PROMPT_VALIDATOR_AGENT_NAME,
-            agent_version=agent_version,
+            agent_version=agent_response.agent_version,
             agent_instructions=PROMPT_VALIDATOR_AGENT_INSTRUCTIONS,
             model=request.model,
-            agent_timestamp=agent_timestamp
+            agent_timestamp=agent_response.timestamp
         )
         
         agent_details = AgentDetails(
             agent_name=PROMPT_VALIDATOR_AGENT_NAME,
-            agent_version=agent_version,
+            agent_version=agent_response.agent_version,
             instructions=PROMPT_VALIDATOR_AGENT_INSTRUCTIONS,
             model=request.model,
-            timestamp=agent_timestamp
+            timestamp=agent_response.timestamp
         )
         
         return PromptValidatorResponse(
-            response_text=response_text,
-            tokens_used=tokens_used,
+            response_text=agent_response.response_text,
+            tokens_used=agent_response.tokens_used,
             time_taken_ms=time_taken_ms,
             start_time=start_time,
             end_time=end_time,
