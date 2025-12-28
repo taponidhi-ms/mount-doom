@@ -174,8 +174,7 @@ curl -X POST "http://localhost:8000/api/v1/persona-generation/generate" \
   -H "Content-Type: application/json" \
   -d '{
     "prompt": "Create a persona for a tech-savvy millennial",
-    "model": "gpt-4",
-    "stream": false
+    "model_deployment_name": "gpt-4"
   }'
 ```
 
@@ -208,9 +207,8 @@ curl -X POST "http://localhost:8000/api/v1/conversation-simulation/simulate" \
       "CustomerSentiment": "Frustrated",
       "ConversationSubject": "Product Issue"
     },
-    "model": "gpt-4",
-    "max_turns": 10,
-    "stream": false
+    "model_deployment_name": "gpt-4",
+    "max_turns": 10
   }'
 ```
 

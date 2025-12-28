@@ -22,8 +22,7 @@ async def generate_response(request: GeneralPromptRequest):
         # Get response from model
         response_text, tokens_used = await azure_ai_service.get_model_response(
             model_deployment_name=request.model_deployment_name,
-            prompt=request.prompt,
-            stream=request.stream
+            prompt=request.prompt
         )
         
         end_time = datetime.utcnow()

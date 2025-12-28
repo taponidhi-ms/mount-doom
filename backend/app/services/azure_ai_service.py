@@ -240,8 +240,7 @@ class AzureAIService:
     async def get_model_response(
         self,
         model_deployment_name: str,
-        prompt: str,
-        stream: bool = False
+        prompt: str
     ) -> tuple[str, Optional[int]]:
         """
         Get response from a model directly (not using agent).
@@ -250,7 +249,6 @@ class AzureAIService:
         Args:
             model_deployment_name: The deployment name of the model to use
             prompt: The prompt to send to the model
-            stream: Whether to stream the response
             
         Returns:
             Tuple of (response_text, tokens_used)
