@@ -5,22 +5,24 @@
 **Purpose**: Generate detailed personas from simulation prompts using specialized AI agents.
 
 **Workflow**:
-1. User selects an agent from available persona generation agents
+1. User selects a model (GPT-4 or GPT-3.5 Turbo)
 2. User enters a simulation prompt describing the persona requirements
-3. Backend sends prompt to selected agent via Azure AI Projects
-4. Agent generates detailed persona response
-5. Response stored in Cosmos DB `persona_generation` container
+3. Backend sends prompt to PersonaAgent via Azure AI Projects
+4. PersonaAgent generates detailed persona response
+5. Response stored in Cosmos DB `persona_generation` container with complete agent details
 6. Frontend displays persona with metrics
 
-**Agents**: 
-- Multiple agents available
-- Each optimized for different persona types
-- Agent IDs configured in environment
+**Agent**: 
+- PersonaAgent (fixed agent name)
+- Instructions defined in `instruction_sets/persona_agent.py`
+- Automatic versioning based on instruction hash
+- Model selection by user (gpt-4 or gpt-35-turbo)
 
 **Metrics Tracked**:
 - Tokens used
 - Time taken
 - Start/end timestamps
+- Agent details (name, version, instructions, model)
 
 ---
 
@@ -49,12 +51,18 @@
 **Purpose**: Validate simulation prompts to ensure quality and effectiveness.
 
 **Workflow**:
-1. User selects validator agent
+1. User selects a model (GPT-4 or GPT-3.5 Turbo)
 2. User enters simulation prompt to validate
-3. Backend sends prompt to validator agent
-4. Agent analyzes prompt and provides feedback
-5. Response stored in Cosmos DB `prompt_validator` container
+3. Backend sends prompt to PromptValidatorAgent
+4. PromptValidatorAgent analyzes prompt and provides feedback
+5. Response stored in Cosmos DB `prompt_validator` container with complete agent details
 6. Frontend displays validation results
+
+**Agent**:
+- PromptValidatorAgent (fixed agent name)
+- Instructions defined in `instruction_sets/prompt_validator_agent.py`
+- Automatic versioning based on instruction hash
+- Model selection by user (gpt-4 or gpt-35-turbo)
 
 **Validation Aspects**:
 - Clarity and specificity
@@ -69,25 +77,30 @@
 **Purpose**: Simulate multi-turn conversations between customer service representative and customer.
 
 **Participants**:
-- **C1 Agent**: Customer Service Representative
-- **C2 Agent**: Customer
-- **Orchestrator Agent**: Determines conversation completion
+- **C1Agent**: Customer Service Representative (fixed agent name)
+- **C2Agent**: Customer (fixed agent name)
+- **OrchestratorAgent**: Determines conversation completion (fixed agent name)
 
 **Workflow**:
-1. User selects C1 and C2 agents
+1. User selects a model (GPT-4 or GPT-3.5 Turbo) - used for all three agents
 2. User configures conversation properties:
    - Customer Intent (e.g., "Technical Support")
    - Customer Sentiment (e.g., "Frustrated")
    - Conversation Subject (e.g., "Product Issue")
 3. User sets max turns (1-20)
 4. Simulation starts:
-   - C1 Agent speaks first (as service rep)
-   - Orchestrator checks if conversation is complete
-   - C2 Agent responds (as customer)
-   - Orchestrator checks again
+   - C1Agent speaks first (as service rep)
+   - OrchestratorAgent checks if conversation is complete
+   - C2Agent responds (as customer)
+   - OrchestratorAgent checks again
    - Repeat until complete or max turns reached
-5. Full conversation stored in Cosmos DB `conversation_simulation` container
+5. Full conversation stored in Cosmos DB `conversation_simulation` container with details for all three agents
 6. Frontend displays conversation history with metrics
+
+**Agents**:
+- All three agents use fixed names and instructions from `instruction_sets/` module
+- Automatic versioning for each agent based on their instruction hash
+- Single model selection applies to all agents
 
 **C1 Agent Prompt Template**:
 ```

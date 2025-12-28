@@ -76,7 +76,7 @@
 ### Document Structure
 - Include timestamp
 - Include all metrics
-- Include agent/model IDs
+- Include complete agent details (name, version, instructions, model, timestamp)
 - Use ISO format for dates
 
 ## Azure Integration
@@ -90,11 +90,13 @@
 ### Agent Usage
 - Use AIProjectClient from azure-ai-projects
 - DefaultAzureCredential for authentication
-- Agent IDs configured in environment variables
-- Separate agents for different use cases
-- Create agents using `client.agents.create_agent()` with PromptAgentDefinition
+- Fixed agent names defined in `instruction_sets/` module (no environment config needed)
+- Separate agents for different use cases (PersonaAgent, PromptValidatorAgent, C1Agent, C2Agent, OrchestratorAgent)
+- Create agents dynamically using `client.agents.create_agent()` with name, instructions, and model
+- Agents are cached to avoid recreating them on every request
 - Manage conversation threads for stateful interactions
 - Use `create_and_process_run()` for automatic polling
+- Automatic versioning based on instruction set hash
 
 ### Model Usage
 - Direct model access for general prompts
