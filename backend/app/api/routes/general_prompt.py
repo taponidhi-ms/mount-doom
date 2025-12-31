@@ -3,9 +3,8 @@ from app.models.schemas import (
     GeneralPromptRequest,
     GeneralPromptResponse
 )
-from app.services.azure_ai_service import azure_ai_service
+from app.services.general_prompt_service import general_prompt_service
 from app.services.cosmos_db_service import cosmos_db_service
-from app.core.config import settings
 from datetime import datetime
 import time
 
@@ -19,8 +18,8 @@ async def generate_response(request: GeneralPromptRequest):
     start_ms = time.time() * 1000
     
     try:
-        # Get response from model
-        response_text, tokens_used = await azure_ai_service.get_model_response(
+        # Get response from general prompt service
+        response_text, tokens_used = await general_prompt_service.generate_response(
             model_deployment_name=request.model_deployment_name,
             prompt=request.prompt
         )

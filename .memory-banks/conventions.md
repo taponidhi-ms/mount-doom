@@ -15,10 +15,18 @@
 - Private methods: prefix with underscore (e.g., `_initialize_client`)
 
 ### File Organization
-- One route per use case
+- One route per use case (calls service)
+- **One service per use case** with business logic:
+  - `PersonaGenerationService`: Persona generation workflow
+  - `GeneralPromptService`: Direct model response workflow
+  - `PromptValidatorService`: Prompt validation workflow
+  - `ConversationSimulationService`: Multi-agent conversation workflow
+  - `AzureAIService`: Client initialization and agent factory only
+  - `CosmosDBService`: Database persistence
 - Services are singletons
 - Models in schemas.py
 - Configuration in core/config.py
+- Agent configuration constants in instruction_sets/
 
 ### Error Handling
 - Use HTTPException for API errors
@@ -87,22 +95,77 @@
 - [OpenAIClient Class Documentation](https://learn.microsoft.com/en-us/python/api/azure-ai-projects/azure.ai.projects.aio.openaiclient?view=azure-python-preview)
 - [Azure AI Projects Agents Code Samples](https://github.com/Azure/azure-sdk-for-python/tree/azure-ai-projects_2.0.0b2/sdk/ai/azure-ai-projects/samples/agents)
 
-### Agent Usage
-- Use AIProjectClient from azure-ai-projects
-- DefaultAzureCredential for authentication
-- Fixed agent names defined in `instruction_sets/` module (no environment config needed)
-- Separate agents for different use cases (PersonaAgent, PromptValidatorAgent, C1Agent, C2Agent, OrchestratorAgent)
-- Create agents dynamically using `client.agents.create_agent()` with name, instructions, and model
-- Agents are cached to avoid recreating them on every request
-- Manage conversation threads for stateful interactions
-- Use `create_and_process_run()` for automatic polling
-- Automatic versioning based on instruction set hash
+### AzureAIService - Client Factory Only
+The AzureAIService is now a **singleton client factory** with minimal responsibility:
+- `client` property: Returns initialized AIProjectClient
+- `openai_client` property: Returns OpenAI client (conversation API)
+- `create_agent(name, instructions, model)`: Creates and returns Agent NamedTuple
 
-### Model Usage
-- Direct model access for general prompts
-- Use inference API for chat completions
-- Track token usage
-- Include timing metrics
+**Does NOT contain**:
+- Business logic for any use case
+- Generic methods like `get_agent_response()` or `get_model_response()`
+- Use case-specific workflows
+- Agent caching strategies
+- Prompt building or formatting
+
+### Service-Specific Agent Configuration
+Each use case service (PersonaGenerationService, PromptValidatorService, etc.) contains:
+- Fixed `agent_name`, `instructions`, `model_deployment` for that use case
+- Agent creation logic by calling `azure_ai_service.create_agent()`
+- Workflow-specific logic (conversation management, multi-agent orchestration, etc.)
+- Metrics tracking and data transformation
+
+### Agent Usage Pattern
+```python
+# In your service class:
+def __init__(self):
+    self.agent_name = PERSONA_AGENT_NAME
+    self.instructions = PERSONA_AGENT_INSTRUCTIONS
+    self.model_deployment = "gpt-4"
+
+async def your_method(self, prompt: str):
+    # Create agent using AzureAIService factory
+    agent = azure_ai_service.create_agent(
+        agent_name=self.agent_name,
+        instructions=self.instructions,
+        model_deployment_name=self.model_deployment
+    )
+    
+    # Use agent to process prompt
+    conversation = azure_ai_service.openai_client.conversations.create(
+        items=[{"type": "message", "role": "user", "content": prompt}]
+    )
+    
+    response = azure_ai_service.openai_client.responses.create(
+        conversation=conversation.id,
+        extra_body={"agent": {"name": agent.agent_version_object.name, "type": "agent_reference"}},
+        input=""
+    )
+```
+
+### Conversation Management
+- Use conversations (not threads) for stateful interactions
+- Create conversations: `openai_client.conversations.create(items=[...])`
+- Add messages: `openai_client.conversations.items.create(conversation_id, items=[...])`
+- Create responses: `openai_client.responses.create(conversation=conversation_id, extra_body={...})`
+- Each conversation maintains full context across all interactions
+- Reuse conversation_id across multiple agent invocations for multi-agent workflows
+
+### Multi-Agent Workflow (ConversationSimulationService)
+For conversation simulation with multiple agents:
+- Single conversation per simulation maintained across all turns
+- All agents (C1, C2, Orchestrator) operate on same conversation for context continuity
+- Each agent invocation:
+  1. Adds message to shared conversation
+  2. Creates response using agent
+  3. Returns tokens and response text
+- Orchestrator checks completion status after each agent turn
+- Workflow continues until completion status or max_turns reached
+
+### Automatic Versioning
+- Generate version hash from instruction set: `hashlib.sha256(instructions.encode()).hexdigest()[:8]`
+- Format as version string: `f"v{instructions_hash}"`
+- Used for tracking agent versions in metrics and database
 
 ## Testing Strategy (Future)
 

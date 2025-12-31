@@ -9,7 +9,7 @@ class AgentResponseData(BaseModel):
     tokens_used: Optional[int] = None
     agent_version: str
     timestamp: datetime
-    thread_id: str  # Conversation/thread ID for stateful interactions
+    thread_id: str  # Conversation ID for stateful interactions (kept as thread_id for backwards compatibility)
 
 
 class AgentInfo(BaseModel):
