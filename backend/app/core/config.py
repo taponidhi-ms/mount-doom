@@ -31,6 +31,26 @@ class Settings(BaseSettings):
     class Config:
         env_file = ".env"
         case_sensitive = False
+    
+    def get_models(self) -> List[dict]:
+        """
+        Return list of available models.
+        
+        Returns:
+            List of model dictionaries with model_deployment_name, display_name, and description
+        """
+        return [
+            {
+                "model_deployment_name": "gpt-4",
+                "display_name": "GPT-4",
+                "description": "Most capable model, best for complex tasks"
+            },
+            {
+                "model_deployment_name": "gpt-35-turbo",
+                "display_name": "GPT-3.5 Turbo",
+                "description": "Fast and efficient for general tasks"
+            }
+        ]
 
 
 settings = Settings()

@@ -168,3 +168,14 @@ class AvailableAgentsResponse(BaseModel):
 class AvailableModelsResponse(BaseModel):
     """Response containing available models."""
     models: List[ModelInfo]
+
+
+class BrowseResponse(BaseModel):
+    """Response for browse/list endpoints with pagination."""
+    items: List[Dict[str, Any]]
+    total_count: int
+    page: int
+    page_size: int
+    total_pages: int
+    has_next: bool
+    has_previous: bool
