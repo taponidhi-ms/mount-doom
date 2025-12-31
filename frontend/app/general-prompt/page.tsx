@@ -1,18 +1,14 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import Link from 'next/link'
-import { ArrowLeft, Loader2, ChevronLeft, ChevronRight } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Textarea } from '@/components/ui/textarea'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { apiClient, ModelInfo, GeneralPromptResponse, BrowseResponse } from '@/lib/api-client'
+import { useState } from 'react'
+import { Button, Card, Input, Tabs, Table, Space, Typography, message, Alert } from 'antd'
+import PageLayout from '@/components/PageLayout'
+import { apiClient, GeneralPromptResponse, BrowseResponse } from '@/lib/api-client'
+
+const { TextArea } = Input
+const { Title, Paragraph, Text } = Typography
 
 export default function GeneralPromptPage() {
-  const [models, setModels] = useState<ModelInfo[]>([])
-  const [selectedModel, setSelectedModel] = useState('')
   const [prompt, setPrompt] = useState('')
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<GeneralPromptResponse | null>(null)
@@ -21,43 +17,25 @@ export default function GeneralPromptPage() {
   // History state
   const [historyLoading, setHistoryLoading] = useState(false)
   const [historyData, setHistoryData] = useState<BrowseResponse | null>(null)
-  const [historyPage, setHistoryPage] = useState(1)
   const [historyError, setHistoryError] = useState('')
 
-  useEffect(() => {
-    loadModels()
-  }, [])
-
-  const loadModels = async () => {
-    const response = await apiClient.getModels()
-    if (response.data) {
-      setModels(response.data.models)
-      if (response.data.models.length > 0) {
-        setSelectedModel(response.data.models[0].model_deployment_name)
-      }
-    } else if (response.error) {
-      setError(`Failed to load models: ${response.error}`)
-    }
-  }
-
-  const loadHistory = async (page: number = 1) => {
+  const loadHistory = async (page: number = 1, pageSize: number = 10) => {
     setHistoryLoading(true)
     setHistoryError('')
-    const response = await apiClient.browseGeneralPrompts(page, 10)
+    const response = await apiClient.browseGeneralPrompts(page, pageSize)
     setHistoryLoading(false)
     
     if (response.data) {
       setHistoryData(response.data)
-      setHistoryPage(page)
     } else if (response.error) {
       setHistoryError(response.error)
+      message.error('Failed to load history')
     }
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const handleSubmit = async () => {
     if (!prompt.trim()) {
-      setError('Please enter a prompt')
+      message.warning('Please enter a prompt')
       return
     }
 
@@ -70,170 +48,170 @@ export default function GeneralPromptPage() {
 
     if (response.data) {
       setResult(response.data)
-      // Reload history to show the new result
-      loadHistory(1)
+      message.success('Response generated successfully!')
+      if (historyData) {
+        loadHistory(1)
+      }
     } else if (response.error) {
       setError(response.error)
+      message.error('Failed to generate response')
     }
   }
 
-  return (
-    <div className="min-h-screen p-8">
-      <div className="max-w-6xl mx-auto">
-        <Link href="/" className="inline-flex items-center text-sm text-gray-600 dark:text-gray-400 hover:text-foreground mb-6">
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Back to Home
-        </Link>
+  const columns = [
+    {
+      title: 'Timestamp',
+      dataIndex: 'start_time',
+      key: 'timestamp',
+      render: (text: string) => new Date(text).toLocaleString(),
+      width: 200,
+    },
+    {
+      title: 'Prompt',
+      dataIndex: 'prompt',
+      key: 'prompt',
+      ellipsis: true,
+      render: (text: string) => text || 'N/A',
+    },
+    {
+      title: 'Response Preview',
+      dataIndex: 'response_text',
+      key: 'response',
+      ellipsis: true,
+      render: (text: string) => text?.substring(0, 100) + (text?.length > 100 ? '...' : ''),
+    },
+    {
+      title: 'Tokens',
+      dataIndex: 'tokens_used',
+      key: 'tokens',
+      width: 100,
+      render: (value: number) => value || 'N/A',
+    },
+    {
+      title: 'Time (ms)',
+      dataIndex: 'time_taken_ms',
+      key: 'time',
+      width: 120,
+      render: (value: number) => value ? Math.round(value) : 'N/A',
+    },
+  ]
 
-        <h1 className="text-3xl font-bold mb-2">General Prompt</h1>
-        <p className="text-gray-600 dark:text-gray-400 mb-6">
-          Get responses for any general prompt using LLM models directly.
-        </p>
+  const tabItems = [
+    {
+      key: 'generate',
+      label: 'Generate',
+      children: (
+        <Space direction="vertical" size="large" style={{ width: '100%' }}>
+          <Card title="Generate Response">
+            <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+              <div>
+                <Text strong>Your Prompt</Text>
+                <TextArea
+                  value={prompt}
+                  onChange={(e) => setPrompt(e.target.value)}
+                  placeholder="Enter your prompt here..."
+                  rows={6}
+                  style={{ marginTop: 8 }}
+                  disabled={loading}
+                />
+              </div>
+              
+              <Button 
+                type="primary" 
+                size="large"
+                onClick={handleSubmit}
+                loading={loading}
+                disabled={!prompt.trim()}
+                block
+              >
+                {loading ? 'Generating...' : 'Generate Response'}
+              </Button>
 
-        <Tabs defaultValue="generate" className="space-y-4">
-          <TabsList>
-            <TabsTrigger value="generate">Generate</TabsTrigger>
-            <TabsTrigger value="history" onClick={() => loadHistory(1)}>History</TabsTrigger>
-          </TabsList>
+              {error && (
+                <Alert message="Error" description={error} type="error" showIcon />
+              )}
+            </Space>
+          </Card>
 
-          <TabsContent value="generate" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Configure Prompt</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <form onSubmit={handleSubmit} className="space-y-4">
+          {result && (
+            <Card title="Generated Response">
+              <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+                <div>
+                  <Text strong>Response:</Text>
+                  <Paragraph style={{ 
+                    whiteSpace: 'pre-wrap', 
+                    background: '#f5f5f5', 
+                    padding: 16, 
+                    borderRadius: 8,
+                    marginTop: 8 
+                  }}>
+                    {result.response_text}
+                  </Paragraph>
+                </div>
+
+                <Space size="large" wrap>
                   <div>
-                    <label className="block text-sm font-medium mb-2">Prompt</label>
-                    <Textarea
-                      value={prompt}
-                      onChange={(e) => setPrompt(e.target.value)}
-                      placeholder="Enter your prompt..."
-                      rows={6}
-                      disabled={loading}
-                    />
+                    <Text type="secondary">Tokens Used: </Text>
+                    <Text strong>{result.tokens_used || 'N/A'}</Text>
                   </div>
-
-                  {error && (
-                    <div className="p-3 bg-red-50 dark:bg-red-950 text-red-600 dark:text-red-400 rounded-md text-sm">
-                      {error}
-                    </div>
-                  )}
-
-                  <Button type="submit" disabled={loading || !prompt.trim()}>
-                    {loading ? (
-                      <>
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        Generating...
-                      </>
-                    ) : (
-                      'Generate Response'
-                    )}
-                  </Button>
-                </form>
-              </CardContent>
+                  <div>
+                    <Text type="secondary">Time Taken: </Text>
+                    <Text strong>{Math.round(result.time_taken_ms)} ms</Text>
+                  </div>
+                  <div>
+                    <Text type="secondary">Model: </Text>
+                    <Text strong>{result.model_deployment_name}</Text>
+                  </div>
+                </Space>
+              </Space>
             </Card>
+          )}
+        </Space>
+      ),
+    },
+    {
+      key: 'history',
+      label: 'History',
+      children: (
+        <Card title="Response History">
+          {historyError && (
+            <Alert message="Error" description={historyError} type="error" showIcon style={{ marginBottom: 16 }} />
+          )}
+          
+          <Table
+            dataSource={historyData?.items || []}
+            columns={columns}
+            loading={historyLoading}
+            rowKey={(record) => record.id || record.start_time}
+            pagination={{
+              current: historyData?.page || 1,
+              pageSize: historyData?.page_size || 10,
+              total: historyData?.total_count || 0,
+              showSizeChanger: true,
+              showTotal: (total) => `Total ${total} items`,
+              onChange: (page, pageSize) => loadHistory(page, pageSize),
+            }}
+          />
+        </Card>
+      ),
+    },
+  ]
 
-            {result && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Response</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    <div className="prose dark:prose-invert max-w-none">
-                      <pre className="whitespace-pre-wrap">{result.response_text}</pre>
-                    </div>
-                    <div className="flex gap-4 text-sm text-gray-600 dark:text-gray-400 pt-3 border-t">
-                      <span>Model: {result.model_deployment_name}</span>
-                      <span>Tokens: {result.tokens_used || 'N/A'}</span>
-                      <span>Time: {Math.round(result.time_taken_ms)} ms</span>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-          </TabsContent>
-
-          <TabsContent value="history" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Past Responses</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {historyLoading ? (
-                  <div className="flex items-center justify-center py-8">
-                    <Loader2 className="h-8 w-8 animate-spin" />
-                  </div>
-                ) : historyError ? (
-                  <div className="p-3 bg-red-50 dark:bg-red-950 text-red-600 dark:text-red-400 rounded-md text-sm">
-                    {historyError}
-                  </div>
-                ) : historyData && historyData.items.length > 0 ? (
-                  <>
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Timestamp</TableHead>
-                          <TableHead>Prompt</TableHead>
-                          <TableHead>Response</TableHead>
-                          <TableHead>Tokens</TableHead>
-                          <TableHead>Time (ms)</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {historyData.items.map((item: any, idx: number) => (
-                          <TableRow key={item.id || idx}>
-                            <TableCell className="text-sm">
-                              {new Date(item.timestamp).toLocaleString()}
-                            </TableCell>
-                            <TableCell className="max-w-xs truncate text-sm">
-                              {item.prompt}
-                            </TableCell>
-                            <TableCell className="max-w-md truncate text-sm">
-                              {item.response}
-                            </TableCell>
-                            <TableCell className="text-sm">{item.tokens_used || 'N/A'}</TableCell>
-                            <TableCell className="text-sm">{Math.round(item.time_taken_ms || 0)}</TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                    
-                    <div className="flex items-center justify-between mt-4">
-                      <div className="text-sm text-gray-600 dark:text-gray-400">
-                        Page {historyData.page} of {historyData.total_pages} ({historyData.total_count} total)
-                      </div>
-                      <div className="flex gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          disabled={!historyData.has_previous || historyLoading}
-                          onClick={() => loadHistory(historyPage - 1)}
-                        >
-                          <ChevronLeft className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          disabled={!historyData.has_next || historyLoading}
-                          onClick={() => loadHistory(historyPage + 1)}
-                        >
-                          <ChevronRight className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  </>
-                ) : (
-                  <div className="text-center py-8 text-gray-500">
-                    No past responses found
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
-      </div>
-    </div>
+  return (
+    <PageLayout
+      title="General Prompt"
+      description="Get responses for any general prompt using LLM models directly."
+      showBackButton
+    >
+      <Tabs 
+        defaultActiveKey="generate" 
+        items={tabItems}
+        onChange={(key) => {
+          if (key === 'history' && !historyData) {
+            loadHistory(1)
+          }
+        }}
+      />
+    </PageLayout>
   )
 }
