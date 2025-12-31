@@ -32,32 +32,31 @@ async def generate_persona(request: PersonaGenerationRequest):
         time_taken_ms = end_ms - start_ms
         
         logger.info("Persona generated, saving to database",
-                   tokens=agent_response["tokens_used"],
+                   tokens=agent_response.tokens_used,
                    time_ms=round(time_taken_ms, 2))
         
         # Save to Cosmos DB
-        agent_details = agent_response["agent_details"]
         await cosmos_db_service.save_persona_generation(
             prompt=request.prompt,
-            response=agent_response["response_text"],
-            tokens_used=agent_response["tokens_used"],
+            response=agent_response.response_text,
+            tokens_used=agent_response.tokens_used,
             time_taken_ms=time_taken_ms,
-            agent_name=agent_details.agent_name,
-            agent_version=agent_details.agent_version,
-            agent_instructions=agent_details.instructions,
-            model=agent_details.model_deployment_name,
-            agent_timestamp=agent_details.created_at
+            agent_name=agent_response.agent_details.agent_name,
+            agent_version=agent_response.agent_details.agent_version,
+            agent_instructions=agent_response.agent_details.instructions,
+            model=agent_response.agent_details.model_deployment_name,
+            agent_timestamp=agent_response.agent_details.created_at
         )
         
         logger.info("Returning successful persona generation response")
         
         return PersonaGenerationResponse(
-            response_text=agent_response["response_text"],
-            tokens_used=agent_response["tokens_used"],
+            response_text=agent_response.response_text,
+            tokens_used=agent_response.tokens_used,
             time_taken_ms=time_taken_ms,
             start_time=start_time,
             end_time=end_time,
-            agent_details=agent_details
+            agent_details=agent_response.agent_details
         )
     
     except Exception as e:

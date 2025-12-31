@@ -1,10 +1,11 @@
 """Service for general prompt use case."""
 
-from typing import Optional, Tuple
+from typing import Optional
 import structlog
 
 from app.services.ai.azure_ai_service import azure_ai_service
 from app.core.config import settings
+from app.models.schemas import GeneralPromptResult
 
 logger = structlog.get_logger()
 
@@ -15,7 +16,7 @@ class GeneralPromptService:
     async def generate_response(
             self,
             prompt: str
-    ) -> Tuple[str, Optional[int]]:
+    ) -> GeneralPromptResult:
         """
         Generate response for a general prompt using model directly.
         
@@ -23,7 +24,9 @@ class GeneralPromptService:
             prompt: The prompt to send to the model
             
         Returns:
-            Tuple of (response_text, tokens_used)
+            GeneralPromptResult with:
+            - response_text: The generated response
+            - tokens_used: Number of tokens used
         """
         model_deployment_name = settings.default_model_deployment
         try:
@@ -68,7 +71,10 @@ class GeneralPromptService:
                         model=model_deployment_name)
             logger.info("="*60)
 
-            return response_text, tokens_used
+            return GeneralPromptResult(
+                response_text=response_text,
+                tokens_used=tokens_used
+            )
 
         except Exception as e:
             logger.error("Error generating response",

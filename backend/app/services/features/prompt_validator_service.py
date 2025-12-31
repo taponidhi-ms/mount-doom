@@ -4,6 +4,7 @@ from datetime import datetime
 import structlog
 
 from app.services.ai.azure_ai_service import azure_ai_service
+from app.models.schemas import PromptValidatorResult
 
 logger = structlog.get_logger()
 
@@ -48,7 +49,7 @@ class PromptValidatorService:
     def __init__(self):
         pass
 
-    async def validate_prompt(self, prompt: str) -> dict:
+    async def validate_prompt(self, prompt: str) -> PromptValidatorResult:
         """
         Validate a simulation prompt.
         
@@ -56,10 +57,10 @@ class PromptValidatorService:
             prompt: The simulation prompt to validate
             
         Returns:
-            Dictionary with:
+            PromptValidatorResult with:
             - response_text: The validation result
             - tokens_used: Number of tokens used
-            - agent_version: Version of the agent
+            - agent_details: Details about the agent
             - timestamp: When the request was made
             - thread_id: Conversation ID
         """
@@ -122,13 +123,13 @@ class PromptValidatorService:
                        conversation_id=conversation_id)
             logger.info("="*60)
 
-            return {
-                "response_text": response_text,
-                "tokens_used": tokens_used,
-                "agent_details": agent.agent_details,
-                "timestamp": timestamp,
-                "thread_id": conversation_id
-            }
+            return PromptValidatorResult(
+                response_text=response_text,
+                tokens_used=tokens_used,
+                agent_details=agent.agent_details,
+                timestamp=timestamp,
+                thread_id=conversation_id
+            )
 
         except Exception as e:
             logger.error("Error validating prompt", error=str(e), exc_info=True)

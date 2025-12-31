@@ -40,6 +40,30 @@ class AgentDetails(BaseModel):
     created_at: datetime
 
 
+class PersonaGenerationResult(BaseModel):
+    """Result from PersonaGenerationService.generate_persona method."""
+    response_text: str
+    tokens_used: Optional[int] = None
+    agent_details: AgentDetails
+    timestamp: datetime
+    thread_id: str
+
+
+class PromptValidatorResult(BaseModel):
+    """Result from PromptValidatorService.validate_prompt method."""
+    response_text: str
+    tokens_used: Optional[int] = None
+    agent_details: AgentDetails
+    timestamp: datetime
+    thread_id: str
+
+
+class GeneralPromptResult(BaseModel):
+    """Result from GeneralPromptService.generate_response method."""
+    response_text: str
+    tokens_used: Optional[int] = None
+
+
 class BaseResponse(BaseModel):
     """Base response with timing and token information."""
     response_text: str

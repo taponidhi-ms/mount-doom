@@ -5,6 +5,7 @@ import structlog
 from typing import Optional
 
 from app.services.ai.azure_ai_service import azure_ai_service
+from app.models.schemas import PersonaGenerationResult
 
 logger = structlog.get_logger()
 
@@ -47,7 +48,7 @@ class PersonaGenerationService:
     def __init__(self):
         pass
 
-    async def generate_persona(self, prompt: str) -> dict:
+    async def generate_persona(self, prompt: str) -> PersonaGenerationResult:
         """
         Generate a persona from the given prompt.
         
@@ -55,10 +56,10 @@ class PersonaGenerationService:
             prompt: The simulation prompt to generate persona from
             
         Returns:
-            Dictionary with:
+            PersonaGenerationResult with:
             - response_text: The generated persona
             - tokens_used: Number of tokens used
-            - agent_version: Version of the agent
+            - agent_details: Details about the agent
             - timestamp: When the request was made
             - thread_id: Conversation ID
         """
@@ -121,13 +122,13 @@ class PersonaGenerationService:
                        conversation_id=conversation_id)
             logger.info("="*60)
 
-            return {
-                "response_text": response_text,
-                "tokens_used": tokens_used,
-                "agent_details": agent.agent_details,
-                "timestamp": timestamp,
-                "thread_id": conversation_id
-            }
+            return PersonaGenerationResult(
+                response_text=response_text,
+                tokens_used=tokens_used,
+                agent_details=agent.agent_details,
+                timestamp=timestamp,
+                thread_id=conversation_id
+            )
 
         except Exception as e:
             logger.error("Error generating persona", error=str(e), exc_info=True)

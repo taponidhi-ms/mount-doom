@@ -26,7 +26,7 @@ async def generate_response(request: GeneralPromptRequest):
     
     try:
         # Get response from general prompt service
-        response_text, tokens_used = await general_prompt_service.generate_response(
+        result = await general_prompt_service.generate_response(
             prompt=request.prompt
         )
         
@@ -35,15 +35,15 @@ async def generate_response(request: GeneralPromptRequest):
         time_taken_ms = end_ms - start_ms
         
         logger.info("Response generated, saving to database",
-                   tokens=tokens_used,
+                   tokens=result.tokens_used,
                    time_ms=round(time_taken_ms, 2))
         
         # Save to Cosmos DB
         await cosmos_db_service.save_general_prompt(
             model_id=settings.default_model_deployment,
             prompt=request.prompt,
-            response=response_text,
-            tokens_used=tokens_used,
+            response=result.response_text,
+            tokens_used=result.tokens_used,
             time_taken_ms=time_taken_ms
         )
         
@@ -51,8 +51,8 @@ async def generate_response(request: GeneralPromptRequest):
         
         return GeneralPromptResponse(
             model_deployment_name=settings.default_model_deployment,
-            response_text=response_text,
-            tokens_used=tokens_used,
+            response_text=result.response_text,
+            tokens_used=result.tokens_used,
             time_taken_ms=time_taken_ms,
             start_time=start_time,
             end_time=end_time
