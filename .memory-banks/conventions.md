@@ -37,7 +37,8 @@
 ### Logging (Verbose Mode for Local Development)
 **Configuration**: 
 - Uses `structlog` with `ConsoleRenderer(colors=True)` for human-readable console output
-- Configured in `main.py` with timestamp, log level, and exception info processors
+- Configured in `main.py` **BEFORE** importing routes to ensure proper initialization order
+- Routes imported after logging configuration to ensure services use configured logging
 - Log level controlled by `settings.api_debug` (DEBUG when True, INFO when False)
 - All logs use structured logging with key-value pairs for better filtering
 - **Dual Output**: Logs are written to both console (colored) and file (plain text)
@@ -47,6 +48,11 @@
   - Backup: Keeps 5 backup files (configurable via `settings.log_backup_count`)
   - Format: `YYYY-MM-DD HH:MM:SS [LEVEL] name: message`
   - Encoding: UTF-8
+- **External Library Logging**:
+  - Azure SDK logs suppressed to WARNING level (prevents verbose HTTP request/response logs)
+  - urllib3 connection logs suppressed to WARNING level
+  - Uvicorn loggers configured to use consistent formatting
+  - Python warnings captured and sent through logging system at WARNING level
 
 **Logging Levels and Usage**:
 - `logger.info()`: Key operations, milestones, and important state changes

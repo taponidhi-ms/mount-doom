@@ -1,12 +1,5 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.api.routes import (
-    persona_generation,
-    general_prompt,
-    prompt_validator,
-    conversation_simulation,
-    models
-)
 from app.core.config import settings
 import structlog
 import logging
@@ -50,6 +43,25 @@ root_logger.setLevel(log_level)
 root_logger.addHandler(console_handler)
 root_logger.addHandler(file_handler)
 
+# Suppress verbose Azure SDK logging (Cosmos DB, HTTP client, etc.)
+# These log at DEBUG level by default and create excessive output
+logging.getLogger('azure').setLevel(logging.WARNING)
+logging.getLogger('azure.core.pipeline.policies.http_logging_policy').setLevel(logging.WARNING)
+# Suppress urllib3 and other HTTP connection logs
+logging.getLogger('urllib3').setLevel(logging.WARNING)
+logging.getLogger('urllib3.connectionpool').setLevel(logging.WARNING)
+
+# Configure Uvicorn's loggers to use consistent formatting
+logging.getLogger('uvicorn').setLevel(log_level)
+logging.getLogger('uvicorn.access').setLevel(log_level)
+logging.getLogger('uvicorn.error').setLevel(log_level)
+
+# Configure Python warnings to use the logging system
+import warnings
+logging.captureWarnings(True)
+warnings_logger = logging.getLogger('py.warnings')
+warnings_logger.setLevel(logging.WARNING)
+
 # Configure structured logging for console output
 structlog.configure(
     processors=[
@@ -72,6 +84,16 @@ logger.info("Mount Doom Backend Starting",
            debug_mode=settings.api_debug,
            log_file=str(log_file_path))
 logger.info("=" * 80)
+
+# Import routes after logging is configured
+# This ensures services initialized during import use the proper logging config
+from app.api.routes import (
+    persona_generation,
+    general_prompt,
+    prompt_validator,
+    conversation_simulation,
+    models
+)
 
 # Create FastAPI application
 app = FastAPI(
@@ -123,9 +145,18 @@ async def health_check():
 
 if __name__ == "__main__":
     import uvicorn
+    
+    # Configure Uvicorn to use our logging config
+    uvicorn_log_config = uvicorn.config.LOGGING_CONFIG
+    uvicorn_log_config["formatters"]["default"]["fmt"] = "%(asctime)s [%(levelname)-8s] %(name)s: %(message)s"
+    uvicorn_log_config["formatters"]["default"]["datefmt"] = "%Y-%m-%d %H:%M:%S"
+    uvicorn_log_config["formatters"]["access"]["fmt"] = "%(asctime)s [%(levelname)-8s] %(name)s: %(client_addr)s - \"%(request_line)s\" %(status_code)s"
+    uvicorn_log_config["formatters"]["access"]["datefmt"] = "%Y-%m-%d %H:%M:%S"
+    
     uvicorn.run(
         "main:app",
         host=settings.api_host,
         port=settings.api_port,
-        reload=settings.api_debug
+        reload=settings.api_debug,
+        log_config=uvicorn_log_config
     )

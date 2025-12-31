@@ -70,7 +70,7 @@ async def browse_general_prompts(
     page: int = Query(default=1, ge=1, description="Page number (1-indexed)"),
     page_size: int = Query(default=10, ge=1, le=100, description="Items per page"),
     order_by: str = Query(default="timestamp", description="Field to order by"),
-    order_direction: str = Query(default="DESC", regex="^(ASC|DESC)$", description="Order direction")
+    order_direction: str = Query(default="DESC", pattern="^(ASC|DESC)$", description="Order direction")
 ):
     """
     Browse general prompt records with pagination and ordering.
