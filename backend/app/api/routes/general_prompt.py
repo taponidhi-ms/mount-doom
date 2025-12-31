@@ -28,7 +28,8 @@ async def generate_response(request: GeneralPromptRequest):
     try:
         # Get response from general prompt service
         result = await general_prompt_service.generate_response(
-            prompt=request.prompt
+            prompt=request.prompt,
+            cleanup_conversation=False
         )
         
         end_time = datetime.utcnow()
