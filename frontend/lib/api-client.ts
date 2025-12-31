@@ -11,8 +11,8 @@ export interface AgentDetails {
   agent_name: string;
   agent_version?: string;
   instructions: string;
-  model: string;
-  timestamp: string;
+  model_deployment_name: string;
+  created_at: string;
 }
 
 export interface BaseResponse {
@@ -25,13 +25,24 @@ export interface BaseResponse {
 }
 
 export interface ModelInfo {
-  model_id: string;
-  model_name: string;
+  model_deployment_name: string;
+  display_name: string;
   description?: string;
 }
 
 export interface AvailableModelsResponse {
   models: ModelInfo[];
+}
+
+// Browse/Pagination Types
+export interface BrowseResponse<T = any> {
+  items: T[];
+  total_count: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
+  has_next: boolean;
+  has_previous: boolean;
 }
 
 // Persona Generation
@@ -45,7 +56,6 @@ export interface PersonaGenerationResponse extends BaseResponse {}
 
 // General Prompt
 export interface GeneralPromptRequest {
-  model_id: string;
   prompt: string;
   stream?: boolean;
 }
@@ -56,7 +66,7 @@ export interface GeneralPromptResponse {
   time_taken_ms: number;
   start_time: string;
   end_time: string;
-  model_id: string;
+  model_deployment_name: string;
 }
 
 // Prompt Validator
@@ -76,18 +86,15 @@ export interface ConversationProperties {
 }
 
 export interface ConversationMessage {
-  role: string;
   agent_name: string;
-  agent_version?: string;
   message: string;
   tokens_used?: number;
-  time_taken_ms: number;
   timestamp: string;
 }
 
 export interface ConversationSimulationRequest {
   conversation_properties: ConversationProperties;
-  model?: string;
+  conversation_prompt?: string;
   max_turns?: number;
   stream?: boolean;
 }
@@ -102,13 +109,6 @@ export interface ConversationSimulationResponse {
   c1_agent_details: AgentDetails;
   c2_agent_details: AgentDetails;
   orchestrator_agent_details: AgentDetails;
-}
-
-// Backward compatibility types (to be deprecated)
-export interface AgentInfo {
-  agent_id: string;
-  agent_name: string;
-  description?: string;
 }
 
 // API Response wrapper
@@ -154,69 +154,101 @@ class ApiClient {
     }
   }
 
-  // Persona Generation APIs
-  async getPersonaModels(): Promise<ApiResponse<AvailableModelsResponse>> {
-    return this.request<AvailableModelsResponse>('/persona-generation/models');
+  // Models API
+  async getModels(): Promise<ApiResponse<AvailableModelsResponse>> {
+    return this.request<AvailableModelsResponse>('/api/v1/models');
   }
 
+  // Persona Generation APIs
   async generatePersona(
     prompt: string,
     model: string = 'gpt-4'
   ): Promise<ApiResponse<PersonaGenerationResponse>> {
-    return this.request<PersonaGenerationResponse>('/persona-generation/generate', {
+    return this.request<PersonaGenerationResponse>('/api/v1/persona-generation/generate', {
       method: 'POST',
       body: JSON.stringify({ prompt, model }),
     });
   }
 
-  // General Prompt APIs
-  async getGeneralModels(): Promise<ApiResponse<AvailableModelsResponse>> {
-    return this.request<AvailableModelsResponse>('/general-prompt/models');
+  async browsePersonaGenerations(
+    page: number = 1,
+    pageSize: number = 10,
+    orderBy: string = 'timestamp',
+    orderDirection: 'ASC' | 'DESC' = 'DESC'
+  ): Promise<ApiResponse<BrowseResponse>> {
+    return this.request<BrowseResponse>(
+      `/api/v1/persona-generation/browse?page=${page}&page_size=${pageSize}&order_by=${orderBy}&order_direction=${orderDirection}`
+    );
   }
 
+  // General Prompt APIs
   async generateGeneralResponse(
-    modelId: string,
     prompt: string
   ): Promise<ApiResponse<GeneralPromptResponse>> {
-    return this.request<GeneralPromptResponse>('/general-prompt/generate', {
+    return this.request<GeneralPromptResponse>('/api/v1/general-prompt/generate', {
       method: 'POST',
-      body: JSON.stringify({ model_id: modelId, prompt }),
+      body: JSON.stringify({ prompt }),
     });
   }
 
-  // Prompt Validator APIs
-  async getPromptValidatorModels(): Promise<ApiResponse<AvailableModelsResponse>> {
-    return this.request<AvailableModelsResponse>('/prompt-validator/models');
+  async browseGeneralPrompts(
+    page: number = 1,
+    pageSize: number = 10,
+    orderBy: string = 'timestamp',
+    orderDirection: 'ASC' | 'DESC' = 'DESC'
+  ): Promise<ApiResponse<BrowseResponse>> {
+    return this.request<BrowseResponse>(
+      `/api/v1/general-prompt/browse?page=${page}&page_size=${pageSize}&order_by=${orderBy}&order_direction=${orderDirection}`
+    );
   }
 
+  // Prompt Validator APIs
   async validatePrompt(
     prompt: string,
     model: string = 'gpt-4'
   ): Promise<ApiResponse<PromptValidatorResponse>> {
-    return this.request<PromptValidatorResponse>('/prompt-validator/validate', {
+    return this.request<PromptValidatorResponse>('/api/v1/prompt-validator/validate', {
       method: 'POST',
       body: JSON.stringify({ prompt, model }),
     });
   }
 
-  // Conversation Simulation APIs
-  async getConversationModels(): Promise<ApiResponse<AvailableModelsResponse>> {
-    return this.request<AvailableModelsResponse>('/conversation-simulation/models');
+  async browsePromptValidations(
+    page: number = 1,
+    pageSize: number = 10,
+    orderBy: string = 'timestamp',
+    orderDirection: 'ASC' | 'DESC' = 'DESC'
+  ): Promise<ApiResponse<BrowseResponse>> {
+    return this.request<BrowseResponse>(
+      `/api/v1/prompt-validator/browse?page=${page}&page_size=${pageSize}&order_by=${orderBy}&order_direction=${orderDirection}`
+    );
   }
 
+  // Conversation Simulation APIs
   async simulateConversation(
     conversationProperties: ConversationProperties,
-    model: string = 'gpt-4',
+    conversationPrompt: string = '',
     maxTurns: number = 10
   ): Promise<ApiResponse<ConversationSimulationResponse>> {
-    return this.request<ConversationSimulationResponse>('/conversation-simulation/simulate', {
+    return this.request<ConversationSimulationResponse>('/api/v1/conversation-simulation/simulate', {
       method: 'POST',
       body: JSON.stringify({
         conversation_properties: conversationProperties,
-        model,
+        conversation_prompt: conversationPrompt,
         max_turns: maxTurns,
       }),
     });
+  }
+
+  async browseConversationSimulations(
+    page: number = 1,
+    pageSize: number = 10,
+    orderBy: string = 'timestamp',
+    orderDirection: 'ASC' | 'DESC' = 'DESC'
+  ): Promise<ApiResponse<BrowseResponse>> {
+    return this.request<BrowseResponse>(
+      `/api/v1/conversation-simulation/browse?page=${page}&page_size=${pageSize}&order_by=${orderBy}&order_direction=${orderDirection}`
+    );
   }
 }
 
