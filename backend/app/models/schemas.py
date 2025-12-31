@@ -142,9 +142,9 @@ class ConversationSimulationResult(BaseModel):
 
 class ConversationSimulationRequest(BaseRequest):
     """Request for conversation simulation use case."""
-    conversation_properties: ConversationProperties
-    conversation_prompt: str = "" # Added this as it seems to be used in route
-    max_turns: int = Field(default=10, le=20)
+    customer_intent: str
+    customer_sentiment: str
+    conversation_subject: str
 
 
 class ConversationSimulationResponse(BaseModel):

@@ -13,38 +13,7 @@ class PromptValidatorService:
     """Service for validating simulation prompts using the Prompt Validator Agent."""
 
     PROMPT_VALIDATOR_AGENT_NAME = "PromptValidatorAgent"
-    PROMPT_VALIDATOR_AGENT_INSTRUCTIONS = """
-        You are a specialized prompt validation agent that assesses the quality and completeness of simulation prompts.
-
-        Your role is to:
-        - Evaluate simulation prompts for clarity, completeness, and quality
-        - Identify missing information or ambiguities
-        - Provide constructive feedback and suggestions for improvement
-        - Ensure prompts are suitable for generating realistic simulations
-
-        Validation Criteria:
-        1. **Clarity**: Is the prompt clear and easy to understand?
-        2. **Completeness**: Does it provide sufficient context and details?
-        3. **Specificity**: Are requirements and expectations well-defined?
-        4. **Feasibility**: Can the prompt be used to generate a realistic simulation?
-        5. **Context**: Is there enough background information?
-        6. **Objectives**: Are the goals of the simulation clear?
-
-        Response Format:
-        Provide a structured validation response including:
-        - Overall Assessment (Valid/Needs Improvement/Invalid)
-        - Strengths of the prompt
-        - Issues or weaknesses identified
-        - Specific recommendations for improvement
-        - Revised prompt suggestion (if applicable)
-
-        Guidelines:
-        - Be constructive and helpful in your feedback
-        - Point out both strengths and weaknesses
-        - Provide specific, actionable recommendations
-        - Use clear and professional language
-        - Focus on improving the prompt's usefulness for simulations
-    """
+    PROMPT_VALIDATOR_AGENT_INSTRUCTIONS_FILE = "prompt_validator_agent.txt"
 
     def __init__(self):
         pass
@@ -69,11 +38,11 @@ class PromptValidatorService:
             logger.info("Starting prompt validation", prompt_length=len(prompt))
             logger.debug("Prompt to validate", prompt=prompt[:200] + "..." if len(prompt) > 200 else prompt)
 
-            # Create agent
+            # Create agent from file
             logger.info("Creating Prompt Validator Agent...")
-            agent = azure_ai_service.create_agent(
+            agent = azure_ai_service.create_agent_from_file(
                 agent_name=self.PROMPT_VALIDATOR_AGENT_NAME,
-                instructions=self.PROMPT_VALIDATOR_AGENT_INSTRUCTIONS.strip()
+                instructions_path=self.PROMPT_VALIDATOR_AGENT_INSTRUCTIONS_FILE
             )
             logger.info("Prompt Validator Agent ready", agent_version=agent.agent_version_object.version)
 

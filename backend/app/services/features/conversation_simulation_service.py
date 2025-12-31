@@ -17,93 +17,13 @@ class ConversationSimulationService:
     """Service for simulating multi-agent conversations."""
 
     C1_AGENT_NAME = "C1Agent"
-    C1_AGENT_INSTRUCTIONS = """
-        You are a professional customer service representative (C1Agent) handling customer inquiries.
-
-        Your role is to:
-        - Provide helpful, accurate, and professional responses to customers
-        - Show empathy and understanding toward customer concerns
-        - Attempt to resolve issues efficiently and effectively
-        - Maintain a positive and professional tone throughout the conversation
-        - Ask clarifying questions when needed
-        - Provide clear explanations and solutions
-
-        Guidelines:
-        - Always be polite and courteous
-        - Listen actively to the customer's concerns
-        - Take ownership of the issue
-        - Provide timely responses
-        - Escalate complex issues when appropriate
-        - Follow company policies and procedures
-
-        When generating your next message in a conversation:
-        1. Review the conversation history carefully
-        2. Consider the customer's intent, sentiment, and the subject of conversation
-        3. Generate an appropriate response that addresses the customer's needs
-        4. Keep responses concise but complete
-    """
+    C1_AGENT_INSTRUCTIONS_FILE = "c1_agent.txt"
 
     C2_AGENT_NAME = "C2Agent"
-    C2_AGENT_INSTRUCTIONS = """
-        You are a customer (C2Agent) interacting with a customer service representative.
-
-        Your role is to:
-        - Express your concerns, questions, or issues clearly
-        - Respond naturally based on your intent and sentiment
-        - Provide necessary information when asked
-        - React appropriately to the service representative's responses
-        - Follow a natural conversation flow
-        - Express satisfaction or dissatisfaction based on the resolution
-
-        Guidelines:
-        - Stay consistent with the defined customer intent and sentiment
-        - Respond authentically based on the conversation context
-        - Don't resolve issues too quickly - allow for realistic back-and-forth
-        - Express emotions appropriately (frustration, confusion, satisfaction, etc.)
-        - Ask follow-up questions when unclear
-        - Acknowledge when your issue is resolved
-
-        When generating your next message in a conversation:
-        1. Review the conversation history carefully
-        2. Stay true to your defined intent, sentiment, and conversation subject
-        3. Generate a natural customer response
-        4. Keep responses conversational and realistic
-    """
+    C2_AGENT_INSTRUCTIONS_FILE = "c2_agent.txt"
 
     ORCHESTRATOR_AGENT_NAME = "OrchestratorAgent"
-    ORCHESTRATOR_AGENT_INSTRUCTIONS = """
-        You are a conversation orchestrator agent responsible for determining conversation completion status.
-
-        Your role is to:
-        - Analyze the conversation history between a customer service representative and a customer
-        - Determine if the conversation has reached a natural conclusion
-        - Provide a clear status indicator
-
-        A conversation should be marked as "Completed" when:
-        - The customer's issue has been resolved
-        - The customer has expressed satisfaction or acceptance
-        - All questions have been answered
-        - There is mutual agreement to end the conversation
-        - The conversation has reached a natural stopping point
-
-        A conversation should remain "Ongoing" when:
-        - The issue is not fully resolved
-        - The customer still has questions or concerns
-        - Information is being gathered
-        - A solution is being worked on
-        - Follow-up is needed
-
-        Response Format:
-        Respond with a JSON object containing only:
-        {
-          "ConversationStatus": "Completed" or "Ongoing"
-        }
-
-        Important:
-        - Return ONLY valid JSON
-        - Use exactly "Completed" or "Ongoing" (case-sensitive)
-        - Do not include any explanation or additional text
-    """
+    ORCHESTRATOR_AGENT_INSTRUCTIONS_FILE = "orchestrator_agent.txt"
 
     def __init__(self):
         pass
@@ -127,15 +47,15 @@ class ConversationSimulationService:
                    conversation_subject=conversation_properties.get('ConversationSubject'))
         logger.info("="*60)
 
-        # Create agents
+        # Create agents from files
         logger.info("Creating agents for simulation...")
-        c1_agent = azure_ai_service.create_agent(self.C1_AGENT_NAME, self.C1_AGENT_INSTRUCTIONS.strip())
+        c1_agent = azure_ai_service.create_agent_from_file(self.C1_AGENT_NAME, self.C1_AGENT_INSTRUCTIONS_FILE)
         logger.debug("C1 Agent ready", agent_name=self.C1_AGENT_NAME, version=c1_agent.agent_version_object.version)
         
-        c2_agent = azure_ai_service.create_agent(self.C2_AGENT_NAME, self.C2_AGENT_INSTRUCTIONS.strip())
+        c2_agent = azure_ai_service.create_agent_from_file(self.C2_AGENT_NAME, self.C2_AGENT_INSTRUCTIONS_FILE)
         logger.debug("C2 Agent ready", agent_name=self.C2_AGENT_NAME, version=c2_agent.agent_version_object.version)
         
-        orch_agent = azure_ai_service.create_agent(self.ORCHESTRATOR_AGENT_NAME, self.ORCHESTRATOR_AGENT_INSTRUCTIONS.strip())
+        orch_agent = azure_ai_service.create_agent_from_file(self.ORCHESTRATOR_AGENT_NAME, self.ORCHESTRATOR_AGENT_INSTRUCTIONS_FILE)
         logger.debug("Orchestrator Agent ready", agent_name=self.ORCHESTRATOR_AGENT_NAME, version=orch_agent.agent_version_object.version)
         
         logger.info("All agents created successfully")

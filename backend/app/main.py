@@ -91,8 +91,7 @@ from app.api.routes import (
     persona_generation,
     general_prompt,
     prompt_validator,
-    conversation_simulation,
-    models
+    conversation_simulation
 )
 
 # Create FastAPI application
@@ -114,8 +113,6 @@ app.add_middleware(
 
 # Include routers
 logger.info("Registering API routes...")
-app.include_router(models.router, prefix="/api/v1")
-logger.debug("Registered route", router="models", prefix="/api/v1")
 app.include_router(persona_generation.router, prefix="/api/v1")
 logger.debug("Registered route", router="persona_generation", prefix="/api/v1")
 app.include_router(general_prompt.router, prefix="/api/v1")
