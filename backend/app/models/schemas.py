@@ -9,7 +9,7 @@ class AgentResponseData(BaseModel):
     tokens_used: Optional[int] = None
     agent_version: str
     timestamp: datetime
-    thread_id: str  # Conversation ID for stateful interactions (kept as thread_id for backwards compatibility)
+    conversation_id: str  # Conversation ID for stateful interactions
 
 
 class AgentInfo(BaseModel):
@@ -46,7 +46,7 @@ class PersonaGenerationResult(BaseModel):
     tokens_used: Optional[int] = None
     agent_details: AgentDetails
     timestamp: datetime
-    thread_id: str
+    conversation_id: str
 
 
 class PromptValidatorResult(BaseModel):
@@ -55,7 +55,7 @@ class PromptValidatorResult(BaseModel):
     tokens_used: Optional[int] = None
     agent_details: AgentDetails
     timestamp: datetime
-    thread_id: str
+    conversation_id: str
 
 
 class GeneralPromptResult(BaseModel):

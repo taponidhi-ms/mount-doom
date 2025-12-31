@@ -31,7 +31,7 @@ class PromptValidatorService:
             - tokens_used: Number of tokens used
             - agent_details: Details about the agent
             - timestamp: When the request was made
-            - thread_id: Conversation ID
+            - conversation_id: Conversation ID
         """
         try:
             logger.info("="*60)
@@ -97,7 +97,7 @@ class PromptValidatorService:
                 tokens_used=tokens_used,
                 agent_details=agent.agent_details,
                 timestamp=timestamp,
-                thread_id=conversation_id
+                conversation_id=conversation_id
             )
 
         except Exception as e:
