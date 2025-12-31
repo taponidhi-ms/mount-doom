@@ -1,7 +1,8 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 from app.models.schemas import (
     ConversationSimulationRequest,
-    ConversationSimulationResponse
+    ConversationSimulationResponse,
+    BrowseResponse
 )
 from app.services.features.conversation_simulation_service import conversation_simulation_service
 from app.services.db.cosmos_db_service import cosmos_db_service
@@ -122,3 +123,38 @@ async def simulate_conversation(request: ConversationSimulationRequest):
     except Exception as e:
         logger.error("Error in conversation simulation endpoint", error=str(e), exc_info=True)
         raise HTTPException(status_code=500, detail=f"Error simulating conversation: {str(e)}")
+
+
+@router.get("/browse", response_model=BrowseResponse)
+async def browse_conversation_simulations(
+    page: int = Query(default=1, ge=1, description="Page number (1-indexed)"),
+    page_size: int = Query(default=10, ge=1, le=100, description="Items per page"),
+    order_by: str = Query(default="timestamp", description="Field to order by"),
+    order_direction: str = Query(default="DESC", regex="^(ASC|DESC)$", description="Order direction")
+):
+    """
+    Browse conversation simulation records with pagination and ordering.
+    
+    Returns a list of conversation simulation records from the database.
+    """
+    logger.info("Browsing conversation simulations",
+               page=page,
+               page_size=page_size,
+               order_by=order_by,
+               order_direction=order_direction)
+    
+    try:
+        result = await cosmos_db_service.browse_container(
+            container_name=cosmos_db_service.CONVERSATION_SIMULATION_CONTAINER,
+            page=page,
+            page_size=page_size,
+            order_by=order_by,
+            order_direction=order_direction
+        )
+        
+        logger.info("Returning browse results", total_count=result["total_count"])
+        return result
+    
+    except Exception as e:
+        logger.error("Error browsing conversation simulations", error=str(e), exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Error browsing conversation simulations: {str(e)}")

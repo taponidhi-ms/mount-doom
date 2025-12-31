@@ -1,8 +1,9 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 from app.models.schemas import (
     PersonaGenerationRequest,
     PersonaGenerationResponse,
-    AgentDetails
+    AgentDetails,
+    BrowseResponse
 )
 from app.core.config import settings
 from app.services.features.persona_generation_service import persona_generation_service
@@ -62,3 +63,38 @@ async def generate_persona(request: PersonaGenerationRequest):
     except Exception as e:
         logger.error("Error in persona generation endpoint", error=str(e), exc_info=True)
         raise HTTPException(status_code=500, detail=f"Error generating persona: {str(e)}")
+
+
+@router.get("/browse", response_model=BrowseResponse)
+async def browse_persona_generations(
+    page: int = Query(default=1, ge=1, description="Page number (1-indexed)"),
+    page_size: int = Query(default=10, ge=1, le=100, description="Items per page"),
+    order_by: str = Query(default="timestamp", description="Field to order by"),
+    order_direction: str = Query(default="DESC", regex="^(ASC|DESC)$", description="Order direction")
+):
+    """
+    Browse persona generation records with pagination and ordering.
+    
+    Returns a list of persona generation records from the database.
+    """
+    logger.info("Browsing persona generations",
+               page=page,
+               page_size=page_size,
+               order_by=order_by,
+               order_direction=order_direction)
+    
+    try:
+        result = await cosmos_db_service.browse_container(
+            container_name=cosmos_db_service.PERSONA_GENERATION_CONTAINER,
+            page=page,
+            page_size=page_size,
+            order_by=order_by,
+            order_direction=order_direction
+        )
+        
+        logger.info("Returning browse results", total_count=result["total_count"])
+        return result
+    
+    except Exception as e:
+        logger.error("Error browsing persona generations", error=str(e), exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Error browsing persona generations: {str(e)}")

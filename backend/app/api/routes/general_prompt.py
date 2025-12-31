@@ -1,7 +1,8 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 from app.models.schemas import (
     GeneralPromptRequest,
-    GeneralPromptResponse
+    GeneralPromptResponse,
+    BrowseResponse
 )
 from app.core.config import settings
 from app.services.features.general_prompt_service import general_prompt_service
@@ -61,3 +62,38 @@ async def generate_response(request: GeneralPromptRequest):
     except Exception as e:
         logger.error("Error in general prompt endpoint", error=str(e), exc_info=True)
         raise HTTPException(status_code=500, detail=f"Error generating response: {str(e)}")
+
+
+@router.get("/browse", response_model=BrowseResponse)
+async def browse_general_prompts(
+    page: int = Query(default=1, ge=1, description="Page number (1-indexed)"),
+    page_size: int = Query(default=10, ge=1, le=100, description="Items per page"),
+    order_by: str = Query(default="timestamp", description="Field to order by"),
+    order_direction: str = Query(default="DESC", regex="^(ASC|DESC)$", description="Order direction")
+):
+    """
+    Browse general prompt records with pagination and ordering.
+    
+    Returns a list of general prompt records from the database.
+    """
+    logger.info("Browsing general prompts",
+               page=page,
+               page_size=page_size,
+               order_by=order_by,
+               order_direction=order_direction)
+    
+    try:
+        result = await cosmos_db_service.browse_container(
+            container_name=cosmos_db_service.GENERAL_PROMPT_CONTAINER,
+            page=page,
+            page_size=page_size,
+            order_by=order_by,
+            order_direction=order_direction
+        )
+        
+        logger.info("Returning browse results", total_count=result["total_count"])
+        return result
+    
+    except Exception as e:
+        logger.error("Error browsing general prompts", error=str(e), exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Error browsing general prompts: {str(e)}")

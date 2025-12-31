@@ -1,8 +1,9 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 from app.models.schemas import (
     PromptValidatorRequest,
     PromptValidatorResponse,
-    AgentDetails
+    AgentDetails,
+    BrowseResponse
 )
 from app.core.config import settings
 from app.services.features.prompt_validator_service import prompt_validator_service
@@ -62,3 +63,38 @@ async def validate_prompt(request: PromptValidatorRequest):
     except Exception as e:
         logger.error("Error in prompt validation endpoint", error=str(e), exc_info=True)
         raise HTTPException(status_code=500, detail=f"Error validating prompt: {str(e)}")
+
+
+@router.get("/browse", response_model=BrowseResponse)
+async def browse_prompt_validations(
+    page: int = Query(default=1, ge=1, description="Page number (1-indexed)"),
+    page_size: int = Query(default=10, ge=1, le=100, description="Items per page"),
+    order_by: str = Query(default="timestamp", description="Field to order by"),
+    order_direction: str = Query(default="DESC", regex="^(ASC|DESC)$", description="Order direction")
+):
+    """
+    Browse prompt validation records with pagination and ordering.
+    
+    Returns a list of prompt validation records from the database.
+    """
+    logger.info("Browsing prompt validations",
+               page=page,
+               page_size=page_size,
+               order_by=order_by,
+               order_direction=order_direction)
+    
+    try:
+        result = await cosmos_db_service.browse_container(
+            container_name=cosmos_db_service.PROMPT_VALIDATOR_CONTAINER,
+            page=page,
+            page_size=page_size,
+            order_by=order_by,
+            order_direction=order_direction
+        )
+        
+        logger.info("Returning browse results", total_count=result["total_count"])
+        return result
+    
+    except Exception as e:
+        logger.error("Error browsing prompt validations", error=str(e), exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Error browsing prompt validations: {str(e)}")

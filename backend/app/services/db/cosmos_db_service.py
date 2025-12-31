@@ -227,6 +227,80 @@ class CosmosDBService:
         logger.debug("Creating document", document_id=document_id, container=self.CONVERSATION_SIMULATION_CONTAINER)
         container.create_item(body=document)
         logger.info("Conversation simulation saved successfully", document_id=document_id)
+    
+    async def browse_container(
+        self,
+        container_name: str,
+        page: int = 1,
+        page_size: int = 10,
+        order_by: str = "timestamp",
+        order_direction: str = "DESC"
+    ) -> Dict[str, Any]:
+        """
+        Browse records in a container with pagination and ordering.
+        
+        Args:
+            container_name: Name of the container
+            page: Page number (1-indexed)
+            page_size: Number of items per page
+            order_by: Field to order by (default: timestamp)
+            order_direction: ASC or DESC (default: DESC)
+            
+        Returns:
+            Dict with items, total_count, page, page_size, total_pages
+        """
+        try:
+            logger.info("Browsing container",
+                       container=container_name,
+                       page=page,
+                       page_size=page_size,
+                       order_by=order_by,
+                       order_direction=order_direction)
+            
+            container = await self.ensure_container(container_name)
+            
+            # Build query with ordering
+            order_clause = f"ORDER BY c.{order_by} {order_direction}"
+            query = f"SELECT * FROM c {order_clause}"
+            
+            # Get all items (Cosmos DB SDK doesn't support OFFSET/LIMIT in query)
+            items = list(container.query_items(
+                query=query,
+                enable_cross_partition_query=True
+            ))
+            
+            total_count = len(items)
+            total_pages = (total_count + page_size - 1) // page_size if total_count > 0 else 0
+            
+            # Calculate pagination offsets
+            start_idx = (page - 1) * page_size
+            end_idx = start_idx + page_size
+            
+            # Get page items
+            page_items = items[start_idx:end_idx]
+            
+            logger.info("Container browsed successfully",
+                       container=container_name,
+                       total_count=total_count,
+                       page_items=len(page_items),
+                       total_pages=total_pages)
+            
+            return {
+                "items": page_items,
+                "total_count": total_count,
+                "page": page,
+                "page_size": page_size,
+                "total_pages": total_pages,
+                "has_next": page < total_pages,
+                "has_previous": page > 1
+            }
+            
+        except Exception as e:
+            logger.error("Error browsing container",
+                        container=container_name,
+                        error=str(e),
+                        exc_info=True)
+            raise
 
 
 # Singleton instance
