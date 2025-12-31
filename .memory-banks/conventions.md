@@ -143,12 +143,36 @@ logger.info("="*60)
 - State management with useState
 - Side effects with useEffect
 - Form handling with controlled components
+- Tab-based navigation for generate/history views
 
 ### Styling
-- Tailwind CSS utility classes
+- Tailwind CSS v4 utility classes
 - CSS variables for theming
 - shadcn/ui components for consistency
 - Responsive design with mobile-first approach
+
+### UI Components (shadcn/ui)
+Standard components used across pages:
+- `Button` - Primary actions (with variant: outline, ghost)
+- `Card` - Content containers
+- `Tabs` - Generate/History navigation
+- `Table` - Display history with pagination
+- `Input` - Form inputs
+- `Textarea` - Multi-line text inputs
+- `Select` - Dropdown selections
+
+### Page Structure Pattern
+All use case pages follow this structure:
+1. **Header**: Title and description
+2. **Tabs**: Generate tab and History tab
+3. **Generate Tab**:
+   - Configuration form
+   - Submit button with loading state
+   - Result display (if available)
+4. **History Tab**:
+   - Table with past results
+   - Pagination controls (Previous/Next)
+   - Loading and error states
 
 ## API Design
 
@@ -163,6 +187,27 @@ logger.info("="*60)
 - Versioned API (`/api/v1/`)
 - Grouped by use case
 - GET for retrieval, POST for actions
+
+### Standard Endpoints Per Use Case
+Each use case follows this pattern:
+- POST `/{use-case}/generate|validate|simulate` - Create new result
+- GET `/{use-case}/browse` - List past results with pagination
+
+### Browse Endpoint Pattern
+All browse endpoints support:
+- `page` (default: 1) - Page number
+- `page_size` (default: 10, max: 100) - Items per page
+- `order_by` (default: "timestamp") - Field to sort by
+- `order_direction` (default: "DESC") - Sort direction (ASC|DESC)
+
+Response includes:
+- `items` - Array of results
+- `total_count` - Total number of items
+- `page` - Current page number
+- `page_size` - Items per page
+- `total_pages` - Total number of pages
+- `has_next` - Boolean indicating if next page exists
+- `has_previous` - Boolean indicating if previous page exists
 
 ## Database (Cosmos DB)
 

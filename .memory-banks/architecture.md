@@ -61,11 +61,30 @@ Services contain:
 #### CosmosDBService
 Handles all Cosmos DB operations for persisting results
 
+Methods:
+- `save_persona_generation()` - Save persona generation result
+- `save_general_prompt()` - Save general prompt result
+- `save_prompt_validator()` - Save prompt validation result
+- `save_conversation_simulation()` - Save conversation simulation result
+- `browse_container()` - Browse container with pagination and ordering
+  - Supports custom ordering by field (default: timestamp DESC)
+  - Returns paginated results with total count and page info
+  - Used by all browse endpoints
+
 ### Routes (One per use case)
 - `/api/v1/persona-generation/*` - Delegates to PersonaGenerationService
+  - POST `/generate` - Generate persona
+  - GET `/browse` - Browse past persona generations with pagination
 - `/api/v1/general-prompt/*` - Delegates to GeneralPromptService
+  - POST `/generate` - Generate response
+  - GET `/browse` - Browse past general prompts with pagination
 - `/api/v1/prompt-validator/*` - Delegates to PromptValidatorService
+  - POST `/validate` - Validate prompt
+  - GET `/browse` - Browse past validations with pagination
 - `/api/v1/conversation-simulation/*` - Delegates to ConversationSimulationService
+  - POST `/simulate` - Simulate conversation
+  - GET `/browse` - Browse past simulations with pagination
+- `/api/v1/models` - Get available models
 
 Routes only:
 1. Extract request parameters
@@ -79,26 +98,39 @@ Routes only:
 ```
 frontend/
 ├── app/             # Next.js App Router pages
+│   ├── persona-generation/
+│   ├── general-prompt/
+│   ├── prompt-validator/
+│   └── conversation-simulation/
 ├── components/      # React components
+│   ├── ui/         # shadcn/ui components (Button, Card, Tabs, Table, etc.)
+│   └── result-display.tsx
 └── lib/            # Utilities and API client
 ```
 
 ### Key Principles
 - Component reusability
 - Type safety with TypeScript
-- Responsive design
-- Accessible UI
+- Responsive design with Tailwind CSS v4
+- Accessible UI with shadcn/ui components
+- Tab-based interface for generate and history views
 
 ### Pages
-Each use case has a dedicated page:
-- `/persona-generation`
-- `/general-prompt`
-- `/prompt-validator`
-- `/conversation-simulation`
+Each use case has a dedicated page with two tabs:
+- **Generate Tab**: Form for creating new requests
+- **History Tab**: Paginated view of past results
+
+Pages:
+- `/persona-generation` - Generate and view personas
+- `/general-prompt` - Generate and view general prompts
+- `/prompt-validator` - Validate and view prompt validations
+- `/conversation-simulation` - Simulate and view conversations
+  - Special feature: Can select existing personas or input customer fields manually
 
 ## Data Flow
 
-1. User interacts with frontend UI
+### Generation/Processing Flow
+1. User interacts with frontend UI (Generate tab)
 2. Frontend calls API client methods
 3. API client sends HTTP requests to backend
 4. **Backend Route Handler**:
@@ -115,7 +147,21 @@ Each use case has a dedicated page:
 7. **CosmosDBService**:
    - Persists results to database
 8. Backend returns response to frontend
-9. Frontend displays results with metrics
+9. Frontend displays results with metrics in Generate tab
+10. Frontend reloads history to show new result
+
+### Browse/History Flow
+1. User switches to History tab
+2. Frontend calls browse API methods with pagination parameters
+3. **Backend Route Handler**:
+   - Calls CosmosDBService.browse_container()
+4. **CosmosDBService**:
+   - Queries Cosmos DB with ordering
+   - Applies pagination (page, page_size)
+   - Returns items with pagination metadata
+5. Backend returns paginated response
+6. Frontend displays results in Table component
+7. User can navigate pages using pagination controls
 
 ## Authentication
 - Uses Azure DefaultAzureCredential

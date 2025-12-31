@@ -14,15 +14,20 @@
 
 **Agent**: 
 - PersonaAgent (fixed agent name)
-- Instructions defined in `instruction_sets/persona_agent.py`
+- Instructions defined in `PersonaGenerationService`
 - Automatic versioning based on instruction hash
-- Model selection by user (gpt-4 or gpt-35-turbo)
+- Model: gpt-4 (default from settings)
 
 **Metrics Tracked**:
 - Tokens used
 - Time taken
 - Start/end timestamps
 - Agent details (name, version, instructions, model)
+
+**Browse API**:
+- GET `/api/v1/persona-generation/browse`
+- Supports pagination and ordering
+- Returns list of past persona generations
 
 ---
 
@@ -31,18 +36,22 @@
 **Purpose**: Get responses for any general prompt using LLM models directly (without agent).
 
 **Workflow**:
-1. User selects a model (GPT-4 or GPT-3.5 Turbo)
-2. User enters any general prompt
-3. Backend calls model directly using inference API
-4. Model generates response
-5. Response stored in Cosmos DB `general_prompt` container
-6. Frontend displays response with metrics
+1. User enters any general prompt
+2. Backend calls model directly using inference API (default: gpt-4)
+3. Model generates response
+4. Response stored in Cosmos DB `general_prompt` container
+5. Frontend displays response with metrics
 
 **Models**:
-- GPT-4: Advanced model for complex tasks
-- GPT-3.5 Turbo: Fast model for general tasks
+- Uses default model from settings (gpt-4)
+- Direct model access (not agent-based) for faster responses
 
 **Key Difference**: Uses model directly, not agent, for faster responses.
+
+**Browse API**:
+- GET `/api/v1/general-prompt/browse`
+- Supports pagination and ordering
+- Returns list of past general prompts
 
 ---
 
@@ -60,15 +69,20 @@
 
 **Agent**:
 - PromptValidatorAgent (fixed agent name)
-- Instructions defined in `instruction_sets/prompt_validator_agent.py`
+- Instructions defined in `PromptValidatorService`
 - Automatic versioning based on instruction hash
-- Model selection by user (gpt-4 or gpt-35-turbo)
+- Model: gpt-4 (default from settings)
 
 **Validation Aspects**:
 - Clarity and specificity
 - Completeness
 - Potential improvements
 - Quality assessment
+
+**Browse API**:
+- GET `/api/v1/prompt-validator/browse`
+- Supports pagination and ordering
+- Returns list of past validations
 
 ---
 
@@ -83,10 +97,12 @@
 
 **Workflow**:
 1. User selects a model (GPT-4 or GPT-3.5 Turbo) - used for all three agents
-2. User configures conversation properties:
-   - Customer Intent (e.g., "Technical Support")
-   - Customer Sentiment (e.g., "Frustrated")
-   - Conversation Subject (e.g., "Product Issue")
+2. User configures conversation in one of two ways:
+   - **Option A**: Select existing persona from persona generation container
+   - **Option B**: Manually input customer properties:
+     - Customer Intent (e.g., "Technical Support")
+     - Customer Sentiment (e.g., "Frustrated")
+     - Conversation Subject (e.g., "Product Issue")
 3. User sets max turns (1-20)
 4. Simulation starts:
    - C1Agent speaks first (as service rep)
@@ -98,9 +114,9 @@
 6. Frontend displays conversation history with metrics
 
 **Agents**:
-- All three agents use fixed names and instructions from `instruction_sets/` module
+- All three agents use fixed names and instructions defined in service classes
 - Automatic versioning for each agent based on their instruction hash
-- Single model selection applies to all agents
+- Model: gpt-4 (default from settings)
 
 **C1 Agent Prompt Template**:
 ```
@@ -136,6 +152,12 @@ messages: {history}
 - Full conversation history
 - Detailed per-message metrics
 - Maximum 20 turns for safety
+- Persona selection or manual input
+
+**Browse API**:
+- GET `/api/v1/conversation-simulation/browse`
+- Supports pagination and ordering
+- Returns list of past simulations
 
 ---
 
@@ -143,8 +165,8 @@ messages: {history}
 
 ### Request Features
 - Non-streaming by default (streaming planned for future)
-- Agent/model selection
-- Prompt input
+- Model: gpt-4 (default from settings)
+- Prompt input (varies by use case)
 
 ### Response Features
 - Token usage tracking
@@ -160,9 +182,11 @@ messages: {history}
 - Timestamps for analytics
 
 ### UI Features
-- Clean, intuitive interface
+- Clean, intuitive interface with shadcn/ui components
+- Tab-based navigation (Generate/History)
 - Real-time loading states
 - Error handling and display
 - Metrics visualization
-- JSON export functionality
+- Paginated history browsing
 - Responsive design
+- Table view for browsing past results
