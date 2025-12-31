@@ -17,7 +17,7 @@ Mount Doom is an enterprise-grade simulation platform that enables:
 ```
 mount-doom/
 ├── backend/          # FastAPI backend with Azure AI integration
-├── frontend/         # Next.js frontend with TypeScript and shadcn/ui
+├── frontend/         # Next.js frontend with TypeScript and Ant Design
 ├── .memory-banks/    # Project context and conventions
 └── README.md         # This file
 ```
@@ -34,9 +34,8 @@ mount-doom/
 **Frontend:**
 - Next.js 15 with App Router
 - TypeScript for type safety
-- Tailwind CSS v4 for styling
-- shadcn/ui for UI components
-- Lucide React for icons
+- Ant Design (antd) for UI components
+- React 19
 
 ## Features
 
