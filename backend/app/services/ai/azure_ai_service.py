@@ -4,8 +4,11 @@ from azure.ai.projects import AIProjectClient
 from openai import OpenAI
 
 from app.core.config import settings
-from typing import Optional, NamedTuple, Dict
+from typing import Optional, NamedTuple, Dict, TYPE_CHECKING
 import structlog
+
+if TYPE_CHECKING:
+    from app.models.schemas import AgentDetails
 
 logger = structlog.get_logger()
 
@@ -14,7 +17,8 @@ class Agent(NamedTuple):
     """Represents a cached agent with its configuration."""
     instructions: str
     model_deployment_name: str
-    agent_version_object: AgentVersionObject
+    agent_version_object: 'AgentVersionObject'
+    agent_details: 'AgentDetails'
 
 
 class AzureAIService:
@@ -45,14 +49,17 @@ class AzureAIService:
     def _initialize_client(self):
         """Initialize the Azure AI Project Client."""
         try:
+            logger.info("Initializing Azure AI Project Client...", 
+                       endpoint=settings.azure_ai_project_connection_string[:50] + "...")
             self._client = AIProjectClient(
                 endpoint=settings.azure_ai_project_connection_string,
                 credential=DefaultAzureCredential()
             )
+            logger.debug("AIProjectClient created, getting OpenAI client...")
             self._openai_client = self._client.get_openai_client()
             logger.info("Azure AI Project Client initialized successfully")
         except Exception as e:
-            logger.error(f"Failed to initialize Azure AI Project Client: {e}")
+            logger.error("Failed to initialize Azure AI Project Client", error=str(e), exc_info=True)
             raise
 
     @property
@@ -84,11 +91,22 @@ class AzureAIService:
         Returns:
             Agent: The created or cached Agent object
         """
+        logger.debug("Agent requested", agent_name=agent_name, instructions_length=len(instructions))
+        
         if agent_name in self._agents_cache:
-            return self._agents_cache[agent_name]
+            cached_agent = self._agents_cache[agent_name]
+            logger.info("Agent retrieved from cache", 
+                       agent_name=agent_name, 
+                       agent_version=cached_agent.agent_version_object.version,
+                       model=cached_agent.model_deployment_name)
+            return cached_agent
+        
+        logger.info("Agent not in cache, creating new agent", agent_name=agent_name)
 
         model_deployment_name = settings.default_model_deployment
         try:
+            from app.models.schemas import AgentDetails
+            
             agent_version_object = self.client.agents.create_version(
                 agent_name=agent_name,
                 definition=PromptAgentDefinition(
@@ -97,17 +115,30 @@ class AzureAIService:
                 ),
             )
 
+            agent_details = AgentDetails(
+                agent_name=agent_name,
+                agent_version=agent_version_object.version,
+                instructions=instructions,
+                model_deployment_name=model_deployment_name,
+                created_at=agent_version_object.created_at
+            )
+
             agent = Agent(
                 instructions=instructions,
                 model_deployment_name=model_deployment_name,
-                agent_version_object=agent_version_object
+                agent_version_object=agent_version_object,
+                agent_details=agent_details
             )
             self._agents_cache[agent_name] = agent
             
-            logger.info("Created agent",
+            logger.info("Agent created successfully",
                         agent_name=agent_name,
                         agent_id=agent_version_object.id,
-                        model=model_deployment_name)
+                        agent_version=agent_version_object.version,
+                        model=model_deployment_name,
+                        instructions_length=len(instructions),
+                        created_at=agent_version_object.created_at)
+            logger.debug("Agent cached", agent_name=agent_name, cache_size=len(self._agents_cache))
 
             return agent
 

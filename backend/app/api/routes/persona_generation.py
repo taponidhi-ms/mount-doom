@@ -9,6 +9,9 @@ from app.services.features.persona_generation_service import persona_generation_
 from app.services.db.cosmos_db_service import cosmos_db_service
 from datetime import datetime
 import time
+import structlog
+
+logger = structlog.get_logger()
 
 router = APIRouter(prefix="/persona-generation", tags=["Persona Generation"])
 
@@ -16,6 +19,7 @@ router = APIRouter(prefix="/persona-generation", tags=["Persona Generation"])
 @router.post("/generate", response_model=PersonaGenerationResponse)
 async def generate_persona(request: PersonaGenerationRequest):
     """Generate persona from simulation prompt."""
+    logger.info("Received persona generation request", prompt_length=len(request.prompt))
     start_time = datetime.utcnow()
     start_ms = time.time() * 1000
     
@@ -27,26 +31,25 @@ async def generate_persona(request: PersonaGenerationRequest):
         end_ms = time.time() * 1000
         time_taken_ms = end_ms - start_ms
         
+        logger.info("Persona generated, saving to database",
+                   tokens=agent_response["tokens_used"],
+                   time_ms=round(time_taken_ms, 2))
+        
         # Save to Cosmos DB
+        agent_details = agent_response["agent_details"]
         await cosmos_db_service.save_persona_generation(
             prompt=request.prompt,
             response=agent_response["response_text"],
             tokens_used=agent_response["tokens_used"],
             time_taken_ms=time_taken_ms,
-            agent_name=persona_generation_service.PERSONA_AGENT_NAME,
-            agent_version=agent_response["agent_version"],
-            agent_instructions=persona_generation_service.PERSONA_AGENT_INSTRUCTIONS,
-            model=settings.default_model_deployment,
-            agent_timestamp=agent_response["timestamp"]
+            agent_name=agent_details.agent_name,
+            agent_version=agent_details.agent_version,
+            agent_instructions=agent_details.instructions,
+            model=agent_details.model_deployment_name,
+            agent_timestamp=agent_details.created_at
         )
         
-        agent_details = AgentDetails(
-            agent_name=persona_generation_service.PERSONA_AGENT_NAME,
-            agent_version=agent_response["agent_version"],
-            instructions=persona_generation_service.PERSONA_AGENT_INSTRUCTIONS,
-            model_deployment_name=settings.default_model_deployment,
-            timestamp=agent_response["timestamp"]
-        )
+        logger.info("Returning successful persona generation response")
         
         return PersonaGenerationResponse(
             response_text=agent_response["response_text"],
@@ -58,4 +61,5 @@ async def generate_persona(request: PersonaGenerationRequest):
         )
     
     except Exception as e:
+        logger.error("Error in persona generation endpoint", error=str(e), exc_info=True)
         raise HTTPException(status_code=500, detail=f"Error generating persona: {str(e)}")

@@ -8,6 +8,9 @@ from app.services.features.general_prompt_service import general_prompt_service
 from app.services.db.cosmos_db_service import cosmos_db_service
 from datetime import datetime
 import time
+import structlog
+
+logger = structlog.get_logger()
 
 router = APIRouter(prefix="/general-prompt", tags=["General Prompt"])
 
@@ -15,6 +18,9 @@ router = APIRouter(prefix="/general-prompt", tags=["General Prompt"])
 @router.post("/generate", response_model=GeneralPromptResponse)
 async def generate_response(request: GeneralPromptRequest):
     """Generate response for general prompt using model directly."""
+    logger.info("Received general prompt request",
+               prompt_length=len(request.prompt),
+               model=settings.default_model_deployment)
     start_time = datetime.utcnow()
     start_ms = time.time() * 1000
     
@@ -28,6 +34,10 @@ async def generate_response(request: GeneralPromptRequest):
         end_ms = time.time() * 1000
         time_taken_ms = end_ms - start_ms
         
+        logger.info("Response generated, saving to database",
+                   tokens=tokens_used,
+                   time_ms=round(time_taken_ms, 2))
+        
         # Save to Cosmos DB
         await cosmos_db_service.save_general_prompt(
             model_id=settings.default_model_deployment,
@@ -36,6 +46,8 @@ async def generate_response(request: GeneralPromptRequest):
             tokens_used=tokens_used,
             time_taken_ms=time_taken_ms
         )
+        
+        logger.info("Returning successful general prompt response")
         
         return GeneralPromptResponse(
             model_deployment_name=settings.default_model_deployment,
@@ -47,4 +59,5 @@ async def generate_response(request: GeneralPromptRequest):
         )
     
     except Exception as e:
+        logger.error("Error in general prompt endpoint", error=str(e), exc_info=True)
         raise HTTPException(status_code=500, detail=f"Error generating response: {str(e)}")

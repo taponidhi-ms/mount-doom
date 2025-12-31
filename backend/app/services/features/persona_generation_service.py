@@ -63,61 +63,74 @@ class PersonaGenerationService:
             - thread_id: Conversation ID
         """
         try:
-            logger.info("Generating persona", prompt_length=len(prompt))
+            logger.info("="*60)
+            logger.info("Starting persona generation", prompt_length=len(prompt))
+            logger.debug("Prompt preview", prompt=prompt[:200] + "..." if len(prompt) > 200 else prompt)
 
             # Create agent
+            logger.info("Creating Persona Agent...")
             agent = azure_ai_service.create_agent(
                 agent_name=self.PERSONA_AGENT_NAME,
                 instructions=self.PERSONA_AGENT_INSTRUCTIONS.strip()
             )
-
-            # Get version from agent object
-            agent_version = agent.agent_version_object.version
+            logger.info("Persona Agent ready", agent_version=agent.agent_version_object.version)
 
             # Create conversation with initial message
             timestamp = datetime.utcnow()
+            logger.info("Creating conversation with user message...")
             conversation = azure_ai_service.openai_client.conversations.create(
                 items=[{"type": "message", "role": "user", "content": prompt}]
             )
             conversation_id = conversation.id
-
-            logger.info("Created conversation", conversation_id=conversation_id)
+            logger.info("Conversation created", conversation_id=conversation_id)
 
             # Create response using the agent
+            logger.info("Requesting response from Persona Agent...")
             response = azure_ai_service.openai_client.responses.create(
                 conversation=conversation_id,
                 extra_body={"agent": {"name": agent.agent_version_object.name, "type": "agent_reference"}},
                 input=""
             )
-
-            logger.info("Response created", conversation_id=conversation_id)
+            logger.info("Response received", conversation_id=conversation_id)
 
             # Get response text
+            logger.debug("Extracting response text...")
             response_text = response.output_text
 
             if response_text is None:
+                logger.error("No response text found in response")
                 raise ValueError("No response found")
+            
+            logger.info("Persona generated successfully", 
+                       response_length=len(response_text),
+                       response_preview=response_text[:150] + "..." if len(response_text) > 150 else response_text)
 
             # Extract token usage
+            logger.debug("Extracting token usage...")
             tokens_used = None
             if hasattr(response, 'usage') and response.usage:
                 tokens_used = response.usage.total_tokens
-
-            logger.info("Persona generated successfully",
-                        response_length=len(response_text),
-                        tokens_used=tokens_used,
-                        conversation_id=conversation_id)
+                logger.info("Token usage extracted", tokens_used=tokens_used)
+            else:
+                logger.debug("No token usage information available")
+            
+            logger.info("="*60)
+            logger.info("Persona generation completed",
+                       tokens_used=tokens_used,
+                       agent_version=agent.agent_version_object.version,
+                       conversation_id=conversation_id)
+            logger.info("="*60)
 
             return {
                 "response_text": response_text,
                 "tokens_used": tokens_used,
-                "agent_version": agent_version,
+                "agent_details": agent.agent_details,
                 "timestamp": timestamp,
                 "thread_id": conversation_id
             }
 
         except Exception as e:
-            logger.error(f"Error generating persona: {e}", error=str(e))
+            logger.error("Error generating persona", error=str(e), exc_info=True)
             raise
 
 

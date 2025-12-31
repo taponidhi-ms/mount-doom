@@ -64,61 +64,74 @@ class PromptValidatorService:
             - thread_id: Conversation ID
         """
         try:
-            logger.info("Validating prompt", prompt_length=len(prompt))
+            logger.info("="*60)
+            logger.info("Starting prompt validation", prompt_length=len(prompt))
+            logger.debug("Prompt to validate", prompt=prompt[:200] + "..." if len(prompt) > 200 else prompt)
 
             # Create agent
+            logger.info("Creating Prompt Validator Agent...")
             agent = azure_ai_service.create_agent(
                 agent_name=self.PROMPT_VALIDATOR_AGENT_NAME,
                 instructions=self.PROMPT_VALIDATOR_AGENT_INSTRUCTIONS.strip()
             )
-
-            # Get version from agent object
-            agent_version = agent.agent_version_object.version
+            logger.info("Prompt Validator Agent ready", agent_version=agent.agent_version_object.version)
 
             # Create conversation with initial message
             timestamp = datetime.utcnow()
+            logger.info("Creating conversation with validation request...")
             conversation = azure_ai_service.openai_client.conversations.create(
                 items=[{"type": "message", "role": "user", "content": prompt}]
             )
             conversation_id = conversation.id
-
-            logger.info("Created conversation", conversation_id=conversation_id)
+            logger.info("Conversation created", conversation_id=conversation_id)
 
             # Create response using the agent
+            logger.info("Requesting validation from Prompt Validator Agent...")
             response = azure_ai_service.openai_client.responses.create(
                 conversation=conversation_id,
                 extra_body={"agent": {"name": agent.agent_version_object.name, "type": "agent_reference"}},
                 input=""
             )
-
-            logger.info("Response created", conversation_id=conversation_id)
+            logger.info("Validation response received", conversation_id=conversation_id)
 
             # Get response text
+            logger.debug("Extracting validation result...")
             response_text = response.output_text
 
             if response_text is None:
+                logger.error("No validation result found")
                 raise ValueError("No response found")
+            
+            logger.info("Validation result extracted",
+                       response_length=len(response_text),
+                       response_preview=response_text[:150] + "..." if len(response_text) > 150 else response_text)
 
             # Extract token usage
+            logger.debug("Extracting token usage...")
             tokens_used = None
             if hasattr(response, 'usage') and response.usage:
                 tokens_used = response.usage.total_tokens
-
-            logger.info("Prompt validated successfully",
-                        response_length=len(response_text),
-                        tokens_used=tokens_used,
-                        conversation_id=conversation_id)
+                logger.info("Token usage extracted", tokens_used=tokens_used)
+            else:
+                logger.debug("No token usage information available")
+            
+            logger.info("="*60)
+            logger.info("Prompt validation completed",
+                       tokens_used=tokens_used,
+                       agent_version=agent.agent_version_object.version,
+                       conversation_id=conversation_id)
+            logger.info("="*60)
 
             return {
                 "response_text": response_text,
                 "tokens_used": tokens_used,
-                "agent_version": agent_version,
+                "agent_details": agent.agent_details,
                 "timestamp": timestamp,
                 "thread_id": conversation_id
             }
 
         except Exception as e:
-            logger.error(f"Error validating prompt: {e}", error=str(e))
+            logger.error("Error validating prompt", error=str(e), exc_info=True)
             raise
 
 

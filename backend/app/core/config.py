@@ -22,6 +22,12 @@ class Settings(BaseSettings):
     api_port: int = 8000
     api_debug: bool = True
     
+    # Logging Configuration
+    log_dir: str = "logs"
+    log_file: str = "mount_doom.log"
+    log_max_bytes: int = 10485760  # 10MB
+    log_backup_count: int = 5
+    
     class Config:
         env_file = ".env"
         case_sensitive = False

@@ -37,7 +37,7 @@ class AgentDetails(BaseModel):
     agent_version: Optional[str] = None
     instructions: str
     model_deployment_name: str
-    timestamp: datetime
+    created_at: datetime
 
 
 class BaseResponse(BaseModel):

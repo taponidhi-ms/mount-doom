@@ -118,17 +118,27 @@ class ConversationSimulationService:
         Simulate a multi-agent conversation using Azure AI Agent Workflow.
         """
         start_time = datetime.utcnow()
-        logger.info("Starting conversation simulation", max_turns=max_turns)
+        logger.info("="*60)
+        logger.info("Starting conversation simulation", 
+                   max_turns=max_turns,
+                   simulation_prompt_length=len(simulation_prompt),
+                   customer_intent=conversation_properties.get('CustomerIntent'),
+                   customer_sentiment=conversation_properties.get('CustomerSentiment'),
+                   conversation_subject=conversation_properties.get('ConversationSubject'))
+        logger.info("="*60)
 
         # Create agents
+        logger.info("Creating agents for simulation...")
         c1_agent = azure_ai_service.create_agent(self.C1_AGENT_NAME, self.C1_AGENT_INSTRUCTIONS.strip())
+        logger.debug("C1 Agent ready", agent_name=self.C1_AGENT_NAME, version=c1_agent.agent_version_object.version)
+        
         c2_agent = azure_ai_service.create_agent(self.C2_AGENT_NAME, self.C2_AGENT_INSTRUCTIONS.strip())
+        logger.debug("C2 Agent ready", agent_name=self.C2_AGENT_NAME, version=c2_agent.agent_version_object.version)
+        
         orch_agent = azure_ai_service.create_agent(self.ORCHESTRATOR_AGENT_NAME, self.ORCHESTRATOR_AGENT_INSTRUCTIONS.strip())
-
-        # Get versions from agent objects
-        c1_version = c1_agent.agent_version_object.version
-        c2_version = c2_agent.agent_version_object.version
-        orch_version = orch_agent.agent_version_object.version
+        logger.debug("Orchestrator Agent ready", agent_name=self.ORCHESTRATOR_AGENT_NAME, version=orch_agent.agent_version_object.version)
+        
+        logger.info("All agents created successfully")
 
         # Workflow YAML
         workflow_yaml = f"""
@@ -241,89 +251,110 @@ trigger:
 """
 
         # Create Workflow Agent
+        logger.info("Creating workflow agent...")
+        logger.debug("Workflow YAML length", yaml_length=len(workflow_yaml))
         workflow_agent = azure_ai_service.client.agents.create_version(
             agent_name="conversation-workflow",
             definition=WorkflowAgentDefinition(workflow=workflow_yaml)
         )
+        logger.info("Workflow agent created", 
+                   workflow_name=workflow_agent.name, 
+                   workflow_version=workflow_agent.version)
 
         # Run Workflow
+        logger.info("Creating conversation for workflow...")
         conversation = azure_ai_service.openai_client.conversations.create()
+        logger.info("Conversation created", conversation_id=conversation.id)
         
         input_text = f"Simulation Context: {json.dumps(conversation_properties)}\n\nStart the simulation."
+        logger.debug("Input text prepared", input_length=len(input_text))
 
+        logger.info("Starting workflow stream...", conversation_id=conversation.id)
         stream = azure_ai_service.openai_client.responses.create(
             conversation=conversation.id,
             extra_body={"agent": AgentReference(name=workflow_agent.name).as_dict()},
             input=input_text,
             stream=True
         )
+        logger.info("Stream created, processing events...")
 
         conversation_history: List[ConversationMessage] = []
         total_tokens = 0
         conversation_status = "Ongoing"
         current_actor = None
         current_tokens = None
+        event_count = 0
 
+        logger.info("Processing stream events...")
         for event in stream:
+            event_count += 1
+            logger.debug(f"Stream event #{event_count}", event_type=str(event.type))
+            
             if event.type == ResponseStreamEventType.RESPONSE_OUTPUT_ITEM_ADDED and event.item.type == "workflow_action":
+                logger.info("Workflow action added", action_id=event.item.action_id)
                 if event.item.action_id == "c1_agent_turn":
                     current_actor = self.C1_AGENT_NAME
                     current_tokens = None
+                    logger.info(">>> C1 Agent (Service Rep) turn started")
                 elif event.item.action_id == "c2_agent_turn":
                     current_actor = self.C2_AGENT_NAME
                     current_tokens = None
+                    logger.info(">>> C2 Agent (Customer) turn started")
                 elif event.item.action_id in ["orch_check_1", "orch_check_2"]:
                     current_actor = self.ORCHESTRATOR_AGENT_NAME
                     current_tokens = None
+                    logger.info(">>> Orchestrator checking conversation status", action_id=event.item.action_id)
             
             elif event.type == ResponseStreamEventType.RESPONSE_OUTPUT_TEXT_DONE:
                 if current_actor:
+                    message_preview = event.text[:100] + "..." if len(event.text) > 100 else event.text
+                    logger.info("Message received", 
+                               actor=current_actor, 
+                               message_length=len(event.text),
+                               message_preview=message_preview,
+                               tokens=current_tokens)
                     conversation_history.append(ConversationMessage(
                         agent_name=current_actor,
                         message=event.text,
                         tokens_used=current_tokens,
                         timestamp=datetime.utcnow()
                     ))
+                    logger.debug("Message added to history", history_length=len(conversation_history))
             
             elif event.type == ResponseStreamEventType.RESPONSE_OUTPUT_ITEM_DONE:
                 # Extract tokens for the current item
                 if hasattr(event, 'item') and hasattr(event.item, 'usage') and event.item.usage:
                     current_tokens = event.item.usage.total_tokens
+                    logger.debug("Token usage recorded", tokens=current_tokens, actor=current_actor)
             
             elif event.type == ResponseStreamEventType.RESPONSE_COMPLETED:
+                logger.info("Stream completed")
                 if hasattr(event, 'usage') and event.usage:
                     total_tokens = event.usage.total_tokens
+                    logger.info("Total token usage", total_tokens=total_tokens)
 
         # Determine final status
+        logger.info("Determining final conversation status...")
         orch_msgs = [m for m in conversation_history if m.agent_name == self.ORCHESTRATOR_AGENT_NAME]
-        if orch_msgs and "Completed" in orch_msgs[-1].message:
-            conversation_status = "Completed"
+        logger.debug("Orchestrator messages count", count=len(orch_msgs))
+        if orch_msgs:
+            last_orch_message = orch_msgs[-1].message
+            logger.debug("Last orchestrator message", message=last_orch_message[:100])
+            if "Completed" in last_orch_message:
+                conversation_status = "Completed"
+                logger.info("Conversation marked as Completed by orchestrator")
         
         end_time = datetime.utcnow()
         total_time_ms = (end_time - start_time).total_seconds() * 1000
-
-        # Prepare details
-        c1_agent_details = AgentDetails(
-            agent_name=self.C1_AGENT_NAME,
-            agent_version=c1_version,
-            instructions=self.C1_AGENT_INSTRUCTIONS,
-            model_deployment_name=settings.default_model_deployment,
-            timestamp=datetime.utcnow()
-        )
-        c2_agent_details = AgentDetails(
-            agent_name=self.C2_AGENT_NAME,
-            agent_version=c2_version,
-            instructions=self.C2_AGENT_INSTRUCTIONS,
-            model_deployment_name=settings.default_model_deployment,
-            timestamp=datetime.utcnow()
-        )
-        orchestrator_agent_details = AgentDetails(
-            agent_name=self.ORCHESTRATOR_AGENT_NAME,
-            agent_version=orch_version,
-            instructions=self.ORCHESTRATOR_AGENT_INSTRUCTIONS,
-            model_deployment_name=settings.default_model_deployment,
-            timestamp=datetime.utcnow()
-        )
+        
+        logger.info("="*60)
+        logger.info("Conversation simulation completed",
+                   status=conversation_status,
+                   total_messages=len(conversation_history),
+                   total_tokens=total_tokens,
+                   total_time_ms=round(total_time_ms, 2),
+                   events_processed=event_count)
+        logger.info("="*60)
 
         return ConversationSimulationResult(
             conversation_history=conversation_history,
@@ -332,9 +363,9 @@ trigger:
             total_time_taken_ms=total_time_ms,
             start_time=start_time,
             end_time=end_time,
-            c1_agent_details=c1_agent_details,
-            c2_agent_details=c2_agent_details,
-            orchestrator_agent_details=orchestrator_agent_details
+            c1_agent_details=c1_agent.agent_details,
+            c2_agent_details=c2_agent.agent_details,
+            orchestrator_agent_details=orch_agent.agent_details
         )
 
 
