@@ -2,11 +2,9 @@
 
 from datetime import datetime
 import structlog
-import hashlib
 from typing import Optional
 
-from app.services.azure_ai_service import azure_ai_service
-from app.instruction_sets import PERSONA_AGENT_NAME, PERSONA_AGENT_INSTRUCTIONS
+from app.services.ai.azure_ai_service import azure_ai_service
 
 logger = structlog.get_logger()
 
@@ -14,10 +12,40 @@ logger = structlog.get_logger()
 class PersonaGenerationService:
     """Service for generating personas using the Persona Agent."""
 
+    PERSONA_AGENT_NAME = "PersonaAgent"
+    PERSONA_AGENT_INSTRUCTIONS = """
+        You are a specialized persona generation agent that creates detailed, realistic personas based on simulation prompts.
+
+        Your role is to:
+        - Analyze simulation prompts and extract key characteristics
+        - Generate comprehensive persona profiles
+        - Create realistic and consistent character backgrounds
+        - Define behavioral traits, motivations, and communication styles
+
+        When generating a persona:
+        1. Carefully read and understand the simulation prompt
+        2. Identify the context, scenario, and requirements
+        3. Create a detailed persona including:
+           - Name and basic demographics
+           - Background and experience
+           - Personality traits and characteristics
+           - Communication style and preferences
+           - Goals and motivations
+           - Relevant context for the simulation
+
+        Guidelines:
+        - Make personas realistic and believable
+        - Ensure consistency in personality and behavior
+        - Tailor personas to fit the simulation context
+        - Include enough detail to guide realistic interactions
+        - Keep personas focused and relevant to the use case
+
+        Output Format:
+        Provide a well-structured persona description that can be used in simulations.
+    """
+
     def __init__(self):
-        self.agent_name = PERSONA_AGENT_NAME
-        self.instructions = PERSONA_AGENT_INSTRUCTIONS
-        self.model_deployment = "gpt-4"
+        pass
 
     async def generate_persona(self, prompt: str) -> dict:
         """
@@ -30,7 +58,7 @@ class PersonaGenerationService:
             Dictionary with:
             - response_text: The generated persona
             - tokens_used: Number of tokens used
-            - agent_version: Version hash of the agent
+            - agent_version: Version of the agent
             - timestamp: When the request was made
             - thread_id: Conversation ID
         """
@@ -39,14 +67,12 @@ class PersonaGenerationService:
 
             # Create agent
             agent = azure_ai_service.create_agent(
-                agent_name=self.agent_name,
-                instructions=self.instructions,
-                model_deployment_name=self.model_deployment
+                agent_name=self.PERSONA_AGENT_NAME,
+                instructions=self.PERSONA_AGENT_INSTRUCTIONS.strip()
             )
 
-            # Generate version hash from instructions
-            instructions_hash = hashlib.sha256(agent.instructions.encode()).hexdigest()[:8]
-            agent_version = f"v{instructions_hash}"
+            # Get version from agent object
+            agent_version = agent.agent_version_object.version
 
             # Create conversation with initial message
             timestamp = datetime.utcnow()

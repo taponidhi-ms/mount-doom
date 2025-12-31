@@ -2,10 +2,8 @@
 
 from datetime import datetime
 import structlog
-import hashlib
 
-from app.services.azure_ai_service import azure_ai_service
-from app.instruction_sets import PROMPT_VALIDATOR_AGENT_NAME, PROMPT_VALIDATOR_AGENT_INSTRUCTIONS
+from app.services.ai.azure_ai_service import azure_ai_service
 
 logger = structlog.get_logger()
 
@@ -13,10 +11,42 @@ logger = structlog.get_logger()
 class PromptValidatorService:
     """Service for validating simulation prompts using the Prompt Validator Agent."""
 
+    PROMPT_VALIDATOR_AGENT_NAME = "PromptValidatorAgent"
+    PROMPT_VALIDATOR_AGENT_INSTRUCTIONS = """
+        You are a specialized prompt validation agent that assesses the quality and completeness of simulation prompts.
+
+        Your role is to:
+        - Evaluate simulation prompts for clarity, completeness, and quality
+        - Identify missing information or ambiguities
+        - Provide constructive feedback and suggestions for improvement
+        - Ensure prompts are suitable for generating realistic simulations
+
+        Validation Criteria:
+        1. **Clarity**: Is the prompt clear and easy to understand?
+        2. **Completeness**: Does it provide sufficient context and details?
+        3. **Specificity**: Are requirements and expectations well-defined?
+        4. **Feasibility**: Can the prompt be used to generate a realistic simulation?
+        5. **Context**: Is there enough background information?
+        6. **Objectives**: Are the goals of the simulation clear?
+
+        Response Format:
+        Provide a structured validation response including:
+        - Overall Assessment (Valid/Needs Improvement/Invalid)
+        - Strengths of the prompt
+        - Issues or weaknesses identified
+        - Specific recommendations for improvement
+        - Revised prompt suggestion (if applicable)
+
+        Guidelines:
+        - Be constructive and helpful in your feedback
+        - Point out both strengths and weaknesses
+        - Provide specific, actionable recommendations
+        - Use clear and professional language
+        - Focus on improving the prompt's usefulness for simulations
+    """
+
     def __init__(self):
-        self.agent_name = PROMPT_VALIDATOR_AGENT_NAME
-        self.instructions = PROMPT_VALIDATOR_AGENT_INSTRUCTIONS
-        self.model_deployment = "gpt-4"
+        pass
 
     async def validate_prompt(self, prompt: str) -> dict:
         """
@@ -29,7 +59,7 @@ class PromptValidatorService:
             Dictionary with:
             - response_text: The validation result
             - tokens_used: Number of tokens used
-            - agent_version: Version hash of the agent
+            - agent_version: Version of the agent
             - timestamp: When the request was made
             - thread_id: Conversation ID
         """
@@ -38,14 +68,12 @@ class PromptValidatorService:
 
             # Create agent
             agent = azure_ai_service.create_agent(
-                agent_name=self.agent_name,
-                instructions=self.instructions,
-                model_deployment_name=self.model_deployment
+                agent_name=self.PROMPT_VALIDATOR_AGENT_NAME,
+                instructions=self.PROMPT_VALIDATOR_AGENT_INSTRUCTIONS.strip()
             )
 
-            # Generate version hash from instructions
-            instructions_hash = hashlib.sha256(agent.instructions.encode()).hexdigest()[:8]
-            agent_version = f"v{instructions_hash}"
+            # Get version from agent object
+            agent_version = agent.agent_version_object.version
 
             # Create conversation with initial message
             timestamp = datetime.utcnow()

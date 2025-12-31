@@ -4,9 +4,9 @@ from app.models.schemas import (
     PersonaGenerationResponse,
     AgentDetails
 )
-from app.services.persona_generation_service import persona_generation_service
-from app.services.cosmos_db_service import cosmos_db_service
-from app.instruction_sets import PERSONA_AGENT_NAME, PERSONA_AGENT_INSTRUCTIONS
+from app.core.config import settings
+from app.services.features.persona_generation_service import persona_generation_service
+from app.services.db.cosmos_db_service import cosmos_db_service
 from datetime import datetime
 import time
 
@@ -33,18 +33,18 @@ async def generate_persona(request: PersonaGenerationRequest):
             response=agent_response["response_text"],
             tokens_used=agent_response["tokens_used"],
             time_taken_ms=time_taken_ms,
-            agent_name=PERSONA_AGENT_NAME,
+            agent_name=persona_generation_service.PERSONA_AGENT_NAME,
             agent_version=agent_response["agent_version"],
-            agent_instructions=PERSONA_AGENT_INSTRUCTIONS,
-            model=request.model_deployment_name,
+            agent_instructions=persona_generation_service.PERSONA_AGENT_INSTRUCTIONS,
+            model=settings.default_model_deployment,
             agent_timestamp=agent_response["timestamp"]
         )
         
         agent_details = AgentDetails(
-            agent_name=PERSONA_AGENT_NAME,
+            agent_name=persona_generation_service.PERSONA_AGENT_NAME,
             agent_version=agent_response["agent_version"],
-            instructions=PERSONA_AGENT_INSTRUCTIONS,
-            model_deployment_name=request.model_deployment_name,
+            instructions=persona_generation_service.PERSONA_AGENT_INSTRUCTIONS,
+            model_deployment_name=settings.default_model_deployment,
             timestamp=agent_response["timestamp"]
         )
         

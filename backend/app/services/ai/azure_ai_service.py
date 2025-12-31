@@ -4,7 +4,7 @@ from azure.ai.projects import AIProjectClient
 from openai import OpenAI
 
 from app.core.config import settings
-from typing import Optional, NamedTuple
+from typing import Optional, NamedTuple, Dict
 import structlog
 
 logger = structlog.get_logger()
@@ -31,6 +31,7 @@ class AzureAIService:
     _instance: Optional['AzureAIService'] = None
     _client: Optional[AIProjectClient] = None
     _openai_client: Optional["OpenAI"] = None
+    _agents_cache: Dict[str, Agent] = {}
 
     def __new__(cls):
         if cls._instance is None:
@@ -71,20 +72,22 @@ class AzureAIService:
     def create_agent(
             self,
             agent_name: str,
-            instructions: str,
-            model_deployment_name: str
+            instructions: str
     ) -> Agent:
         """
-        Create an agent with the specified configuration.
+        Get or create an agent with the specified configuration.
         
         Args:
             agent_name: The name of the agent
             instructions: The system instructions for the agent
-            model_deployment_name: The model deployment to use (e.g., "gpt-4")
             
         Returns:
-            Agent: The created Agent object
+            Agent: The created or cached Agent object
         """
+        if agent_name in self._agents_cache:
+            return self._agents_cache[agent_name]
+
+        model_deployment_name = settings.default_model_deployment
         try:
             agent_version_object = self.client.agents.create_version(
                 agent_name=agent_name,
@@ -99,7 +102,8 @@ class AzureAIService:
                 model_deployment_name=model_deployment_name,
                 agent_version_object=agent_version_object
             )
-
+            self._agents_cache[agent_name] = agent
+            
             logger.info("Created agent",
                         agent_name=agent_name,
                         agent_id=agent_version_object.id,

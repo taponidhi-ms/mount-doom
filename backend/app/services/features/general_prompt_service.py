@@ -3,7 +3,8 @@
 from typing import Optional, Tuple
 import structlog
 
-from app.services.azure_ai_service import azure_ai_service
+from app.services.ai.azure_ai_service import azure_ai_service
+from app.core.config import settings
 
 logger = structlog.get_logger()
 
@@ -13,19 +14,18 @@ class GeneralPromptService:
 
     async def generate_response(
             self,
-            model_deployment_name: str,
             prompt: str
     ) -> Tuple[str, Optional[int]]:
         """
         Generate response for a general prompt using model directly.
         
         Args:
-            model_deployment_name: The deployment name of the model to use
             prompt: The prompt to send to the model
             
         Returns:
             Tuple of (response_text, tokens_used)
         """
+        model_deployment_name = settings.default_model_deployment
         try:
             logger.info("Generating response for general prompt",
                         model=model_deployment_name,

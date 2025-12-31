@@ -4,9 +4,9 @@ from app.models.schemas import (
     PromptValidatorResponse,
     AgentDetails
 )
-from app.services.prompt_validator_service import prompt_validator_service
-from app.services.cosmos_db_service import cosmos_db_service
-from app.instruction_sets import PROMPT_VALIDATOR_AGENT_NAME, PROMPT_VALIDATOR_AGENT_INSTRUCTIONS
+from app.core.config import settings
+from app.services.features.prompt_validator_service import prompt_validator_service
+from app.services.db.cosmos_db_service import cosmos_db_service
 from datetime import datetime
 import time
 
@@ -34,17 +34,17 @@ async def validate_prompt(request: PromptValidatorRequest):
             tokens_used=agent_response["tokens_used"],
             time_taken_ms=time_taken_ms,
             agent_name=PROMPT_VALIDATOR_AGENT_NAME,
+            agent_versiprompt_validator_service.PROMPT_VALIDATOR_AGENT_NAME,
             agent_version=agent_response["agent_version"],
-            agent_instructions=PROMPT_VALIDATOR_AGENT_INSTRUCTIONS,
-            model=request.model_deployment_name,
+            agent_instructions=prompt_validator_service.PROMPT_VALIDATOR_AGENT_INSTRUCTIONS,
+            model=settings.default_model_deployment,
             agent_timestamp=agent_response["timestamp"]
         )
         
         agent_details = AgentDetails(
-            agent_name=PROMPT_VALIDATOR_AGENT_NAME,
+            agent_name=prompt_validator_service.PROMPT_VALIDATOR_AGENT_NAME,
             agent_version=agent_response["agent_version"],
-            instructions=PROMPT_VALIDATOR_AGENT_INSTRUCTIONS,
-            model_deployment_name=request.model_deployment_name,
+            instructions=prompt_validator_service.ent_name=settings.default_model_deployment,
             timestamp=agent_response["timestamp"]
         )
         

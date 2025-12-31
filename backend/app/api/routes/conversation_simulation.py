@@ -3,8 +3,8 @@ from app.models.schemas import (
     ConversationSimulationRequest,
     ConversationSimulationResponse
 )
-from app.services.conversation_simulation_service import conversation_simulation_service
-from app.services.cosmos_db_service import cosmos_db_service
+from app.services.features.conversation_simulation_service import conversation_simulation_service
+from app.services.db.cosmos_db_service import cosmos_db_service
 from datetime import datetime
 import time
 
@@ -48,26 +48,23 @@ async def simulate_conversation(request: ConversationSimulationRequest):
         # Save to Cosmos DB
         conversation_history_dict = [
             {
-                "role": msg.role,
                 "agent_name": msg.agent_name,
-                "agent_version": msg.agent_version,
                 "message": msg.message,
                 "tokens_used": msg.tokens_used,
-                "time_taken_ms": msg.time_taken_ms,
                 "timestamp": msg.timestamp.isoformat()
             }
-            for msg in simulation_result["conversation_history"]
+            for msg in simulation_result.conversation_history
         ]
 
-        c1_agent_details = simulation_result["c1_agent_details"]
-        c2_agent_details = simulation_result["c2_agent_details"]
-        orchestrator_agent_details = simulation_result["orchestrator_agent_details"]
+        c1_agent_details = simulation_result.c1_agent_details
+        c2_agent_details = simulation_result.c2_agent_details
+        orchestrator_agent_details = simulation_result.orchestrator_agent_details
 
         await cosmos_db_service.save_conversation_simulation(
             conversation_properties=conv_props_dict,
             conversation_history=conversation_history_dict,
-            conversation_status=simulation_result["conversation_status"],
-            total_tokens_used=simulation_result["total_tokens_used"],
+            conversation_status=simulation_result.conversation_status,
+            total_tokens_used=simulation_result.total_tokens_used,
             total_time_taken_ms=total_time_taken_ms,
             c1_agent_details={
                 "agent_name": c1_agent_details.agent_name,
@@ -93,9 +90,9 @@ async def simulate_conversation(request: ConversationSimulationRequest):
         )
 
         return ConversationSimulationResponse(
-            conversation_history=simulation_result["conversation_history"],
-            conversation_status=simulation_result["conversation_status"],
-            total_tokens_used=simulation_result["total_tokens_used"],
+            conversation_history=simulation_result.conversation_history,
+            conversation_status=simulation_result.conversation_status,
+            total_tokens_used=simulation_result.total_tokens_used,
             total_time_taken_ms=total_time_taken_ms,
             start_time=start_time,
             end_time=end_time,

@@ -3,8 +3,9 @@ from app.models.schemas import (
     GeneralPromptRequest,
     GeneralPromptResponse
 )
-from app.services.general_prompt_service import general_prompt_service
-from app.services.cosmos_db_service import cosmos_db_service
+from app.core.config import settings
+from app.services.features.general_prompt_service import general_prompt_service
+from app.services.db.cosmos_db_service import cosmos_db_service
 from datetime import datetime
 import time
 
@@ -20,7 +21,6 @@ async def generate_response(request: GeneralPromptRequest):
     try:
         # Get response from general prompt service
         response_text, tokens_used = await general_prompt_service.generate_response(
-            model_deployment_name=request.model_deployment_name,
             prompt=request.prompt
         )
         
@@ -30,7 +30,7 @@ async def generate_response(request: GeneralPromptRequest):
         
         # Save to Cosmos DB
         await cosmos_db_service.save_general_prompt(
-            model_id=request.model_deployment_name,
+            model_id=settings.default_model_deployment,
             prompt=request.prompt,
             response=response_text,
             tokens_used=tokens_used,
@@ -38,7 +38,7 @@ async def generate_response(request: GeneralPromptRequest):
         )
         
         return GeneralPromptResponse(
-            model_deployment_name=request.model_deployment_name,
+            model_deployment_name=settings.default_model_deployment,
             response_text=response_text,
             tokens_used=tokens_used,
             time_taken_ms=time_taken_ms,

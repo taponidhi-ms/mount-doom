@@ -53,7 +53,6 @@ class BaseResponse(BaseModel):
 class PersonaGenerationRequest(BaseRequest):
     """Request for persona generation use case."""
     prompt: str
-    model_deployment_name: str = "gpt-4"  # Allow specifying model deployment
 
 
 class PersonaGenerationResponse(BaseResponse):
@@ -63,7 +62,6 @@ class PersonaGenerationResponse(BaseResponse):
 
 class GeneralPromptRequest(BaseRequest):
     """Request for general prompt use case."""
-    model_deployment_name: str
     prompt: str
 
 
@@ -80,7 +78,6 @@ class GeneralPromptResponse(BaseModel):
 class PromptValidatorRequest(BaseRequest):
     """Request for prompt validator use case."""
     prompt: str
-    model_deployment_name: str = "gpt-4"  # Allow specifying model deployment
 
 
 class PromptValidatorResponse(BaseResponse):
@@ -100,19 +97,29 @@ class ConversationProperties(BaseModel):
 
 class ConversationMessage(BaseModel):
     """A single message in a conversation."""
-    role: str  # "C1Agent" or "C2Agent"
     agent_name: str
-    agent_version: Optional[str] = None
     message: str
     tokens_used: Optional[int] = None
-    time_taken_ms: float
     timestamp: datetime
+
+
+class ConversationSimulationResult(BaseModel):
+    """Result from conversation simulation service."""
+    conversation_history: List[ConversationMessage]
+    conversation_status: str
+    total_tokens_used: Optional[int] = None
+    total_time_taken_ms: float
+    start_time: datetime
+    end_time: datetime
+    c1_agent_details: AgentDetails
+    c2_agent_details: AgentDetails
+    orchestrator_agent_details: AgentDetails
 
 
 class ConversationSimulationRequest(BaseRequest):
     """Request for conversation simulation use case."""
     conversation_properties: ConversationProperties
-    model_deployment_name: str = "gpt-4"  # Model deployment to use for all agents
+    conversation_prompt: str = "" # Added this as it seems to be used in route
     max_turns: int = Field(default=10, le=20)
 
 
