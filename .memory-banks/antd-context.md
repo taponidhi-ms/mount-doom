@@ -3,13 +3,18 @@
 ## Overview
 Mount Doom uses Ant Design (antd) as its primary UI component library for the Next.js frontend. Ant Design is an enterprise-class UI design language and React UI library with high-quality components.
 
+> **Note**: For a comprehensive list of all Ant Design documentation links (design patterns, components, blogs, and guides), see [`antd-llms-reference.txt`](./antd-llms-reference.txt) - the official llms.txt file from ant.design.
+
 ## Official Resources
 - **Official Website**: https://ant.design
+- **LLM Context File**: https://ant.design/llms.txt (also available in this repo as `antd-llms-reference.txt`)
+- **Semantic Descriptions**: https://ant.design/llms-semantic.md
 - **Documentation**: https://ant.design/docs/react/introduce
 - **Components**: https://ant.design/components/overview
 - **API Reference**: https://ant.design/docs/react/api
 - **Customization**: https://ant.design/docs/react/customize-theme
 - **Migration Guide**: https://ant.design/docs/react/migration-v5
+- **Next.js Integration**: https://ant.design/docs/react/use-with-next
 
 ## Core Components Used in Mount Doom
 
