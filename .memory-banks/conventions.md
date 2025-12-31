@@ -218,6 +218,31 @@ Response includes:
 - `has_next` - Boolean indicating if next page exists
 - `has_previous` - Boolean indicating if previous page exists
 
+**IMPORTANT - Field Name Mapping**:
+Browse endpoints return raw Cosmos DB documents, NOT formatted API response schemas.
+Frontend history tables must use Cosmos DB field names:
+- Use `timestamp` (NOT `start_time`)
+- Use `response` (NOT `response_text`)
+- Use `prompt` (same in both)
+- Use `tokens_used` (same in both)
+- Use `time_taken_ms` (same in both)
+
+Example table column configuration:
+```typescript
+const columns = [
+  {
+    title: 'Timestamp',
+    dataIndex: 'timestamp',  // ✅ Cosmos DB field name
+    render: (text: string) => new Date(text).toLocaleString(),
+  },
+  {
+    title: 'Response Preview',
+    dataIndex: 'response',  // ✅ Cosmos DB field name
+    render: (text: string) => text?.substring(0, 100) + '...',
+  },
+]
+```
+
 ## Database (Cosmos DB)
 
 ### Container Strategy
