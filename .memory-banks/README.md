@@ -40,6 +40,29 @@ Documents the four main use cases:
 
 Includes workflows, metrics, and implementation details for each.
 
+### antd-context.md
+Documents Ant Design UI library context and usage, including:
+- Core components used in the project
+- Common patterns and conventions
+- Integration with Next.js
+- Accessibility best practices
+- Styling approach
+- Component usage examples
+- Official documentation references
+
+This file provides essential context for understanding and working with the Ant Design component library used throughout the frontend.
+
+### antd-llms-reference.txt
+Official llms.txt file from ant.design containing comprehensive links to:
+- All Ant Design components documentation
+- Design pattern guides and specifications
+- React integration guides (Vite, Next.js, Umi, etc.)
+- Advanced topics (theming, SSR, i18n, custom date libraries)
+- Blog posts covering implementation details and best practices
+- Migration guides for version upgrades
+
+This is the official LLM context file provided by Ant Design for AI assistants and serves as a complete reference index.
+
 ## For GitHub Copilot
 
 ### Before Making Changes
@@ -47,6 +70,13 @@ Includes workflows, metrics, and implementation details for each.
 - Your changes align with existing patterns
 - You understand the full context
 - You avoid introducing inconsistencies
+
+**Key files to read**:
+- `architecture.md` - Project structure and patterns
+- `conventions.md` - Development standards and best practices
+- `use-cases.md` - Use case workflows and requirements
+- `antd-context.md` - Ant Design component library usage and patterns (read when working on frontend UI)
+- `antd-llms-reference.txt` - Official Ant Design documentation index (comprehensive reference for all components and guides)
 
 ### After Making Changes
 **ALWAYS update the relevant memory bank files** when your changes affect:
