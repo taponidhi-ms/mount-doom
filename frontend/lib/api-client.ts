@@ -148,7 +148,7 @@ class ApiClient {
     }
   }
 
-  // Models API - Removed (models are hardcoded in backend)
+  // Models API - Removed (GPT-4 is hardcoded in backend)
 
   // Persona Generation APIs
   async generatePersona(

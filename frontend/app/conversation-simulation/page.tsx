@@ -37,8 +37,14 @@ export default function ConversationSimulationPage() {
   }
 
   const handleSubmit = async () => {
-    if (!customerIntent.trim() || !customerSentiment.trim() || !conversationSubject.trim()) {
-      message.warning('Please fill in all fields')
+    // Validate fields and provide specific feedback
+    const missing = []
+    if (!customerIntent.trim()) missing.push('Customer Intent')
+    if (!customerSentiment.trim()) missing.push('Customer Sentiment')
+    if (!conversationSubject.trim()) missing.push('Conversation Subject')
+    
+    if (missing.length > 0) {
+      message.warning(`Please fill in: ${missing.join(', ')}`)
       return
     }
 
