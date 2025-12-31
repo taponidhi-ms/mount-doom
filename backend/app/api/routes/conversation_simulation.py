@@ -25,30 +25,32 @@ async def simulate_conversation(request: ConversationSimulationRequest):
     2. Orchestrator checks if conversation should continue
     3. C2 agent generates a customer response
     4. Orchestrator checks again if conversation should end
-    This repeats until max_turns or completion status is reached.
+    This repeats until max_turns (20) or completion status is reached.
     """
+    MAX_TURNS = 20  # Hardcoded max turns
+    
     logger.info("Received conversation simulation request",
-               max_turns=request.max_turns,
-               customer_intent=request.conversation_properties.customer_intent,
-               customer_sentiment=request.conversation_properties.customer_sentiment,
-               conversation_subject=request.conversation_properties.conversation_subject)
+               max_turns=MAX_TURNS,
+               customer_intent=request.customer_intent,
+               customer_sentiment=request.customer_sentiment,
+               conversation_subject=request.conversation_subject)
     
     start_time = datetime.utcnow()
     start_ms = time.time() * 1000
     
     try:
-        # Convert conversation properties to dict
+        # Convert request fields to dict for service
         conv_props_dict = {
-            "CustomerIntent": request.conversation_properties.customer_intent,
-            "CustomerSentiment": request.conversation_properties.customer_sentiment,
-            "ConversationSubject": request.conversation_properties.conversation_subject
+            "CustomerIntent": request.customer_intent,
+            "CustomerSentiment": request.customer_sentiment,
+            "ConversationSubject": request.conversation_subject
         }
 
         # Use conversation simulation service
         simulation_result = await conversation_simulation_service.simulate_conversation(
-            simulation_prompt=request.conversation_prompt,
+            simulation_prompt="",  # Not used anymore
             conversation_properties=conv_props_dict,
-            max_turns=request.max_turns
+            max_turns=MAX_TURNS
         )
 
         end_time = datetime.utcnow()

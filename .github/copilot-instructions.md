@@ -52,7 +52,7 @@ Mount Doom is a fullstack AI agent simulation platform built with FastAPI (backe
 
 ## Key Technologies
 - **Backend**: Python 3.9+, FastAPI, Azure AI Projects, Azure Cosmos DB
-- **Frontend**: Next.js 15, TypeScript, Tailwind CSS, shadcn/ui
+- **Frontend**: Next.js 15, TypeScript, Ant Design (antd)
 - **Authentication**: Azure DefaultAzureCredential
 - **Architecture**: Clean architecture with separation of concerns
 
@@ -65,13 +65,14 @@ Mount Doom is a fullstack AI agent simulation platform built with FastAPI (backe
 - Use Pydantic for validation
 - Use structlog for logging
 - Error handling with HTTPException
+- Agent instructions stored in static text files in `backend/app/instructions/`
 
 ### Frontend (TypeScript)
 - Use TypeScript for all files
 - Client components need 'use client' directive
-- Use Tailwind CSS for styling
+- Use Ant Design components for UI
 - Follow React hooks best practices
-- Proper error handling and loading states
+- Proper error handling and loading states with Ant Design Alert and message components
 
 ## Project Structure
 
@@ -82,6 +83,7 @@ backend/app/
 ├── core/            # Configuration
 ├── models/          # Pydantic schemas
 ├── services/        # Business logic (Azure AI, Cosmos DB)
+├── instructions/    # Agent instruction text files
 └── main.py         # FastAPI app
 ```
 
@@ -89,7 +91,7 @@ backend/app/
 ```
 frontend/
 ├── app/             # Next.js pages (one per use case)
-├── components/      # Reusable React components
+├── components/      # Reusable React components (PageLayout)
 └── lib/            # API client and utilities
 ```
 
@@ -99,20 +101,22 @@ frontend/
 - Services are singletons
 - Use dependency injection
 - Separate Azure AI and Cosmos DB concerns
-- Return tuples: (response, tokens) for AI calls
+- Agent instructions stored in text files
+- Use `create_agent_from_file()` to load instructions from files
 
 ### Frontend API Pattern
 - Centralized API client in `lib/api-client.ts`
 - Type-safe requests/responses
-- Error handling at component level
-- Show loading states during API calls
+- Error handling at component level with Ant Design Alert and message
+- Show loading states during API calls with Button loading prop
+- No model selection (hardcoded in backend)
 
 ## Use Cases (4 Total)
 
-1. **Persona Generation**: Generate personas using specialized agents
+1. **Persona Generation**: Generate personas using specialized parser-based agent
 2. **General Prompt**: Direct model access for general prompts
 3. **Prompt Validator**: Validate simulation prompts
-4. **Conversation Simulation**: Multi-turn conversations between C1 (service rep) and C2 (customer) agents
+4. **Conversation Simulation**: Multi-turn conversations (max 20 turns) between C1 (service rep) and C2 (customer) agents with simplified API (just intent, sentiment, subject)
 
 ## Azure Integration
 
@@ -131,11 +135,13 @@ frontend/
 ## Common Tasks
 
 ### Adding New Use Case
-1. Create route in `backend/app/api/routes/`
-2. Add schema in `backend/app/models/schemas.py`
-3. Add Cosmos DB method in `backend/app/services/cosmos_db_service.py`
-4. Create page in `frontend/app/[use-case]/page.tsx`
-5. Add API methods in `frontend/lib/api-client.ts`
+1. Create instruction file in `backend/app/instructions/[agent_name].txt`
+2. Create route in `backend/app/api/routes/`
+3. Add schema in `backend/app/models/schemas.py`
+4. Create service in `backend/app/services/features/` using `create_agent_from_file()`
+5. Add Cosmos DB method in `backend/app/services/cosmos_db_service.py`
+6. Create page in `frontend/app/[use-case]/page.tsx` with Ant Design components
+7. Add API methods in `frontend/lib/api-client.ts`
 
 ### Metrics to Track
 - Tokens used (from Azure AI response)

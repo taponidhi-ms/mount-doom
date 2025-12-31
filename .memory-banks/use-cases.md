@@ -5,12 +5,11 @@
 **Purpose**: Generate detailed personas from simulation prompts using specialized AI agents.
 
 **Workflow**:
-1. User selects a model (GPT-4 or GPT-3.5 Turbo)
-2. User enters a simulation prompt describing the persona requirements
-3. Backend sends prompt to PersonaAgent via Azure AI Projects
-4. PersonaAgent generates detailed persona response
-5. Response stored in Cosmos DB `persona_generation` container with complete agent details
-6. Frontend displays persona with metrics
+1. User enters a simulation prompt describing the persona requirements
+2. Backend sends prompt to PersonaAgent via Azure AI Projects
+3. PersonaAgent generates detailed persona response (now uses parser-based instruction)
+4. Response stored in Cosmos DB `persona_generation` container with complete agent details
+5. Frontend displays persona with metrics
 
 **Agent**: 
 - PersonaAgent (fixed agent name)
@@ -60,12 +59,11 @@
 **Purpose**: Validate simulation prompts to ensure quality and effectiveness.
 
 **Workflow**:
-1. User selects a model (GPT-4 or GPT-3.5 Turbo)
-2. User enters simulation prompt to validate
-3. Backend sends prompt to PromptValidatorAgent
-4. PromptValidatorAgent analyzes prompt and provides feedback
-5. Response stored in Cosmos DB `prompt_validator` container with complete agent details
-6. Frontend displays validation results
+1. User enters simulation prompt to validate
+2. Backend sends prompt to PromptValidatorAgent
+3. PromptValidatorAgent analyzes prompt and provides feedback
+4. Response stored in Cosmos DB `prompt_validator` container with complete agent details
+5. Frontend displays validation results
 
 **Agent**:
 - PromptValidatorAgent (fixed agent name)
@@ -96,22 +94,19 @@
 - **OrchestratorAgent**: Determines conversation completion (fixed agent name)
 
 **Workflow**:
-1. User selects a model (GPT-4 or GPT-3.5 Turbo) - used for all three agents
-2. User configures conversation in one of two ways:
-   - **Option A**: Select existing persona from persona generation container
-   - **Option B**: Manually input customer properties:
-     - Customer Intent (e.g., "Technical Support")
-     - Customer Sentiment (e.g., "Frustrated")
-     - Conversation Subject (e.g., "Product Issue")
-3. User sets max turns (1-20)
-4. Simulation starts:
+1. User provides customer configuration directly:
+   - Customer Intent (e.g., "Technical Support")
+   - Customer Sentiment (e.g., "Frustrated")
+   - Conversation Subject (e.g., "Product Issue")
+2. Max turns is hardcoded to 20 in backend
+3. Simulation starts:
    - C1Agent speaks first (as service rep)
    - OrchestratorAgent checks if conversation is complete
    - C2Agent responds (as customer)
    - OrchestratorAgent checks again
-   - Repeat until complete or max turns reached
-5. Full conversation stored in Cosmos DB `conversation_simulation` container with details for all three agents
-6. Frontend displays conversation history with metrics
+   - Repeat until complete or max turns (20) reached
+4. Full conversation stored in Cosmos DB `conversation_simulation` container with details for all three agents
+5. Frontend displays conversation history with metrics
 
 **Agents**:
 - All three agents use fixed names and instructions defined in service classes
@@ -165,7 +160,7 @@ messages: {history}
 
 ### Request Features
 - Non-streaming by default (streaming planned for future)
-- Model: gpt-4 (default from settings)
+- Model is hardcoded in backend (GPT-4)
 - Prompt input (varies by use case)
 
 ### Response Features
@@ -182,11 +177,13 @@ messages: {history}
 - Timestamps for analytics
 
 ### UI Features
-- Clean, intuitive interface with shadcn/ui components
+- Clean, intuitive interface with Ant Design components
 - Tab-based navigation (Generate/History)
-- Real-time loading states
-- Error handling and display
+- Real-time loading states with spinners
+- Error handling with Alert components
+- Toast notifications for success/error
 - Metrics visualization
 - Paginated history browsing
 - Responsive design
-- Table view for browsing past results
+- Table view for browsing past results with expandable rows
+- Proper accessibility with ARIA labels

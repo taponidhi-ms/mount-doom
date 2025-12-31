@@ -152,32 +152,35 @@ logger.info("="*60)
 - Tab-based navigation for generate/history views
 
 ### Styling
-- Tailwind CSS v4 utility classes
-- CSS variables for theming
-- shadcn/ui components for consistency
-- Responsive design with mobile-first approach
+- Ant Design components with default styling
+- Inline styles for custom layouts
+- Responsive design with Ant Design grid system
+- Proper accessibility with ARIA labels and semantic HTML
 
-### UI Components (shadcn/ui)
+### UI Components (Ant Design)
 Standard components used across pages:
-- `Button` - Primary actions (with variant: outline, ghost)
+- `Button` - Primary actions (with loading states)
 - `Card` - Content containers
 - `Tabs` - Generate/History navigation
 - `Table` - Display history with pagination
-- `Input` - Form inputs
-- `Textarea` - Multi-line text inputs
-- `Select` - Dropdown selections
+- `Input` - Form inputs (Input, TextArea)
+- `Space` - Layout spacing
+- `Typography` - Text elements (Title, Paragraph, Text)
+- `Alert` - Error and info messages
+- `message` - Toast notifications
+- `Tag` - Status and label indicators
 
 ### Page Structure Pattern
 All use case pages follow this structure:
-1. **Header**: Title and description
-2. **Tabs**: Generate tab and History tab
-3. **Generate Tab**:
-   - Configuration form
+1. **Header**: Title and description (via PageLayout component)
+2. **Tabs**: Generate/Validate/Simulate tab and History tab
+3. **Generate/Validate/Simulate Tab**:
+   - Configuration form (Ant Design Card)
    - Submit button with loading state
    - Result display (if available)
 4. **History Tab**:
-   - Table with past results
-   - Pagination controls (Previous/Next)
+   - Ant Design Table with past results
+   - Pagination controls (built into Table)
    - Loading and error states
 
 ## API Design
@@ -252,25 +255,31 @@ The AzureAIService is now a **singleton client factory** with minimal responsibi
 
 ### Service-Specific Agent Configuration
 Each use case service (PersonaGenerationService, PromptValidatorService, etc.) contains:
-- Fixed `agent_name`, `instructions`, `model_deployment` for that use case
-- Agent creation logic by calling `azure_ai_service.create_agent()`
+- Fixed `agent_name`, `instructions_file` for that use case
+- Agent creation logic by calling `azure_ai_service.create_agent_from_file()`
 - Workflow-specific logic (conversation management, multi-agent orchestration, etc.)
 - Metrics tracking and data transformation
+
+### Agent Instructions Storage
+- All agent instructions are stored in static text files in `backend/app/instructions/`
+- File naming convention: `{agent_name}.txt` (e.g., `persona_generation_agent.txt`)
+- Services reference instruction files by filename
+- Two agent creation methods available:
+  - `create_agent_from_file(agent_name, instructions_path)` - Loads from file (preferred)
+  - `create_agent(agent_name, instructions)` - Direct text (for dynamic use cases)
 
 ### Agent Usage Pattern
 ```python
 # In your service class:
 def __init__(self):
     self.agent_name = PERSONA_AGENT_NAME
-    self.instructions = PERSONA_AGENT_INSTRUCTIONS
-    self.model_deployment = "gpt-4"
+    self.instructions_file = "persona_generation_agent.txt"
 
 async def your_method(self, prompt: str):
-    # Create agent using AzureAIService factory
-    agent = azure_ai_service.create_agent(
+    # Create agent using AzureAIService factory from file
+    agent = azure_ai_service.create_agent_from_file(
         agent_name=self.agent_name,
-        instructions=self.instructions,
-        model_deployment_name=self.model_deployment
+        instructions_path=self.instructions_file
     )
     
     # Use agent to process prompt

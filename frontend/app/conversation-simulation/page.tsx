@@ -1,31 +1,18 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import Link from 'next/link'
-import { ArrowLeft, Loader2, ChevronLeft, ChevronRight } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { apiClient, ModelInfo, ConversationSimulationResponse, BrowseResponse } from '@/lib/api-client'
+import { useState } from 'react'
+import { Button, Card, Input, Tabs, Table, Space, Typography, message, Alert, Collapse, Tag } from 'antd'
+import PageLayout from '@/components/PageLayout'
+import { apiClient, ConversationSimulationResponse, BrowseResponse, ConversationMessage } from '@/lib/api-client'
+
+const { TextArea } = Input
+const { Paragraph, Text, Title } = Typography
+const { Panel } = Collapse
 
 export default function ConversationSimulationPage() {
-  const [models, setModels] = useState<ModelInfo[]>([])
-  const [selectedModel, setSelectedModel] = useState('gpt-4')
-  
-  // Persona selection state
-  const [usePersona, setUsePersona] = useState(false)
-  const [personaList, setPersonaList] = useState<BrowseResponse | null>(null)
-  const [selectedPersona, setSelectedPersona] = useState<any>(null)
-  const [loadingPersonas, setLoadingPersonas] = useState(false)
-  
-  // Manual input state
   const [customerIntent, setCustomerIntent] = useState('')
   const [customerSentiment, setCustomerSentiment] = useState('')
   const [conversationSubject, setConversationSubject] = useState('')
-  
-  const [maxTurns, setMaxTurns] = useState(10)
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<ConversationSimulationResponse | null>(null)
   const [error, setError] = useState('')
@@ -33,95 +20,31 @@ export default function ConversationSimulationPage() {
   // History state
   const [historyLoading, setHistoryLoading] = useState(false)
   const [historyData, setHistoryData] = useState<BrowseResponse | null>(null)
-  const [historyPage, setHistoryPage] = useState(1)
   const [historyError, setHistoryError] = useState('')
 
-  useEffect(() => {
-    loadModels()
-  }, [])
-
-  const loadModels = async () => {
-    const response = await apiClient.getModels()
-    if (response.data) {
-      setModels(response.data.models)
-      if (response.data.models.length > 0) {
-        setSelectedModel(response.data.models[0].model_deployment_name)
-      }
-    } else if (response.error) {
-      setError(`Failed to load models: ${response.error}`)
-    }
-  }
-
-  const loadPersonas = async () => {
-    setLoadingPersonas(true)
-    const response = await apiClient.browsePersonaGenerations(1, 50) // Load first 50 personas
-    setLoadingPersonas(false)
-    
-    if (response.data) {
-      setPersonaList(response.data)
-    }
-  }
-
-  const loadHistory = async (page: number = 1) => {
+  const loadHistory = async (page: number = 1, pageSize: number = 10) => {
     setHistoryLoading(true)
     setHistoryError('')
-    const response = await apiClient.browseConversationSimulations(page, 10)
+    const response = await apiClient.browseConversationSimulations(page, pageSize)
     setHistoryLoading(false)
     
     if (response.data) {
       setHistoryData(response.data)
-      setHistoryPage(page)
     } else if (response.error) {
       setHistoryError(response.error)
+      message.error('Failed to load history')
     }
   }
 
-  const handlePersonaToggle = (checked: boolean) => {
-    setUsePersona(checked)
-    if (checked && !personaList) {
-      loadPersonas()
-    }
-    // Clear the other input method
-    if (checked) {
-      setCustomerIntent('')
-      setCustomerSentiment('')
-      setConversationSubject('')
-    } else {
-      setSelectedPersona(null)
-    }
-  }
-
-  const handlePersonaSelect = (persona: any) => {
-    setSelectedPersona(persona)
-    // Try to extract conversation properties from persona response if available
-    // For now, we'll just use the persona as is
-  }
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const handleSubmit = async () => {
+    // Validate fields and provide specific feedback
+    const missing = []
+    if (!customerIntent.trim()) missing.push('Customer Intent')
+    if (!customerSentiment.trim()) missing.push('Customer Sentiment')
+    if (!conversationSubject.trim()) missing.push('Conversation Subject')
     
-    let intent = customerIntent
-    let sentiment = customerSentiment
-    let subject = conversationSubject
-    
-    if (usePersona) {
-      if (!selectedPersona) {
-        setError('Please select a persona')
-        return
-      }
-      // Extract properties from persona if available, otherwise use generic values
-      intent = customerIntent || 'Based on persona'
-      sentiment = customerSentiment || 'Based on persona'
-      subject = conversationSubject || selectedPersona.response?.substring(0, 100) || 'Based on persona'
-    } else {
-      if (!intent || !sentiment || !subject) {
-        setError('Please fill in all customer persona fields')
-        return
-      }
-    }
-
-    if (maxTurns < 1 || maxTurns > 20) {
-      setError('Max turns must be between 1 and 20')
+    if (missing.length > 0) {
+      message.warning(`Please fill in: ${missing.join(', ')}`)
       return
     }
 
@@ -130,322 +53,268 @@ export default function ConversationSimulationPage() {
     setResult(null)
 
     const response = await apiClient.simulateConversation(
-      {
-        CustomerIntent: intent,
-        CustomerSentiment: sentiment,
-        ConversationSubject: subject,
-      },
-      '', // No conversation_prompt based on requirements
-      maxTurns
+      customerIntent,
+      customerSentiment,
+      conversationSubject
     )
     setLoading(false)
 
     if (response.data) {
       setResult(response.data)
-      // Reload history to show the new result
-      loadHistory(1)
+      message.success('Conversation simulated successfully!')
+      if (historyData) {
+        loadHistory(1)
+      }
     } else if (response.error) {
       setError(response.error)
+      message.error('Failed to simulate conversation')
     }
   }
 
+  const renderConversationHistory = (history: ConversationMessage[]) => {
+    return (
+      <Space direction="vertical" size="small" style={{ width: '100%' }}>
+        {history.map((msg, index) => (
+          <Card 
+            key={index} 
+            size="small"
+            style={{ 
+              background: msg.agent_name === 'C1Agent' ? '#e6f7ff' : '#f6ffed',
+            }}
+          >
+            <Space direction="vertical" size="small" style={{ width: '100%' }}>
+              <div>
+                <Tag color={msg.agent_name === 'C1Agent' ? 'blue' : 'green'}>
+                  {msg.agent_name === 'C1Agent' ? 'Service Rep' : 'Customer'}
+                </Tag>
+                <Text type="secondary" style={{ fontSize: 12 }}>
+                  {new Date(msg.timestamp).toLocaleTimeString()}
+                </Text>
+              </div>
+              <Text>{msg.message}</Text>
+              {msg.tokens_used && (
+                <Text type="secondary" style={{ fontSize: 12 }}>
+                  Tokens: {msg.tokens_used}
+                </Text>
+              )}
+            </Space>
+          </Card>
+        ))}
+      </Space>
+    )
+  }
+
+  const columns = [
+    {
+      title: 'Timestamp',
+      dataIndex: 'start_time',
+      key: 'timestamp',
+      render: (text: string) => new Date(text).toLocaleString(),
+      width: 180,
+    },
+    {
+      title: 'Intent',
+      dataIndex: 'conversation_properties',
+      key: 'intent',
+      width: 150,
+      ellipsis: true,
+      render: (props: any) => props?.CustomerIntent || 'N/A',
+    },
+    {
+      title: 'Sentiment',
+      dataIndex: 'conversation_properties',
+      key: 'sentiment',
+      width: 120,
+      render: (props: any) => props?.CustomerSentiment || 'N/A',
+    },
+    {
+      title: 'Subject',
+      dataIndex: 'conversation_properties',
+      key: 'subject',
+      ellipsis: true,
+      render: (props: any) => props?.ConversationSubject || 'N/A',
+    },
+    {
+      title: 'Status',
+      dataIndex: 'conversation_status',
+      key: 'status',
+      width: 120,
+      render: (status: string) => (
+        <Tag color={status === 'Completed' ? 'green' : 'orange'}>
+          {status}
+        </Tag>
+      ),
+    },
+    {
+      title: 'Messages',
+      dataIndex: 'conversation_history',
+      key: 'messages',
+      width: 100,
+      render: (history: any[]) => history?.length || 0,
+    },
+    {
+      title: 'Tokens',
+      dataIndex: 'total_tokens_used',
+      key: 'tokens',
+      width: 100,
+      render: (value: number) => value || 'N/A',
+    },
+  ]
+
+  const tabItems = [
+    {
+      key: 'simulate',
+      label: 'Simulate',
+      children: (
+        <Space direction="vertical" size="large" style={{ width: '100%' }}>
+          <Card title="Conversation Configuration">
+            <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+              <div>
+                <Text strong>Customer Intent</Text>
+                <Input
+                  value={customerIntent}
+                  onChange={(e) => setCustomerIntent(e.target.value)}
+                  placeholder="e.g., Technical Support, Billing Inquiry, Product Return"
+                  style={{ marginTop: 8 }}
+                  disabled={loading}
+                  size="large"
+                />
+              </div>
+
+              <div>
+                <Text strong>Customer Sentiment</Text>
+                <Input
+                  value={customerSentiment}
+                  onChange={(e) => setCustomerSentiment(e.target.value)}
+                  placeholder="e.g., Frustrated, Happy, Confused, Angry"
+                  style={{ marginTop: 8 }}
+                  disabled={loading}
+                  size="large"
+                />
+              </div>
+
+              <div>
+                <Text strong>Conversation Subject</Text>
+                <Input
+                  value={conversationSubject}
+                  onChange={(e) => setConversationSubject(e.target.value)}
+                  placeholder="e.g., Product Defect, Service Cancellation, Account Issue"
+                  style={{ marginTop: 8 }}
+                  disabled={loading}
+                  size="large"
+                />
+              </div>
+              
+              <Alert 
+                message="Note" 
+                description="Conversations will run up to 20 turns or until completion is detected by the orchestrator agent."
+                type="info" 
+                showIcon 
+              />
+
+              <Button 
+                type="primary" 
+                size="large"
+                onClick={handleSubmit}
+                loading={loading}
+                disabled={!customerIntent.trim() || !customerSentiment.trim() || !conversationSubject.trim()}
+                block
+              >
+                {loading ? 'Simulating...' : 'Start Simulation'}
+              </Button>
+
+              {error && (
+                <Alert message="Error" description={error} type="error" showIcon />
+              )}
+            </Space>
+          </Card>
+
+          {result && (
+            <Card title="Simulation Results">
+              <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+                <Space size="large" wrap>
+                  <div>
+                    <Text type="secondary">Status: </Text>
+                    <Tag color={result.conversation_status === 'Completed' ? 'green' : 'orange'}>
+                      {result.conversation_status}
+                    </Tag>
+                  </div>
+                  <div>
+                    <Text type="secondary">Total Messages: </Text>
+                    <Text strong>{result.conversation_history.length}</Text>
+                  </div>
+                  <div>
+                    <Text type="secondary">Total Tokens: </Text>
+                    <Text strong>{result.total_tokens_used || 'N/A'}</Text>
+                  </div>
+                  <div>
+                    <Text type="secondary">Time Taken: </Text>
+                    <Text strong>{Math.round(result.total_time_taken_ms)} ms</Text>
+                  </div>
+                </Space>
+
+                <div>
+                  <Text strong style={{ fontSize: 16 }}>Conversation History</Text>
+                  <div style={{ marginTop: 16 }}>
+                    {renderConversationHistory(result.conversation_history)}
+                  </div>
+                </div>
+              </Space>
+            </Card>
+          )}
+        </Space>
+      ),
+    },
+    {
+      key: 'history',
+      label: 'History',
+      children: (
+        <Card title="Simulation History">
+          {historyError && (
+            <Alert message="Error" description={historyError} type="error" showIcon style={{ marginBottom: 16 }} />
+          )}
+          
+          <Table
+            dataSource={historyData?.items || []}
+            columns={columns}
+            loading={historyLoading}
+            rowKey={(record) => record.id || record.start_time}
+            pagination={{
+              current: historyData?.page || 1,
+              pageSize: historyData?.page_size || 10,
+              total: historyData?.total_count || 0,
+              showSizeChanger: true,
+              showTotal: (total) => `Total ${total} items`,
+              onChange: (page, pageSize) => loadHistory(page, pageSize),
+            }}
+            expandable={{
+              expandedRowRender: (record) => (
+                <div style={{ padding: 16 }}>
+                  {record.conversation_history && renderConversationHistory(record.conversation_history)}
+                </div>
+              ),
+            }}
+          />
+        </Card>
+      ),
+    },
+  ]
+
   return (
-    <div className="min-h-screen p-8">
-      <div className="max-w-6xl mx-auto">
-        <Link href="/" className="inline-flex items-center text-sm text-gray-600 dark:text-gray-400 hover:text-foreground mb-6">
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Back to Home
-        </Link>
-
-        <h1 className="text-3xl font-bold mb-2">Conversation Simulation</h1>
-        <p className="text-gray-600 dark:text-gray-400 mb-6">
-          Simulate multi-turn conversations between C1Agent (customer service representative) and C2Agent (customer).
-        </p>
-
-        <Tabs defaultValue="generate" className="space-y-4">
-          <TabsList>
-            <TabsTrigger value="generate">Generate</TabsTrigger>
-            <TabsTrigger value="history" onClick={() => loadHistory(1)}>History</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="generate" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Configure Simulation</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <form onSubmit={handleSubmit} className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium mb-2">Select Model</label>
-                    <select
-                      value={selectedModel}
-                      onChange={(e) => setSelectedModel(e.target.value)}
-                      disabled={loading || models.length === 0}
-                      className="w-full px-3 py-2 border rounded-md"
-                    >
-                      {models.length === 0 ? (
-                        <option>No models available</option>
-                      ) : (
-                        models.map((model) => (
-                          <option key={model.model_deployment_name} value={model.model_deployment_name}>
-                            {model.display_name} {model.description && `- ${model.description}`}
-                          </option>
-                        ))
-                      )}
-                    </select>
-                    <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
-                      This model will be used for both C1Agent and C2Agent
-                    </p>
-                  </div>
-
-                  <div className="border-t pt-4">
-                    <div className="flex items-center gap-2 mb-4">
-                      <input
-                        type="checkbox"
-                        id="use-persona"
-                        checked={usePersona}
-                        onChange={(e) => handlePersonaToggle(e.target.checked)}
-                        disabled={loading}
-                        className="h-4 w-4"
-                      />
-                      <label htmlFor="use-persona" className="text-sm font-medium">
-                        Use persona from persona generation
-                      </label>
-                    </div>
-
-                    {usePersona ? (
-                      <div>
-                        <label className="block text-sm font-medium mb-2">Select Persona</label>
-                        {loadingPersonas ? (
-                          <div className="flex items-center justify-center py-4">
-                            <Loader2 className="h-6 w-6 animate-spin" />
-                          </div>
-                        ) : personaList && personaList.items.length > 0 ? (
-                          <select
-                            value={selectedPersona?.id || ''}
-                            onChange={(e) => {
-                              const persona = personaList.items.find((p: any) => p.id === e.target.value)
-                              handlePersonaSelect(persona)
-                            }}
-                            disabled={loading}
-                            className="w-full px-3 py-2 border rounded-md"
-                          >
-                            <option value="">-- Select a persona --</option>
-                            {personaList.items.map((persona: any) => (
-                              <option key={persona.id} value={persona.id}>
-                                {persona.prompt?.substring(0, 80)}... ({new Date(persona.timestamp).toLocaleDateString()})
-                              </option>
-                            ))}
-                          </select>
-                        ) : (
-                          <p className="text-sm text-gray-500">No personas available. Generate some first.</p>
-                        )}
-                        {selectedPersona && (
-                          <div className="mt-2 p-3 bg-gray-50 dark:bg-gray-900 rounded-md">
-                            <p className="text-sm font-medium mb-1">Selected Persona:</p>
-                            <p className="text-xs text-gray-600 dark:text-gray-400 max-h-32 overflow-y-auto">
-                              {selectedPersona.response}
-                            </p>
-                          </div>
-                        )}
-                      </div>
-                    ) : (
-                      <>
-                        <div>
-                          <label className="block text-sm font-medium mb-2">Customer Intent</label>
-                          <Input
-                            value={customerIntent}
-                            onChange={(e) => setCustomerIntent(e.target.value)}
-                            placeholder="e.g., Technical Support, Billing Inquiry, Product Return"
-                            disabled={loading}
-                          />
-                        </div>
-
-                        <div className="mt-4">
-                          <label className="block text-sm font-medium mb-2">Customer Sentiment</label>
-                          <Input
-                            value={customerSentiment}
-                            onChange={(e) => setCustomerSentiment(e.target.value)}
-                            placeholder="e.g., Frustrated, Happy, Confused, Angry"
-                            disabled={loading}
-                          />
-                        </div>
-
-                        <div className="mt-4">
-                          <label className="block text-sm font-medium mb-2">Conversation Subject</label>
-                          <Input
-                            value={conversationSubject}
-                            onChange={(e) => setConversationSubject(e.target.value)}
-                            placeholder="e.g., Product Issue, Account Problem, Feature Request"
-                            disabled={loading}
-                          />
-                        </div>
-                      </>
-                    )}
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium mb-2">
-                      Max Turns (1-20)
-                    </label>
-                    <Input
-                      type="number"
-                      min={1}
-                      max={20}
-                      value={maxTurns}
-                      onChange={(e) => setMaxTurns(parseInt(e.target.value) || 10)}
-                      disabled={loading}
-                    />
-                    <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
-                      Maximum number of conversation turns allowed
-                    </p>
-                  </div>
-
-                  {error && (
-                    <div className="p-3 bg-red-50 dark:bg-red-950 text-red-600 dark:text-red-400 rounded-md text-sm">
-                      {error}
-                    </div>
-                  )}
-
-                  <Button
-                    type="submit"
-                    disabled={loading || !selectedModel}
-                  >
-                    {loading ? (
-                      <>
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        Simulating Conversation...
-                      </>
-                    ) : (
-                      'Start Simulation'
-                    )}
-                  </Button>
-                </form>
-              </CardContent>
-            </Card>
-
-            {result && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Conversation Result</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4 text-sm">
-                      <div>
-                        <span className="font-medium">Status:</span> {result.conversation_status}
-                      </div>
-                      <div>
-                        <span className="font-medium">Total Tokens:</span> {result.total_tokens_used || 'N/A'}
-                      </div>
-                      <div>
-                        <span className="font-medium">Time Taken:</span> {Math.round(result.total_time_taken_ms)} ms
-                      </div>
-                      <div>
-                        <span className="font-medium">Messages:</span> {result.conversation_history.length}
-                      </div>
-                    </div>
-                    
-                    <div className="border-t pt-4">
-                      <h4 className="font-medium mb-3">Conversation History</h4>
-                      <div className="space-y-3">
-                        {result.conversation_history.map((msg, idx) => (
-                          <div key={idx} className="border-l-4 border-gray-300 pl-3">
-                            <div className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                              {msg.agent_name} {msg.tokens_used && `(${msg.tokens_used} tokens)`}
-                            </div>
-                            <div className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                              {msg.message}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-          </TabsContent>
-
-          <TabsContent value="history" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Past Simulations</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {historyLoading ? (
-                  <div className="flex items-center justify-center py-8">
-                    <Loader2 className="h-8 w-8 animate-spin" />
-                  </div>
-                ) : historyError ? (
-                  <div className="p-3 bg-red-50 dark:bg-red-950 text-red-600 dark:text-red-400 rounded-md text-sm">
-                    {historyError}
-                  </div>
-                ) : historyData && historyData.items.length > 0 ? (
-                  <>
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Timestamp</TableHead>
-                          <TableHead>Subject</TableHead>
-                          <TableHead>Status</TableHead>
-                          <TableHead>Messages</TableHead>
-                          <TableHead>Tokens</TableHead>
-                          <TableHead>Time (ms)</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {historyData.items.map((item: any, idx: number) => (
-                          <TableRow key={item.id || idx}>
-                            <TableCell className="text-sm">
-                              {new Date(item.timestamp).toLocaleString()}
-                            </TableCell>
-                            <TableCell className="max-w-xs truncate text-sm">
-                              {item.conversation_properties?.ConversationSubject || 'N/A'}
-                            </TableCell>
-                            <TableCell className="text-sm">{item.conversation_status}</TableCell>
-                            <TableCell className="text-sm">{item.conversation_history?.length || 0}</TableCell>
-                            <TableCell className="text-sm">{item.total_tokens_used || 'N/A'}</TableCell>
-                            <TableCell className="text-sm">{Math.round(item.total_time_taken_ms || 0)}</TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                    
-                    <div className="flex items-center justify-between mt-4">
-                      <div className="text-sm text-gray-600 dark:text-gray-400">
-                        Page {historyData.page} of {historyData.total_pages} ({historyData.total_count} total)
-                      </div>
-                      <div className="flex gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          disabled={!historyData.has_previous || historyLoading}
-                          onClick={() => loadHistory(historyPage - 1)}
-                        >
-                          <ChevronLeft className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          disabled={!historyData.has_next || historyLoading}
-                          onClick={() => loadHistory(historyPage + 1)}
-                        >
-                          <ChevronRight className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  </>
-                ) : (
-                  <div className="text-center py-8 text-gray-500">
-                    No past simulations found
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
-      </div>
-    </div>
+    <PageLayout
+      title="Conversation Simulation"
+      description="Simulate multi-turn conversations between customer service representatives and customers."
+      showBackButton
+    >
+      <Tabs 
+        defaultActiveKey="simulate" 
+        items={tabItems}
+        onChange={(key) => {
+          if (key === 'history' && !historyData) {
+            loadHistory(1)
+          }
+        }}
+      />
+    </PageLayout>
   )
 }

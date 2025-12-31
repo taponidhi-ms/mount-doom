@@ -6,6 +6,8 @@ from openai import OpenAI
 from app.core.config import settings
 from typing import Optional, NamedTuple, Dict, TYPE_CHECKING
 import structlog
+import os
+from pathlib import Path
 
 if TYPE_CHECKING:
     from app.models.schemas import AgentDetails
@@ -75,6 +77,55 @@ class AzureAIService:
         if self._openai_client is None:
             self._openai_client = self._client.get_openai_client()
         return self._openai_client
+
+    def _load_instructions_from_file(self, instructions_path: str) -> str:
+        """
+        Load instructions from a text file.
+        
+        Args:
+            instructions_path: Path to the instructions file (relative to app/instructions/ or absolute)
+            
+        Returns:
+            str: The instructions text
+        """
+        # If path is relative, make it relative to app/instructions/
+        if not os.path.isabs(instructions_path):
+            base_dir = Path(__file__).parent.parent / "instructions"
+            full_path = base_dir / instructions_path
+        else:
+            full_path = Path(instructions_path)
+        
+        logger.debug("Loading instructions from file", path=str(full_path))
+        
+        try:
+            with open(full_path, 'r', encoding='utf-8') as f:
+                instructions = f.read().strip()
+            logger.debug("Instructions loaded", length=len(instructions))
+            return instructions
+        except FileNotFoundError:
+            logger.error("Instructions file not found", path=str(full_path))
+            raise
+        except Exception as e:
+            logger.error("Error reading instructions file", path=str(full_path), error=str(e))
+            raise
+
+    def create_agent_from_file(
+            self,
+            agent_name: str,
+            instructions_path: str
+    ) -> Agent:
+        """
+        Get or create an agent with instructions loaded from a file.
+        
+        Args:
+            agent_name: The name of the agent
+            instructions_path: Path to the instructions file (relative to app/instructions/ or absolute)
+            
+        Returns:
+            Agent: The created or cached Agent object
+        """
+        instructions = self._load_instructions_from_file(instructions_path)
+        return self.create_agent(agent_name, instructions)
 
     def create_agent(
             self,

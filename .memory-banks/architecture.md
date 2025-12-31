@@ -103,21 +103,20 @@ frontend/
 │   ├── prompt-validator/
 │   └── conversation-simulation/
 ├── components/      # React components
-│   ├── ui/         # shadcn/ui components (Button, Card, Tabs, Table, etc.)
-│   └── result-display.tsx
+│   └── PageLayout.tsx  # Reusable page layout component
 └── lib/            # Utilities and API client
 ```
 
 ### Key Principles
 - Component reusability
 - Type safety with TypeScript
-- Responsive design with Tailwind CSS v4
-- Accessible UI with shadcn/ui components
+- Responsive design with Ant Design
+- Accessible UI with Ant Design components
 - Tab-based interface for generate and history views
 
 ### Pages
 Each use case has a dedicated page with two tabs:
-- **Generate Tab**: Form for creating new requests
+- **Generate/Validate/Simulate Tab**: Form for creating new requests
 - **History Tab**: Paginated view of past results
 
 Pages:
@@ -125,7 +124,7 @@ Pages:
 - `/general-prompt` - Generate and view general prompts
 - `/prompt-validator` - Validate and view prompt validations
 - `/conversation-simulation` - Simulate and view conversations
-  - Special feature: Can select existing personas or input customer fields manually
+  - Special feature: Simple form with customer intent, sentiment, and subject
 
 ## Data Flow
 

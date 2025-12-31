@@ -79,10 +79,11 @@ export interface PromptValidatorRequest {
 export interface PromptValidatorResponse extends BaseResponse {}
 
 // Conversation Simulation
-export interface ConversationProperties {
-  CustomerIntent: string;
-  CustomerSentiment: string;
-  ConversationSubject: string;
+export interface ConversationSimulationRequest {
+  customer_intent: string;
+  customer_sentiment: string;
+  conversation_subject: string;
+  stream?: boolean;
 }
 
 export interface ConversationMessage {
@@ -90,13 +91,6 @@ export interface ConversationMessage {
   message: string;
   tokens_used?: number;
   timestamp: string;
-}
-
-export interface ConversationSimulationRequest {
-  conversation_properties: ConversationProperties;
-  conversation_prompt?: string;
-  max_turns?: number;
-  stream?: boolean;
 }
 
 export interface ConversationSimulationResponse {
@@ -154,19 +148,15 @@ class ApiClient {
     }
   }
 
-  // Models API
-  async getModels(): Promise<ApiResponse<AvailableModelsResponse>> {
-    return this.request<AvailableModelsResponse>('/api/v1/models');
-  }
+  // Models API - Removed (GPT-4 is hardcoded in backend)
 
   // Persona Generation APIs
   async generatePersona(
-    prompt: string,
-    model: string = 'gpt-4'
+    prompt: string
   ): Promise<ApiResponse<PersonaGenerationResponse>> {
     return this.request<PersonaGenerationResponse>('/api/v1/persona-generation/generate', {
       method: 'POST',
-      body: JSON.stringify({ prompt, model }),
+      body: JSON.stringify({ prompt }),
     });
   }
 
@@ -204,12 +194,11 @@ class ApiClient {
 
   // Prompt Validator APIs
   async validatePrompt(
-    prompt: string,
-    model: string = 'gpt-4'
+    prompt: string
   ): Promise<ApiResponse<PromptValidatorResponse>> {
     return this.request<PromptValidatorResponse>('/api/v1/prompt-validator/validate', {
       method: 'POST',
-      body: JSON.stringify({ prompt, model }),
+      body: JSON.stringify({ prompt }),
     });
   }
 
@@ -226,16 +215,16 @@ class ApiClient {
 
   // Conversation Simulation APIs
   async simulateConversation(
-    conversationProperties: ConversationProperties,
-    conversationPrompt: string = '',
-    maxTurns: number = 10
+    customer_intent: string,
+    customer_sentiment: string,
+    conversation_subject: string
   ): Promise<ApiResponse<ConversationSimulationResponse>> {
     return this.request<ConversationSimulationResponse>('/api/v1/conversation-simulation/simulate', {
       method: 'POST',
       body: JSON.stringify({
-        conversation_properties: conversationProperties,
-        conversation_prompt: conversationPrompt,
-        max_turns: maxTurns,
+        customer_intent,
+        customer_sentiment,
+        conversation_subject,
       }),
     });
   }
