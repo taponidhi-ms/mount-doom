@@ -61,7 +61,7 @@ export default function GeneralPromptPage() {
   const columns = [
     {
       title: 'Timestamp',
-      dataIndex: 'start_time',
+      dataIndex: 'timestamp',
       key: 'timestamp',
       render: (text: string) => new Date(text).toLocaleString(),
       width: 200,
@@ -75,7 +75,7 @@ export default function GeneralPromptPage() {
     },
     {
       title: 'Response Preview',
-      dataIndex: 'response_text',
+      dataIndex: 'response',
       key: 'response',
       ellipsis: true,
       render: (text: string) => text?.substring(0, 100) + (text?.length > 100 ? '...' : ''),
@@ -182,7 +182,7 @@ export default function GeneralPromptPage() {
             dataSource={historyData?.items || []}
             columns={columns}
             loading={historyLoading}
-            rowKey={(record) => record.id || record.start_time}
+            rowKey={(record) => record.id || record.timestamp}
             pagination={{
               current: historyData?.page || 1,
               pageSize: historyData?.page_size || 10,
