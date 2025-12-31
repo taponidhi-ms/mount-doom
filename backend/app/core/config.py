@@ -15,7 +15,7 @@ class Settings(BaseSettings):
     cosmos_db_database_name: str
     
     # Default Model Configuration
-    default_model_deployment: str = "gpt-4"
+    default_model_deployment: str = "gpt-4.1"
     
     # API Configuration
     api_host: str = "0.0.0.0"
