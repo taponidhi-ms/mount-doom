@@ -1,9 +1,11 @@
 """Service for general prompt use case."""
 
 from typing import Optional
+from datetime import datetime
 import structlog
 
 from app.services.ai.azure_ai_service import azure_ai_service
+from app.services.db.cosmos_db_service import cosmos_db_service
 from app.core.config import settings
 from app.models.schemas import GeneralPromptResult
 
@@ -126,6 +128,48 @@ class GeneralPromptService:
                 except Exception as cleanup_error:
                     logger.debug("Failed to clean up conversation", error=str(cleanup_error))
             raise
+
+    async def save_to_database(
+        self,
+        model_id: str,
+        prompt: str,
+        response: str,
+        tokens_used: Optional[int],
+        time_taken_ms: float
+    ):
+        """
+        Save general prompt result to database.
+        
+        Args:
+            model_id: ID of the model used
+            prompt: The input prompt
+            response: The generated response
+            tokens_used: Number of tokens used
+            time_taken_ms: Time taken in milliseconds
+        """
+        logger.info("Saving general prompt to database",
+                   model=model_id,
+                   tokens=tokens_used,
+                   time_ms=round(time_taken_ms, 2))
+        
+        # Create document with structure specific to general prompt
+        document_id = f"{datetime.utcnow().isoformat()}_{model_id}"
+        document = {
+            "id": document_id,
+            "model_id": model_id,
+            "prompt": prompt,
+            "response": response,
+            "tokens_used": tokens_used,
+            "time_taken_ms": time_taken_ms,
+            "timestamp": datetime.utcnow().isoformat()
+        }
+        
+        # Use generic save method from CosmosDBService
+        await cosmos_db_service.save_document(
+            container_name=cosmos_db_service.GENERAL_PROMPT_CONTAINER,
+            document=document
+        )
+        logger.info("General prompt saved successfully", document_id=document_id)
 
 
 # Singleton instance

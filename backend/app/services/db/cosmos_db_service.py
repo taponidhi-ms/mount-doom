@@ -3,13 +3,25 @@ from azure.identity import DefaultAzureCredential
 from app.core.config import settings
 from typing import Optional, Dict, Any
 import structlog
-from datetime import datetime
 
 logger = structlog.get_logger()
 
 
 class CosmosDBService:
-    """Service for interacting with Azure Cosmos DB."""
+    """
+    Infrastructure service for Cosmos DB.
+    
+    Responsibilities:
+    - Client initialization and management
+    - Database reference management
+    - Generic container operations
+    - Container name constants
+    
+    Does NOT contain:
+    - Feature-specific business logic
+    - Document structure definitions
+    - Feature-specific save methods
+    """
     
     _instance: Optional['CosmosDBService'] = None
     _client: Optional[CosmosClient] = None
@@ -81,152 +93,33 @@ class CosmosDBService:
             logger.error("Error ensuring container", container=container_name, error=str(e), exc_info=True)
             raise
     
-    async def save_persona_generation(
+    async def save_document(
         self,
-        prompt: str,
-        response: str,
-        tokens_used: Optional[int],
-        time_taken_ms: float,
-        agent_name: str,
-        agent_version: str,
-        agent_instructions: str,
-        model: str,
-        agent_timestamp: datetime
+        container_name: str,
+        document: Dict[str, Any]
     ):
-        """Save persona generation use case data."""
-        logger.info("Saving persona generation to Cosmos DB",
-                   agent=agent_name,
-                   tokens=tokens_used,
-                   time_ms=round(time_taken_ms, 2))
-        container = await self.ensure_container(self.PERSONA_GENERATION_CONTAINER)
+        """
+        Generic method to save a document to a container.
         
-        document_id = f"{datetime.utcnow().isoformat()}_{agent_name}"
-        document = {
-            "id": document_id,
-            "prompt": prompt,
-            "response": response,
-            "tokens_used": tokens_used,
-            "time_taken_ms": time_taken_ms,
-            "agent_details": {
-                "agent_name": agent_name,
-                "agent_version": agent_version,
-                "instructions": agent_instructions,
-                "model": model,
-                "timestamp": agent_timestamp.isoformat()
-            },
-            "timestamp": datetime.utcnow().isoformat()
-        }
+        Args:
+            container_name: Name of the container
+            document: Document to save (must include 'id' field)
+            
+        Raises:
+            ValueError: If document doesn't have 'id' field
+        """
+        if "id" not in document:
+            raise ValueError("Document must have an 'id' field")
         
-        logger.debug("Creating document", document_id=document_id, container=self.PERSONA_GENERATION_CONTAINER)
+        logger.info("Saving document to Cosmos DB",
+                   container=container_name,
+                   document_id=document["id"])
+        
+        container = await self.ensure_container(container_name)
+        
+        logger.debug("Creating document", document_id=document["id"], container=container_name)
         container.create_item(body=document)
-        logger.info("Persona generation saved successfully", document_id=document_id)
-    
-    async def save_general_prompt(
-        self,
-        model_id: str,
-        prompt: str,
-        response: str,
-        tokens_used: Optional[int],
-        time_taken_ms: float
-    ):
-        """Save general prompt use case data."""
-        logger.info("Saving general prompt to Cosmos DB",
-                   model=model_id,
-                   tokens=tokens_used,
-                   time_ms=round(time_taken_ms, 2))
-        container = await self.ensure_container(self.GENERAL_PROMPT_CONTAINER)
-        
-        document_id = f"{datetime.utcnow().isoformat()}_{model_id}"
-        document = {
-            "id": document_id,
-            "model_id": model_id,
-            "prompt": prompt,
-            "response": response,
-            "tokens_used": tokens_used,
-            "time_taken_ms": time_taken_ms,
-            "timestamp": datetime.utcnow().isoformat()
-        }
-        
-        logger.debug("Creating document", document_id=document_id, container=self.GENERAL_PROMPT_CONTAINER)
-        container.create_item(body=document)
-        logger.info("General prompt saved successfully", document_id=document_id)
-    
-    async def save_prompt_validator(
-        self,
-        prompt: str,
-        response: str,
-        tokens_used: Optional[int],
-        time_taken_ms: float,
-        agent_name: str,
-        agent_version: str,
-        agent_instructions: str,
-        model: str,
-        agent_timestamp: datetime
-    ):
-        """Save prompt validator use case data."""
-        logger.info("Saving prompt validation to Cosmos DB",
-                   agent=agent_name,
-                   tokens=tokens_used,
-                   time_ms=round(time_taken_ms, 2))
-        container = await self.ensure_container(self.PROMPT_VALIDATOR_CONTAINER)
-        
-        document_id = f"{datetime.utcnow().isoformat()}_{agent_name}"
-        document = {
-            "id": document_id,
-            "prompt": prompt,
-            "response": response,
-            "tokens_used": tokens_used,
-            "time_taken_ms": time_taken_ms,
-            "agent_details": {
-                "agent_name": agent_name,
-                "agent_version": agent_version,
-                "instructions": agent_instructions,
-                "model": model,
-                "timestamp": agent_timestamp.isoformat()
-            },
-            "timestamp": datetime.utcnow().isoformat()
-        }
-        
-        logger.debug("Creating document", document_id=document_id, container=self.PROMPT_VALIDATOR_CONTAINER)
-        container.create_item(body=document)
-        logger.info("Prompt validation saved successfully", document_id=document_id)
-    
-    async def save_conversation_simulation(
-        self,
-        conversation_properties: Dict[str, Any],
-        conversation_history: list,
-        conversation_status: str,
-        total_tokens_used: Optional[int],
-        total_time_taken_ms: float,
-        c1_agent_details: Dict[str, Any],
-        c2_agent_details: Dict[str, Any],
-        orchestrator_agent_details: Dict[str, Any]
-    ):
-        """Save conversation simulation use case data."""
-        logger.info("Saving conversation simulation to Cosmos DB",
-                   status=conversation_status,
-                   messages=len(conversation_history),
-                   tokens=total_tokens_used,
-                   time_ms=round(total_time_taken_ms, 2))
-        container = await self.ensure_container(self.CONVERSATION_SIMULATION_CONTAINER)
-        
-        document_id = f"{datetime.utcnow().isoformat()}_conversation"
-        document = {
-            "id": document_id,
-            "conversation_properties": conversation_properties,
-            "conversation_history": conversation_history,
-            "conversation_status": conversation_status,
-            "total_tokens_used": total_tokens_used,
-            "total_time_taken_ms": total_time_taken_ms,
-            "c1_agent_details": c1_agent_details,
-            "c2_agent_details": c2_agent_details,
-            "orchestrator_agent_details": orchestrator_agent_details,
-            "timestamp": datetime.utcnow().isoformat()
-        }
-        
-        logger.debug("Creating document", document_id=document_id, container=self.CONVERSATION_SIMULATION_CONTAINER)
-        container.create_item(body=document)
-        logger.info("Conversation simulation saved successfully", document_id=document_id)
+        logger.info("Document saved successfully", document_id=document["id"], container=container_name)
     
     async def browse_container(
         self,
