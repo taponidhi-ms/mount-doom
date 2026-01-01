@@ -321,7 +321,7 @@ Each use case service (PersonaDistributionService, PromptValidatorService, etc.)
 
 ### Agent Instructions Storage
 - All agent instructions are stored in static text files in `backend/app/instructions/`
-- File naming convention: `{agent_name}.txt` (e.g., `persona_generation_agent.txt`)
+- File naming convention: `{agent_name}.txt` (e.g., `persona_distribution_agent.txt`)
 - Services reference instruction files by filename
 - Two agent creation methods available:
   - `create_agent_from_file(agent_name, instructions_path)` - Loads from file (preferred)

@@ -6,7 +6,7 @@ A fullstack application for multi-agent conversation simulation and prompt gener
 
 Mount Doom is an enterprise-grade simulation platform that enables:
 - Multi-agent conversation simulations between customer service representatives and customers
-- Persona generation from simulation prompts
+- Persona distribution generation from simulation prompts (structured JSON with intents, sentiments, and proportions)
 - General-purpose AI assistance via direct model access
 - Prompt validation for quality assurance
 - Comprehensive tracking of tokens, timing, and conversation history
@@ -39,8 +39,8 @@ mount-doom/
 
 ## Features
 
-### 1. Persona Generation
-Generate detailed personas from simulation prompts using specialized AI agents.
+### 1. Persona Distribution Generator
+Generate persona distributions from simulation prompts using specialized AI agents. Outputs structured JSON with conversation counts, intents, sentiments, and proportions.
 
 ### 2. General Prompt
 Get responses for any general prompt using LLM models directly (GPT-4, GPT-3.5 Turbo).
