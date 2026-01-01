@@ -36,8 +36,8 @@ async def validate_prompt(request: PromptValidatorRequest):
                    tokens=agent_response.tokens_used,
                    time_ms=round(time_taken_ms, 2))
         
-        # Save to Cosmos DB
-        await cosmos_db_service.save_prompt_validator(
+        # Save to database using service method
+        await prompt_validator_service.save_to_database(
             prompt=request.prompt,
             response=agent_response.response_text,
             tokens_used=agent_response.tokens_used,

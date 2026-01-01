@@ -62,7 +62,7 @@ async def simulate_conversation(request: ConversationSimulationRequest):
                    messages=len(simulation_result.conversation_history),
                    total_tokens=simulation_result.total_tokens_used)
 
-        # Save to Cosmos DB
+        # Save to database using service method
         conversation_history_dict = [
             {
                 "agent_name": msg.agent_name,
@@ -77,7 +77,7 @@ async def simulate_conversation(request: ConversationSimulationRequest):
         c2_agent_details = simulation_result.c2_agent_details
         orchestrator_agent_details = simulation_result.orchestrator_agent_details
 
-        await cosmos_db_service.save_conversation_simulation(
+        await conversation_simulation_service.save_to_database(
             conversation_properties=conv_props_dict,
             conversation_history=conversation_history_dict,
             conversation_status=simulation_result.conversation_status,

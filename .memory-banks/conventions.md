@@ -245,6 +245,39 @@ const columns = [
 
 ## Database (Cosmos DB)
 
+### CosmosDBService - Infrastructure Only
+The CosmosDBService is a singleton infrastructure service that:
+- Manages Cosmos DB client and database references
+- Provides container name constants for all use cases
+- Offers generic operations (ensure_container, save_document, browse_container)
+- Does NOT contain feature-specific business logic or document structures
+
+### Feature Service Persistence
+Each feature service handles its own database persistence:
+- Defines document structure specific to the use case
+- Generates document IDs with appropriate naming conventions
+- Creates documents with all required fields
+- Calls `cosmos_db_service.save_document()` for actual persistence
+
+Example pattern:
+```python
+async def save_to_database(self, ...params):
+    # Define document structure (business logic)
+    document_id = f"{datetime.utcnow().isoformat()}_{identifier}"
+    document = {
+        "id": document_id,
+        "prompt": prompt,
+        "response": response,
+        # ... other fields specific to this use case
+    }
+    
+    # Use generic infrastructure method
+    await cosmos_db_service.save_document(
+        container_name=cosmos_db_service.CONTAINER_NAME,
+        document=document
+    )
+```
+
 ### Container Strategy
 - One container per use case
 - Partition key: `/id`
@@ -256,6 +289,7 @@ const columns = [
 - Include all metrics
 - Include complete agent details (name, version, instructions, model, timestamp)
 - Use ISO format for dates
+- Structure defined by feature services, not CosmosDBService
 
 ## Azure Integration
 

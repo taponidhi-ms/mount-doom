@@ -3,10 +3,11 @@
 from datetime import datetime
 import structlog
 import json
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 
 from azure.ai.projects.models import WorkflowAgentDefinition, AgentReference, ResponseStreamEventType
 from app.services.ai.azure_ai_service import azure_ai_service
+from app.services.db.cosmos_db_service import cosmos_db_service
 from app.models.schemas import ConversationMessage, AgentDetails, ConversationSimulationResult
 from app.core.config import settings
 
@@ -287,6 +288,58 @@ trigger:
             c2_agent_details=c2_agent.agent_details,
             orchestrator_agent_details=orch_agent.agent_details
         )
+
+    async def save_to_database(
+        self,
+        conversation_properties: Dict[str, Any],
+        conversation_history: list,
+        conversation_status: str,
+        total_tokens_used: Optional[int],
+        total_time_taken_ms: float,
+        c1_agent_details: Dict[str, Any],
+        c2_agent_details: Dict[str, Any],
+        orchestrator_agent_details: Dict[str, Any]
+    ):
+        """
+        Save conversation simulation result to database.
+        
+        Args:
+            conversation_properties: Properties of the conversation
+            conversation_history: List of conversation messages
+            conversation_status: Status of the conversation
+            total_tokens_used: Total tokens used
+            total_time_taken_ms: Total time taken in milliseconds
+            c1_agent_details: Details about C1 agent
+            c2_agent_details: Details about C2 agent
+            orchestrator_agent_details: Details about orchestrator agent
+        """
+        logger.info("Saving conversation simulation to database",
+                   status=conversation_status,
+                   messages=len(conversation_history),
+                   tokens=total_tokens_used,
+                   time_ms=round(total_time_taken_ms, 2))
+        
+        # Create document with structure specific to conversation simulation
+        document_id = f"{datetime.utcnow().isoformat()}_conversation"
+        document = {
+            "id": document_id,
+            "conversation_properties": conversation_properties,
+            "conversation_history": conversation_history,
+            "conversation_status": conversation_status,
+            "total_tokens_used": total_tokens_used,
+            "total_time_taken_ms": total_time_taken_ms,
+            "c1_agent_details": c1_agent_details,
+            "c2_agent_details": c2_agent_details,
+            "orchestrator_agent_details": orchestrator_agent_details,
+            "timestamp": datetime.utcnow().isoformat()
+        }
+        
+        # Use generic save method from CosmosDBService
+        await cosmos_db_service.save_document(
+            container_name=cosmos_db_service.CONVERSATION_SIMULATION_CONTAINER,
+            document=document
+        )
+        logger.info("Conversation simulation saved successfully", document_id=document_id)
 
 
 conversation_simulation_service = ConversationSimulationService()

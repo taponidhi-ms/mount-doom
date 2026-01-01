@@ -40,8 +40,8 @@ async def generate_response(request: GeneralPromptRequest):
                    tokens=result.tokens_used,
                    time_ms=round(time_taken_ms, 2))
         
-        # Save to Cosmos DB
-        await cosmos_db_service.save_general_prompt(
+        # Save to database using service method
+        await general_prompt_service.save_to_database(
             model_id=settings.default_model_deployment,
             prompt=request.prompt,
             response=result.response_text,

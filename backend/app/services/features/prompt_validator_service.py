@@ -2,8 +2,10 @@
 
 from datetime import datetime
 import structlog
+from typing import Optional
 
 from app.services.ai.azure_ai_service import azure_ai_service
+from app.services.db.cosmos_db_service import cosmos_db_service
 from app.models.schemas import PromptValidatorResult
 
 logger = structlog.get_logger()
@@ -103,6 +105,62 @@ class PromptValidatorService:
         except Exception as e:
             logger.error("Error validating prompt", error=str(e), exc_info=True)
             raise
+
+    async def save_to_database(
+        self,
+        prompt: str,
+        response: str,
+        tokens_used: Optional[int],
+        time_taken_ms: float,
+        agent_name: str,
+        agent_version: str,
+        agent_instructions: str,
+        model: str,
+        agent_timestamp: datetime
+    ):
+        """
+        Save prompt validation result to database.
+        
+        Args:
+            prompt: The input prompt
+            response: The validation result
+            tokens_used: Number of tokens used
+            time_taken_ms: Time taken in milliseconds
+            agent_name: Name of the agent
+            agent_version: Version of the agent
+            agent_instructions: Agent instructions
+            model: Model deployment name
+            agent_timestamp: Timestamp when agent was created
+        """
+        logger.info("Saving prompt validation to database",
+                   agent=agent_name,
+                   tokens=tokens_used,
+                   time_ms=round(time_taken_ms, 2))
+        
+        # Create document with structure specific to prompt validator
+        document_id = f"{datetime.utcnow().isoformat()}_{agent_name}"
+        document = {
+            "id": document_id,
+            "prompt": prompt,
+            "response": response,
+            "tokens_used": tokens_used,
+            "time_taken_ms": time_taken_ms,
+            "agent_details": {
+                "agent_name": agent_name,
+                "agent_version": agent_version,
+                "instructions": agent_instructions,
+                "model": model,
+                "timestamp": agent_timestamp.isoformat()
+            },
+            "timestamp": datetime.utcnow().isoformat()
+        }
+        
+        # Use generic save method from CosmosDBService
+        await cosmos_db_service.save_document(
+            container_name=cosmos_db_service.PROMPT_VALIDATOR_CONTAINER,
+            document=document
+        )
+        logger.info("Prompt validation saved successfully", document_id=document_id)
 
 
 # Singleton instance
