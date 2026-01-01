@@ -36,8 +36,9 @@
 
 ### Logging (Verbose Mode for Local Development)
 **Configuration**: 
+- **Centralized Configuration**: Logging logic encapsulated in `app/core/logging.py`
 - Uses `structlog` with `ConsoleRenderer(colors=True)` for human-readable console output
-- Configured in `main.py` **BEFORE** importing routes to ensure proper initialization order
+- Configured in `main.py` via `setup_logging()` **BEFORE** importing routes
 - Routes imported after logging configuration to ensure services use configured logging
 - Log level controlled by `settings.api_debug` (DEBUG when True, INFO when False)
 - All logs use structured logging with key-value pairs for better filtering
@@ -46,12 +47,13 @@
   - Location: `logs/mount_doom.log` (configurable via `settings.log_dir` and `settings.log_file`)
   - Rotation: Automatic rotation at 10MB (configurable via `settings.log_max_bytes`)
   - Backup: Keeps 5 backup files (configurable via `settings.log_backup_count`)
-  - Format: `YYYY-MM-DD HH:MM:SS [LEVEL] name: message`
+  - Format: ISO 8601 Timestamp (`YYYY-MM-DDTHH:MM:SS.mmmmmmZ`) with structured fields
   - Encoding: UTF-8
 - **External Library Logging**:
-  - Azure SDK logs suppressed to WARNING level (prevents verbose HTTP request/response logs)
-  - urllib3 connection logs suppressed to WARNING level
-  - Uvicorn loggers configured to use consistent formatting
+  - Azure SDK logs (`azure`, `azure.core`, `azure.ai`, `azure.ai.projects`) suppressed to WARNING level
+  - OpenAI client logs (`openai`) suppressed to WARNING level
+  - HTTP client logs (`httpx`, `httpcore`, `urllib3`) suppressed to WARNING level to prevent verbose connection/request details
+  - Uvicorn loggers configured to propagate to root logger for consistent formatting
   - Python warnings captured and sent through logging system at WARNING level
 
 **Logging Levels and Usage**:

@@ -1,88 +1,14 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
-import structlog
-import logging
-import logging.handlers
-import os
-from pathlib import Path
+from app.core.logging import setup_logging
 
-# Ensure log directory exists
-log_dir = Path(settings.log_dir)
-log_dir.mkdir(parents=True, exist_ok=True)
-log_file_path = log_dir / settings.log_file
+# Configure logging before anything else
+logger = setup_logging()
 
-# Configure Python's logging with both console and file handlers
-log_level = logging.DEBUG if settings.api_debug else logging.INFO
-
-# Create formatters
-console_formatter = logging.Formatter("%(message)s")
-file_formatter = logging.Formatter(
-    "%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S"
-)
-
-# Console handler
-console_handler = logging.StreamHandler()
-console_handler.setLevel(log_level)
-console_handler.setFormatter(console_formatter)
-
-# File handler with rotation
-file_handler = logging.handlers.RotatingFileHandler(
-    filename=str(log_file_path),
-    maxBytes=settings.log_max_bytes,
-    backupCount=settings.log_backup_count,
-    encoding="utf-8"
-)
-file_handler.setLevel(log_level)
-file_handler.setFormatter(file_formatter)
-
-# Configure root logger
-root_logger = logging.getLogger()
-root_logger.setLevel(log_level)
-root_logger.addHandler(console_handler)
-root_logger.addHandler(file_handler)
-
-# Suppress verbose Azure SDK logging (Cosmos DB, HTTP client, etc.)
-# These log at DEBUG level by default and create excessive output
-logging.getLogger('azure').setLevel(logging.WARNING)
-logging.getLogger('azure.core.pipeline.policies.http_logging_policy').setLevel(logging.WARNING)
-# Suppress urllib3 and other HTTP connection logs
-logging.getLogger('urllib3').setLevel(logging.WARNING)
-logging.getLogger('urllib3.connectionpool').setLevel(logging.WARNING)
-
-# Configure Uvicorn's loggers to use consistent formatting
-logging.getLogger('uvicorn').setLevel(log_level)
-logging.getLogger('uvicorn.access').setLevel(log_level)
-logging.getLogger('uvicorn.error').setLevel(log_level)
-
-# Configure Python warnings to use the logging system
-import warnings
-logging.captureWarnings(True)
-warnings_logger = logging.getLogger('py.warnings')
-warnings_logger.setLevel(logging.WARNING)
-
-# Configure structured logging for console output
-structlog.configure(
-    processors=[
-        structlog.contextvars.merge_contextvars,
-        structlog.processors.add_log_level,
-        structlog.processors.StackInfoRenderer(),
-        structlog.dev.set_exc_info,
-        structlog.processors.TimeStamper(fmt="iso", utc=True),
-        structlog.dev.ConsoleRenderer(colors=True)
-    ],
-    wrapper_class=structlog.make_filtering_bound_logger(logging.NOTSET),
-    context_class=dict,
-    logger_factory=structlog.PrintLoggerFactory(),
-    cache_logger_on_first_use=False,
-)
-
-logger = structlog.get_logger()
 logger.info("=" * 80)
 logger.info("Mount Doom Backend Starting", 
-           debug_mode=settings.api_debug,
-           log_file=str(log_file_path))
+           debug_mode=settings.api_debug)
 logger.info("=" * 80)
 
 # Import routes after logging is configured
@@ -146,17 +72,11 @@ async def health_check():
 if __name__ == "__main__":
     import uvicorn
     
-    # Configure Uvicorn to use our logging config
-    uvicorn_log_config = uvicorn.config.LOGGING_CONFIG
-    uvicorn_log_config["formatters"]["default"]["fmt"] = "%(asctime)s [%(levelname)-8s] %(name)s: %(message)s"
-    uvicorn_log_config["formatters"]["default"]["datefmt"] = "%Y-%m-%d %H:%M:%S"
-    uvicorn_log_config["formatters"]["access"]["fmt"] = "%(asctime)s [%(levelname)-8s] %(name)s: %(client_addr)s - \"%(request_line)s\" %(status_code)s"
-    uvicorn_log_config["formatters"]["access"]["datefmt"] = "%Y-%m-%d %H:%M:%S"
-    
+    # Disable uvicorn's default logging and use our configured logging
     uvicorn.run(
         "main:app",
         host=settings.api_host,
         port=settings.api_port,
         reload=settings.api_debug,
-        log_config=uvicorn_log_config
+        log_config=None  # Use our logging configuration instead of uvicorn's default
     )
