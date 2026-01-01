@@ -4,15 +4,15 @@ import { useState } from 'react'
 import { Button, Card, Input, Tabs, Table, Space, Typography, message, Spin, Alert } from 'antd'
 import { LoadingOutlined } from '@ant-design/icons'
 import PageLayout from '@/components/PageLayout'
-import { apiClient, PersonaGenerationResponse, BrowseResponse } from '@/lib/api-client'
+import { apiClient, PersonaDistributionResponse, BrowseResponse } from '@/lib/api-client'
 
 const { TextArea } = Input
 const { Title, Paragraph, Text } = Typography
 
-export default function PersonaGenerationPage() {
+export default function PersonaDistributionPage() {
   const [prompt, setPrompt] = useState('')
   const [loading, setLoading] = useState(false)
-  const [result, setResult] = useState<PersonaGenerationResponse | null>(null)
+  const [result, setResult] = useState<PersonaDistributionResponse | null>(null)
   const [error, setError] = useState('')
   
   // History state
@@ -23,7 +23,7 @@ export default function PersonaGenerationPage() {
   const loadHistory = async (page: number = 1, pageSize: number = 10) => {
     setHistoryLoading(true)
     setHistoryError('')
-    const response = await apiClient.browsePersonaGenerations(page, pageSize)
+    const response = await apiClient.browsePersonaDistributions(page, pageSize)
     setHistoryLoading(false)
     
     if (response.data) {
@@ -44,19 +44,19 @@ export default function PersonaGenerationPage() {
     setError('')
     setResult(null)
 
-    const response = await apiClient.generatePersona(prompt)
+    const response = await apiClient.generatePersonaDistribution(prompt)
     setLoading(false)
 
     if (response.data) {
       setResult(response.data)
-      message.success('Persona generated successfully!')
+      message.success('Persona distribution generated successfully!')
       // Reload history to show the new result
       if (historyData) {
         loadHistory(1)
       }
     } else if (response.error) {
       setError(response.error)
-      message.error('Failed to generate persona')
+      message.error('Failed to generate persona distribution')
     }
   }
 
@@ -104,14 +104,14 @@ export default function PersonaGenerationPage() {
       label: 'Generate',
       children: (
         <Space direction="vertical" size="large" style={{ width: '100%' }}>
-          <Card title="Generate Persona">
+          <Card title="Generate Persona Distribution">
             <Space direction="vertical" size="middle" style={{ width: '100%' }}>
               <div>
                 <Text strong>Simulation Prompt</Text>
                 <TextArea
                   value={prompt}
                   onChange={(e) => setPrompt(e.target.value)}
-                  placeholder="Enter your simulation prompt to generate a persona..."
+                  placeholder="Enter your simulation prompt to generate a persona distribution..."
                   rows={6}
                   style={{ marginTop: 8 }}
                   disabled={loading}
@@ -126,7 +126,7 @@ export default function PersonaGenerationPage() {
                 disabled={!prompt.trim()}
                 block
               >
-                {loading ? 'Generating...' : 'Generate Persona'}
+                {loading ? 'Generating...' : 'Generate Persona Distribution'}
               </Button>
 
               {error && (
@@ -136,7 +136,7 @@ export default function PersonaGenerationPage() {
           </Card>
 
           {result && (
-            <Card title="Generated Persona">
+            <Card title="Generated Persona Distribution">
               <Space direction="vertical" size="middle" style={{ width: '100%' }}>
                 <div>
                   <Text strong>Response:</Text>
@@ -205,8 +205,8 @@ export default function PersonaGenerationPage() {
 
   return (
     <PageLayout
-      title="Persona Generation"
-      description="Generate personas from simulation prompts using the PersonaAgent."
+      title="Persona Distribution Generator"
+      description="Generate persona distributions from simulation prompts using the PersonaDistributionGeneratorAgent."
       showBackButton
     >
       <Tabs 

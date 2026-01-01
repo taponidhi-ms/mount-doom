@@ -45,14 +45,14 @@ export interface BrowseResponse<T = any> {
   has_previous: boolean;
 }
 
-// Persona Generation
-export interface PersonaGenerationRequest {
+// Persona Distribution
+export interface PersonaDistributionRequest {
   prompt: string;
   model?: string;
   stream?: boolean;
 }
 
-export interface PersonaGenerationResponse extends BaseResponse {}
+export interface PersonaDistributionResponse extends BaseResponse {}
 
 // General Prompt
 export interface GeneralPromptRequest {
@@ -150,24 +150,24 @@ class ApiClient {
 
   // Models API - Removed (GPT-4 is hardcoded in backend)
 
-  // Persona Generation APIs
-  async generatePersona(
+  // Persona Distribution APIs
+  async generatePersonaDistribution(
     prompt: string
-  ): Promise<ApiResponse<PersonaGenerationResponse>> {
-    return this.request<PersonaGenerationResponse>('/api/v1/persona-generation/generate', {
+  ): Promise<ApiResponse<PersonaDistributionResponse>> {
+    return this.request<PersonaDistributionResponse>('/api/v1/persona-distribution/generate', {
       method: 'POST',
       body: JSON.stringify({ prompt }),
     });
   }
 
-  async browsePersonaGenerations(
+  async browsePersonaDistributions(
     page: number = 1,
     pageSize: number = 10,
     orderBy: string = 'timestamp',
     orderDirection: 'ASC' | 'DESC' = 'DESC'
   ): Promise<ApiResponse<BrowseResponse>> {
     return this.request<BrowseResponse>(
-      `/api/v1/persona-generation/browse?page=${page}&page_size=${pageSize}&order_by=${orderBy}&order_direction=${orderDirection}`
+      `/api/v1/persona-distribution/browse?page=${page}&page_size=${pageSize}&order_by=${orderBy}&order_direction=${orderDirection}`
     );
   }
 
