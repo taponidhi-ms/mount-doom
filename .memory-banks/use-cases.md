@@ -170,12 +170,11 @@
 - **OrchestratorAgent**: Determines conversation completion (fixed agent name)
 
 **Workflow**:
-1. User provides customer configuration directly:
-   - Customer Intent (e.g., "Technical Support")
-   - Customer Sentiment (e.g., "Frustrated")
-   - Conversation Subject (e.g., "Product Issue")
+1. User provides customer configuration:
+   - **Single Simulation**: Manually enter Customer Intent, Customer Sentiment, and Conversation Subject.
+   - **Batch Simulation**: Upload a JSON file containing a list of personas (CustomerIntent, CustomerSentiment, ConversationSubject).
 2. Max turns is hardcoded to 20 in backend
-3. Simulation starts:
+3. Simulation starts (sequentially for batch):
    - C1Agent speaks first (as service rep)
    - OrchestratorAgent checks if conversation is complete
    - C2Agent responds (as customer)

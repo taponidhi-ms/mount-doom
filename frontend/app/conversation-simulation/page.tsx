@@ -1,13 +1,24 @@
 'use client'
 
 import { useState } from 'react'
-import { Button, Card, Input, Tabs, Table, Space, Typography, message, Alert, Collapse, Tag } from 'antd'
+import { Button, Card, Input, Tabs, Table, Space, Typography, message, Alert, Collapse, Tag, Upload, Progress } from 'antd'
+import { UploadOutlined } from '@ant-design/icons'
 import PageLayout from '@/components/PageLayout'
 import { apiClient, ConversationSimulationResponse, BrowseResponse, ConversationMessage } from '@/lib/api-client'
 
 const { TextArea } = Input
 const { Paragraph, Text, Title } = Typography
 const { Panel } = Collapse
+
+interface BatchItem {
+  key: string;
+  customerIntent: string;
+  customerSentiment: string;
+  conversationSubject: string;
+  status: 'pending' | 'running' | 'completed' | 'failed';
+  result?: ConversationSimulationResponse;
+  error?: string;
+}
 
 export default function ConversationSimulationPage() {
   const [customerIntent, setCustomerIntent] = useState('')
@@ -21,6 +32,100 @@ export default function ConversationSimulationPage() {
   const [historyLoading, setHistoryLoading] = useState(false)
   const [historyData, setHistoryData] = useState<BrowseResponse | null>(null)
   const [historyError, setHistoryError] = useState('')
+
+  // Batch Simulation State
+  const [batchItems, setBatchItems] = useState<BatchItem[]>([])
+  const [batchLoading, setBatchLoading] = useState(false)
+  const [batchProgress, setBatchProgress] = useState(0)
+  const [currentBatchIndex, setCurrentBatchIndex] = useState(-1)
+
+  const handleFileUpload = (file: File) => {
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      try {
+        const json = JSON.parse(e.target?.result as string)
+        let personas = []
+        
+        if (Array.isArray(json)) {
+          personas = json
+        } else if (json.CustomerPersonas && Array.isArray(json.CustomerPersonas)) {
+          personas = json.CustomerPersonas
+        } else {
+          message.error('Invalid JSON format. Expected array or object with CustomerPersonas array.')
+          return
+        }
+
+        const items: BatchItem[] = personas.map((p: any, index: number) => ({
+          key: `batch-${index}-${Date.now()}`,
+          customerIntent: p.CustomerIntent || p.customerIntent || '',
+          customerSentiment: p.CustomerSentiment || p.customerSentiment || '',
+          conversationSubject: p.ConversationSubject || p.conversationSubject || '',
+          status: 'pending' as const
+        })).filter((item: BatchItem) => item.customerIntent && item.customerSentiment && item.conversationSubject)
+
+        if (items.length === 0) {
+          message.warning('No valid personas found in file.')
+          return
+        }
+
+        setBatchItems(items)
+        setBatchProgress(0)
+        setCurrentBatchIndex(-1)
+        message.success(`Loaded ${items.length} personas.`)
+      } catch (err) {
+        message.error('Failed to parse JSON file.')
+        console.error(err)
+      }
+    }
+    reader.readAsText(file)
+    return false // Prevent upload
+  }
+
+  const runBatchSimulation = async () => {
+    if (batchItems.length === 0) return
+    
+    setBatchLoading(true)
+    setBatchProgress(0)
+    
+    const newItems = [...batchItems]
+    
+    for (let i = 0; i < newItems.length; i++) {
+      setCurrentBatchIndex(i)
+      newItems[i].status = 'running'
+      setBatchItems([...newItems])
+      
+      try {
+        const response = await apiClient.simulateConversation(
+          newItems[i].customerIntent,
+          newItems[i].customerSentiment,
+          newItems[i].conversationSubject
+        )
+        
+        if (response.data) {
+          newItems[i].status = 'completed'
+          newItems[i].result = response.data
+        } else {
+          newItems[i].status = 'failed'
+          newItems[i].error = response.error || 'Unknown error'
+        }
+      } catch (err) {
+        newItems[i].status = 'failed'
+        newItems[i].error = 'Exception occurred'
+      }
+      
+      setBatchItems([...newItems])
+      setBatchProgress(Math.round(((i + 1) / newItems.length) * 100))
+    }
+    
+    setBatchLoading(false)
+    setCurrentBatchIndex(-1)
+    message.success('Batch simulation completed!')
+    
+    // Refresh history if we're on that tab or to keep it updated
+    if (historyData) {
+      loadHistory(1)
+    }
+  }
 
   const loadHistory = async (page: number = 1, pageSize: number = 10) => {
     setHistoryLoading(true)
@@ -161,6 +266,60 @@ export default function ConversationSimulationPage() {
     },
   ]
 
+  const batchColumns = [
+    {
+      title: 'Intent',
+      dataIndex: 'customerIntent',
+      key: 'intent',
+      width: 150,
+      ellipsis: true,
+    },
+    {
+      title: 'Sentiment',
+      dataIndex: 'customerSentiment',
+      key: 'sentiment',
+      width: 120,
+    },
+    {
+      title: 'Subject',
+      dataIndex: 'conversationSubject',
+      key: 'subject',
+      ellipsis: true,
+    },
+    {
+      title: 'Status',
+      dataIndex: 'status',
+      key: 'status',
+      width: 120,
+      render: (status: string) => {
+        let color = 'default';
+        if (status === 'running') color = 'processing';
+        if (status === 'completed') color = 'success';
+        if (status === 'failed') color = 'error';
+        return <Tag color={color}>{status.toUpperCase()}</Tag>;
+      },
+    },
+    {
+      title: 'Result',
+      key: 'result',
+      width: 150,
+      render: (_: any, record: BatchItem) => {
+        if (record.status === 'completed' && record.result) {
+          return (
+            <Space direction="vertical" size={0}>
+              <Text type="secondary" style={{ fontSize: 12 }}>{record.result.conversation_history.length} msgs</Text>
+              <Text type="secondary" style={{ fontSize: 12 }}>{record.result.total_tokens_used} tokens</Text>
+            </Space>
+          );
+        }
+        if (record.status === 'failed') {
+          return <Text type="danger" style={{ fontSize: 12 }}>{record.error}</Text>;
+        }
+        return '-';
+      }
+    }
+  ];
+
   const tabItems = [
     {
       key: 'simulate',
@@ -264,6 +423,85 @@ export default function ConversationSimulationPage() {
           )}
         </Space>
       ),
+    },
+    {
+      key: 'batch',
+      label: 'Batch Simulation',
+      children: (
+        <Space direction="vertical" size="large" style={{ width: '100%' }}>
+          <Card title="Batch Processing">
+            <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+              <Alert
+                message="Upload Personas"
+                description="Upload a JSON file containing a list of personas (CustomerIntent, CustomerSentiment, ConversationSubject). The simulation will run for each persona sequentially."
+                type="info"
+                showIcon
+              />
+              
+              <Space>
+                <Upload 
+                  beforeUpload={handleFileUpload} 
+                  showUploadList={false}
+                  accept=".json"
+                >
+                  <Button icon={<UploadOutlined />} size="large" disabled={batchLoading}>
+                    Upload JSON File
+                  </Button>
+                </Upload>
+                
+                <Button 
+                  type="primary" 
+                  size="large" 
+                  onClick={runBatchSimulation}
+                  disabled={batchItems.length === 0 || batchLoading}
+                  loading={batchLoading}
+                >
+                  {batchLoading ? 'Running Batch...' : 'Start Batch Simulation'}
+                </Button>
+              </Space>
+
+              {batchLoading && (
+                <div style={{ marginTop: 16 }}>
+                  <Text>Processing item {currentBatchIndex + 1} of {batchItems.length}</Text>
+                  <Progress percent={batchProgress} status="active" />
+                </div>
+              )}
+            </Space>
+          </Card>
+
+          {batchItems.length > 0 && (
+            <Card title={`Loaded Personas (${batchItems.length})`}>
+              <Table
+                dataSource={batchItems}
+                columns={batchColumns}
+                pagination={{ pageSize: 10 }}
+                expandable={{
+                  expandedRowRender: (record) => (
+                    <div style={{ padding: 16 }}>
+                      {record.result ? (
+                        <Space direction="vertical" size="small" style={{ width: '100%' }}>
+                          <Text strong>Conversation Result:</Text>
+                          <Space size="large">
+                            <Tag color={record.result.conversation_status === 'Completed' ? 'green' : 'orange'}>
+                              {record.result.conversation_status}
+                            </Tag>
+                            <Text>Time: {Math.round(record.result.total_time_taken_ms)}ms</Text>
+                          </Space>
+                          <div style={{ marginTop: 8 }}>
+                            {renderConversationHistory(record.result.conversation_history)}
+                          </div>
+                        </Space>
+                      ) : (
+                        <Text type="secondary">No result available yet.</Text>
+                      )}
+                    </div>
+                  ),
+                }}
+              />
+            </Card>
+          )}
+        </Space>
+      )
     },
     {
       key: 'history',
