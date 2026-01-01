@@ -52,7 +52,18 @@ export interface PersonaDistributionRequest {
   stream?: boolean;
 }
 
-export interface PersonaDistributionResponse extends BaseResponse {}
+export interface PersonaDistributionResponse extends BaseResponse {
+  parsed_output?: any;
+}
+
+// Persona Generator
+export interface PersonaGeneratorRequest {
+  prompt: string;
+}
+
+export interface PersonaGeneratorResponse extends BaseResponse {
+  parsed_output?: any;
+}
 
 // General Prompt
 export interface GeneralPromptRequest {
@@ -103,6 +114,7 @@ export interface ConversationSimulationResponse {
   c1_agent_details: AgentDetails;
   c2_agent_details: AgentDetails;
   orchestrator_agent_details: AgentDetails;
+  conversation_id: string;
 }
 
 // API Response wrapper
@@ -168,6 +180,27 @@ class ApiClient {
   ): Promise<ApiResponse<BrowseResponse>> {
     return this.request<BrowseResponse>(
       `/api/v1/persona-distribution/browse?page=${page}&page_size=${pageSize}&order_by=${orderBy}&order_direction=${orderDirection}`
+    );
+  }
+
+  // Persona Generator APIs
+  async generatePersonas(
+    prompt: string
+  ): Promise<ApiResponse<PersonaGeneratorResponse>> {
+    return this.request<PersonaGeneratorResponse>('/api/v1/persona-generator/generate', {
+      method: 'POST',
+      body: JSON.stringify({ prompt }),
+    });
+  }
+
+  async browsePersonaGenerations(
+    page: number = 1,
+    pageSize: number = 10,
+    orderBy: string = 'timestamp',
+    orderDirection: 'ASC' | 'DESC' = 'DESC'
+  ): Promise<ApiResponse<BrowseResponse>> {
+    return this.request<BrowseResponse>(
+      `/api/v1/persona-generator/browse?page=${page}&page_size=${pageSize}&order_by=${orderBy}&order_direction=${orderDirection}`
     );
   }
 
