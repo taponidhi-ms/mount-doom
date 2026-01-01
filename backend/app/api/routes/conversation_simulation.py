@@ -25,9 +25,9 @@ async def simulate_conversation(request: ConversationSimulationRequest):
     2. Orchestrator checks if conversation should continue
     3. C2 agent generates a customer response
     4. Orchestrator checks again if conversation should end
-    This repeats until max_turns (20) or completion status is reached.
+    This repeats until max_turns (10) or completion status is reached.
     """
-    MAX_TURNS = 20  # Hardcoded max turns
+    MAX_TURNS = 10  # Hardcoded max turns (5 turns each for C1 and C2)
     
     logger.info("Received conversation simulation request",
                max_turns=MAX_TURNS,

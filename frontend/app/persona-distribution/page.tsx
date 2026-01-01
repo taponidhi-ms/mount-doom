@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { Button, Card, Input, Tabs, Table, Space, Typography, message, Spin, Alert } from 'antd'
-import { LoadingOutlined } from '@ant-design/icons'
+import { LoadingOutlined, ReloadOutlined } from '@ant-design/icons'
 import PageLayout from '@/components/PageLayout'
 import { apiClient, PersonaDistributionResponse, BrowseResponse } from '@/lib/api-client'
 
@@ -33,6 +33,12 @@ export default function PersonaDistributionPage() {
       message.error('Failed to load history')
     }
   }
+
+  const samplePrompts = [
+    "Generate a distribution of 100 calls for a telecom company where 60% are billing inquiries (mostly negative sentiment), 30% are technical support (mixed sentiment), and 10% are new service requests (positive sentiment).",
+    "Create a persona distribution for a retail bank's customer service. I need 50 conversations about credit card disputes, 30 about loan applications, and 20 about account balance checks.",
+    "Simulate a healthcare provider's appointment line. 40% scheduling new appointments, 40% rescheduling existing ones, and 20% cancelling. Most callers should be anxious or neutral."
+  ]
 
   const handleSubmit = async () => {
     if (!prompt.trim()) {
@@ -129,6 +135,27 @@ export default function PersonaDistributionPage() {
                 {loading ? 'Generating...' : 'Generate Persona Distribution'}
               </Button>
 
+              <div style={{ marginTop: 16 }}>
+                <Text strong>Sample Prompts</Text>
+                <Space direction="vertical" style={{ width: '100%', marginTop: 8 }}>
+                  {samplePrompts.map((sample, index) => (
+                    <Card key={index} size="small" style={{ background: '#f9f9f9' }}>
+                      <Space align="start" style={{ width: '100%', justifyContent: 'space-between' }}>
+                        <Text style={{ fontSize: 13, color: '#666' }}>{sample}</Text>
+                        <Button 
+                          size="small" 
+                          type="link" 
+                          onClick={() => setPrompt(sample)}
+                          style={{ padding: 0, marginLeft: 8 }}
+                        >
+                          Try it
+                        </Button>
+                      </Space>
+                    </Card>
+                  ))}
+                </Space>
+              </div>
+
               {error && (
                 <Alert message="Error" description={error} type="error" showIcon />
               )}
@@ -196,7 +223,18 @@ export default function PersonaDistributionPage() {
       key: 'history',
       label: 'History',
       children: (
-        <Card title="Generation History">
+        <Card 
+          title="History"
+          extra={
+            <Button 
+              icon={<ReloadOutlined />} 
+              onClick={() => loadHistory(historyData?.page || 1, historyData?.page_size || 10)}
+              loading={historyLoading}
+            >
+              Reload
+            </Button>
+          }
+        >
           {historyError && (
             <Alert message="Error" description={historyError} type="error" showIcon style={{ marginBottom: 16 }} />
           )}

@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { Button, Card, Input, Tabs, Table, Space, Typography, message, Alert } from 'antd'
+import { ReloadOutlined } from '@ant-design/icons'
 import PageLayout from '@/components/PageLayout'
 import { apiClient, GeneralPromptResponse, BrowseResponse } from '@/lib/api-client'
 
@@ -32,6 +33,12 @@ export default function GeneralPromptPage() {
       message.error('Failed to load history')
     }
   }
+
+  const samplePrompts = [
+    "Explain the concept of 'Clean Architecture' in software development to a junior developer.",
+    "Write a short poem about a robot learning to love.",
+    "What are the key differences between REST and GraphQL APIs? Provide a comparison table."
+  ]
 
   const handleSubmit = async () => {
     if (!prompt.trim()) {
@@ -127,6 +134,27 @@ export default function GeneralPromptPage() {
                 {loading ? 'Generating...' : 'Generate Response'}
               </Button>
 
+              <div style={{ marginTop: 16 }}>
+                <Text strong>Sample Prompts</Text>
+                <Space direction="vertical" style={{ width: '100%', marginTop: 8 }}>
+                  {samplePrompts.map((sample, index) => (
+                    <Card key={index} size="small" style={{ background: '#f9f9f9' }}>
+                      <Space align="start" style={{ width: '100%', justifyContent: 'space-between' }}>
+                        <Text style={{ fontSize: 13, color: '#666' }}>{sample}</Text>
+                        <Button 
+                          size="small" 
+                          type="link" 
+                          onClick={() => setPrompt(sample)}
+                          style={{ padding: 0, marginLeft: 8 }}
+                        >
+                          Try it
+                        </Button>
+                      </Space>
+                    </Card>
+                  ))}
+                </Space>
+              </div>
+
               {error && (
                 <Alert message="Error" description={error} type="error" showIcon />
               )}
@@ -173,7 +201,18 @@ export default function GeneralPromptPage() {
       key: 'history',
       label: 'History',
       children: (
-        <Card title="Response History">
+        <Card 
+          title="History"
+          extra={
+            <Button 
+              icon={<ReloadOutlined />} 
+              onClick={() => loadHistory(historyData?.page || 1, historyData?.page_size || 10)}
+              loading={historyLoading}
+            >
+              Reload
+            </Button>
+          }
+        >
           {historyError && (
             <Alert message="Error" description={historyError} type="error" showIcon style={{ marginBottom: 16 }} />
           )}

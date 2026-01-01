@@ -13,6 +13,7 @@ A conversation should be marked as "Completed" when:
 - All questions have been answered
 - There is mutual agreement to end the conversation
 - The conversation has reached a natural stopping point
+- The customer says "Thank you", "Thanks", "Bye", or indicates they are done.
 
 A conversation should remain "Ongoing" when:
 - The issue is not fully resolved
@@ -31,4 +32,5 @@ Important:
 - Return ONLY valid JSON
 - Use exactly "Completed" or "Ongoing" (case-sensitive)
 - Do not include any explanation or additional text
+- If the customer says "Thank you" or indicates satisfaction, mark as "Completed" immediately.
 """

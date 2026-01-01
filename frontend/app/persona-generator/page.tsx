@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { Button, Card, Input, Tabs, Table, Space, Typography, message, Spin, Alert } from 'antd'
-import { LoadingOutlined } from '@ant-design/icons'
+import { LoadingOutlined, ReloadOutlined } from '@ant-design/icons'
 import PageLayout from '@/components/PageLayout'
 import { apiClient, PersonaGeneratorResponse, BrowseResponse } from '@/lib/api-client'
 
@@ -33,6 +33,12 @@ export default function PersonaGeneratorPage() {
       message.error('Failed to load history')
     }
   }
+
+  const samplePrompts = [
+    "Generate 5 personas for technical support with varied sentiments (Frustrated, Confused, Angry) regarding internet connectivity issues.",
+    "I need 3 personas for a travel agency. One planning a honeymoon (Happy), one cancelling a trip due to illness (Sad), and one inquiring about visa requirements (Neutral).",
+    "Create 4 personas for an e-commerce return process. Include metadata like 'OrderValue', 'CustomerLoyaltyTier', and 'ReturnReason'."
+  ]
 
   const handleSubmit = async () => {
     if (!prompt.trim()) {
@@ -130,6 +136,27 @@ export default function PersonaGeneratorPage() {
                 {loading ? 'Generating...' : 'Generate Personas'}
               </Button>
 
+              <div style={{ marginTop: 16 }}>
+                <Text strong>Sample Prompts</Text>
+                <Space direction="vertical" style={{ width: '100%', marginTop: 8 }}>
+                  {samplePrompts.map((sample, index) => (
+                    <Card key={index} size="small" style={{ background: '#f9f9f9' }}>
+                      <Space align="start" style={{ width: '100%', justifyContent: 'space-between' }}>
+                        <Text style={{ fontSize: 13, color: '#666' }}>{sample}</Text>
+                        <Button 
+                          size="small" 
+                          type="link" 
+                          onClick={() => setPrompt(sample)}
+                          style={{ padding: 0, marginLeft: 8 }}
+                        >
+                          Try it
+                        </Button>
+                      </Space>
+                    </Card>
+                  ))}
+                </Space>
+              </div>
+
               {error && (
                 <Alert
                   message="Error"
@@ -211,7 +238,19 @@ export default function PersonaGeneratorPage() {
       key: 'history',
       label: 'History',
       children: (
-        <Card title="Generation History" bordered={false}>
+        <Card 
+          title="Generation History" 
+          bordered={false}
+          extra={
+            <Button 
+              icon={<ReloadOutlined />} 
+              onClick={() => loadHistory(historyData?.page || 1, historyData?.page_size || 10)}
+              loading={historyLoading}
+            >
+              Reload
+            </Button>
+          }
+        >
           {historyError && (
             <Alert
               message="Error"
@@ -222,72 +261,62 @@ export default function PersonaGeneratorPage() {
             />
           )}
 
-          <Button
-            onClick={() => loadHistory(1)}
+          <Table
+            columns={columns}
+            dataSource={historyData?.items || []}
+            rowKey="id"
             loading={historyLoading}
-            style={{ marginBottom: 16 }}
-          >
-            {historyLoading ? 'Loading...' : 'Load History'}
-          </Button>
-
-          {historyData && (
-            <Table
-              columns={columns}
-              dataSource={historyData.items}
-              rowKey="id"
-              loading={historyLoading}
-              pagination={{
-                current: historyData.page,
-                pageSize: historyData.page_size,
-                total: historyData.total_count,
-                showSizeChanger: true,
-                showTotal: (total) => `Total ${total} items`,
-                onChange: (page, pageSize) => loadHistory(page, pageSize),
-              }}
-              expandable={{
-                expandedRowRender: (record) => (
-                  <div>
-                    <Space direction="vertical" style={{ width: '100%' }}>
+            pagination={{
+              current: historyData?.page || 1,
+              pageSize: historyData?.page_size || 10,
+              total: historyData?.total_count || 0,
+              showSizeChanger: true,
+              showTotal: (total) => `Total ${total} items`,
+              onChange: (page, pageSize) => loadHistory(page, pageSize),
+            }}
+            expandable={{
+              expandedRowRender: (record) => (
+                <div>
+                  <Space direction="vertical" style={{ width: '100%' }}>
+                    <div>
+                      <Text strong>Prompt:</Text>
+                      <Paragraph>{record.prompt}</Paragraph>
+                    </div>
+                    <div>
+                      <Text strong>Response:</Text>
+                      <Paragraph>
+                        <pre style={{ 
+                          background: '#f5f5f5', 
+                          padding: '12px', 
+                          borderRadius: '4px',
+                          whiteSpace: 'pre-wrap',
+                          wordWrap: 'break-word'
+                        }}>
+                          {record.response}
+                        </pre>
+                      </Paragraph>
+                    </div>
+                    {record.parsed_output && (
                       <div>
-                        <Text strong>Prompt:</Text>
-                        <Paragraph>{record.prompt}</Paragraph>
-                      </div>
-                      <div>
-                        <Text strong>Response:</Text>
+                        <Text strong>Parsed Output:</Text>
                         <Paragraph>
                           <pre style={{ 
-                            background: '#f5f5f5', 
+                            background: '#e6f7ff', 
                             padding: '12px', 
                             borderRadius: '4px',
                             whiteSpace: 'pre-wrap',
                             wordWrap: 'break-word'
                           }}>
-                            {record.response}
+                            {JSON.stringify(record.parsed_output, null, 2)}
                           </pre>
                         </Paragraph>
                       </div>
-                      {record.parsed_output && (
-                        <div>
-                          <Text strong>Parsed Output:</Text>
-                          <Paragraph>
-                            <pre style={{ 
-                              background: '#e6f7ff', 
-                              padding: '12px', 
-                              borderRadius: '4px',
-                              whiteSpace: 'pre-wrap',
-                              wordWrap: 'break-word'
-                            }}>
-                              {JSON.stringify(record.parsed_output, null, 2)}
-                            </pre>
-                          </Paragraph>
-                        </div>
-                      )}
-                    </Space>
-                  </div>
-                ),
-              }}
-            />
-          )}
+                    )}
+                  </Space>
+                </div>
+              ),
+            }}
+          />
         </Card>
       ),
     },

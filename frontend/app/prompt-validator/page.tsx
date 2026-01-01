@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { Button, Card, Input, Tabs, Table, Space, Typography, message, Alert } from 'antd'
+import { ReloadOutlined } from '@ant-design/icons'
 import PageLayout from '@/components/PageLayout'
 import { apiClient, PromptValidatorResponse, BrowseResponse } from '@/lib/api-client'
 
@@ -32,6 +33,12 @@ export default function PromptValidatorPage() {
       message.error('Failed to load history')
     }
   }
+
+  const samplePrompts = [
+    "Generate a conversation between a customer and a support agent.",
+    "Simulate a call where the customer is angry about a billing error and threatens to cancel service.",
+    "Create a roleplay scenario for a sales training exercise involving a hesitant buyer."
+  ]
 
   const handleSubmit = async () => {
     if (!prompt.trim()) {
@@ -127,6 +134,27 @@ export default function PromptValidatorPage() {
                 {loading ? 'Validating...' : 'Validate Prompt'}
               </Button>
 
+              <div style={{ marginTop: 16 }}>
+                <Text strong>Sample Prompts</Text>
+                <Space direction="vertical" style={{ width: '100%', marginTop: 8 }}>
+                  {samplePrompts.map((sample, index) => (
+                    <Card key={index} size="small" style={{ background: '#f9f9f9' }}>
+                      <Space align="start" style={{ width: '100%', justifyContent: 'space-between' }}>
+                        <Text style={{ fontSize: 13, color: '#666' }}>{sample}</Text>
+                        <Button 
+                          size="small" 
+                          type="link" 
+                          onClick={() => setPrompt(sample)}
+                          style={{ padding: 0, marginLeft: 8 }}
+                        >
+                          Try it
+                        </Button>
+                      </Space>
+                    </Card>
+                  ))}
+                </Space>
+              </div>
+
               {error && (
                 <Alert message="Error" description={error} type="error" showIcon />
               )}
@@ -177,7 +205,18 @@ export default function PromptValidatorPage() {
       key: 'history',
       label: 'History',
       children: (
-        <Card title="Validation History">
+        <Card 
+          title="History"
+          extra={
+            <Button 
+              icon={<ReloadOutlined />} 
+              onClick={() => loadHistory(historyData?.page || 1, historyData?.page_size || 10)}
+              loading={historyLoading}
+            >
+              Reload
+            </Button>
+          }
+        >
           {historyError && (
             <Alert message="Error" description={historyError} type="error" showIcon style={{ marginBottom: 16 }} />
           )}

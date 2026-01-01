@@ -91,21 +91,13 @@ trigger:
       value: 0
 
     - kind: CreateConversation
-      id: create_c1_conversation
-      conversationId: Local.C1ConversationId
-    
-    - kind: CreateConversation
-      id: create_c2_conversation
-      conversationId: Local.C2ConversationId
-
-    - kind: CreateConversation
       id: create_orch_conversation
       conversationId: Local.OrchConversationId
 
     # Start Loop - C1 Turn
     - kind: InvokeAzureAgent
       id: c1_agent_turn
-      conversationId: "=Local.C1ConversationId"
+      conversationId: "=System.ConversationId"
       agent:
         name: {c1_agent.agent_version_object.name}
       input:
@@ -138,7 +130,7 @@ trigger:
     # C2 Agent Turn
     - kind: InvokeAzureAgent
       id: c2_agent_turn
-      conversationId: "=Local.C2ConversationId"
+      conversationId: "=System.ConversationId"
       agent:
         name: {c2_agent.agent_version_object.name}
       input:
@@ -161,23 +153,18 @@ trigger:
     - kind: SetVariable
       id: increment_turn
       variable: Local.TurnCount
-      value: "=Local.TurnCouC1_AGENT_NAME,
-            agent_version=c1_version,
-            instructions=self.C1_AGENT_INSTRUCTIONS,
-            model_deployment_name=settings.default_model_deployment,
-            timestamp=datetime.utcnow()
-        )
-        c2_agent_details = AgentDetails(
-            agent_name=self.C2_AGENT_NAME,
-            agent_version=c2_version,
-            instructions=self.C2_AGENT_INSTRUCTIONS,
-            model_deployment_name=settings.default_model_deployment,
-            timestamp=datetime.utcnow()
-        )
-        orchestrator_agent_details = AgentDetails(
-            agent_name=self.ORCHESTRATOR_AGENT_NAME,
-            agent_version=orch_version,
-            instructions=self.ORCHESTRATOR_AGENT_INSTRUCTIONS
+      value: "=Local.TurnCount + 1"
+
+    # Check Max Turns
+    - kind: ConditionGroup
+      id: check_max_turns
+      conditions:
+        - condition: "=Local.TurnCount >= {max_turns}"
+          id: max_turns_reached
+          actions:
+            - kind: EndConversation
+              id: end_workflow_max_turns
+      elseActions:
         - kind: GotoAction
           id: loop_back
           actionId: c1_agent_turn
@@ -221,7 +208,12 @@ trigger:
         logger.info("Processing stream events...")
         for event in stream:
             event_count += 1
-            logger.debug(f"Stream event #{event_count}", event_type=str(event.type))
+            # Detailed logging for debugging
+            logger.info(f"Stream event #{event_count}", event_type=str(event.type))
+            if hasattr(event, 'text'):
+                logger.info(f"Event text: {event.text}")
+            if hasattr(event, 'item'):
+                logger.info(f"Event item: {event.item}")
             
             if event.type == ResponseStreamEventType.RESPONSE_OUTPUT_ITEM_ADDED and event.item.type == "workflow_action":
                 logger.info("Workflow action added", action_id=event.item.action_id)
@@ -259,6 +251,9 @@ trigger:
                 if hasattr(event, 'item') and hasattr(event.item, 'usage') and event.item.usage:
                     current_tokens = event.item.usage.total_tokens
                     logger.debug("Token usage recorded", tokens=current_tokens, actor=current_actor)
+                    # Update the last message in history with token usage if it matches
+                    if conversation_history and conversation_history[-1].agent_name == current_actor:
+                        conversation_history[-1].tokens_used = current_tokens
             
             elif event.type == ResponseStreamEventType.RESPONSE_COMPLETED:
                 logger.info("Stream completed")

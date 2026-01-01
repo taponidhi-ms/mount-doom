@@ -25,5 +25,5 @@ When generating your next message in a conversation:
 2. Stay true to your defined intent and conversation subject
 3. Assess the helpfulness of the representative's previous responses and adjust your current sentiment accordingly
 4. Generate a natural customer response reflecting your current sentiment
-5. Keep responses conversational and realistic
+5. Keep responses conversational and realistic. Since this is a phone conversation, keep your responses short (1-2 sentences max).
 """

@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { Button, Card, Input, Tabs, Table, Space, Typography, message, Alert, Collapse, Tag, Upload, Progress } from 'antd'
-import { UploadOutlined } from '@ant-design/icons'
+import { UploadOutlined, ReloadOutlined } from '@ant-design/icons'
 import PageLayout from '@/components/PageLayout'
 import { apiClient, ConversationSimulationResponse, BrowseResponse, ConversationMessage } from '@/lib/api-client'
 
@@ -140,6 +140,24 @@ export default function ConversationSimulationPage() {
       message.error('Failed to load history')
     }
   }
+
+  const sampleConfigs = [
+    {
+      intent: "Technical Support",
+      sentiment: "Frustrated",
+      subject: "Internet connection keeps dropping every 10 minutes"
+    },
+    {
+      intent: "Billing Inquiry",
+      sentiment: "Confused",
+      subject: "Unexpected charge of $50 on the monthly statement"
+    },
+    {
+      intent: "Product Return",
+      sentiment: "Neutral",
+      subject: "Returning a pair of shoes that are the wrong size"
+    }
+  ]
 
   const handleSubmit = async () => {
     // Validate fields and provide specific feedback
@@ -382,6 +400,35 @@ export default function ConversationSimulationPage() {
                 {loading ? 'Simulating...' : 'Start Simulation'}
               </Button>
 
+              <div style={{ marginTop: 16 }}>
+                <Text strong>Sample Configurations</Text>
+                <Space direction="vertical" style={{ width: '100%', marginTop: 8 }}>
+                  {sampleConfigs.map((sample, index) => (
+                    <Card key={index} size="small" style={{ background: '#f9f9f9' }}>
+                      <Space align="start" style={{ width: '100%', justifyContent: 'space-between' }}>
+                        <Space direction="vertical" size={0}>
+                          <Text style={{ fontSize: 13 }}><Text strong>Intent:</Text> {sample.intent}</Text>
+                          <Text style={{ fontSize: 13 }}><Text strong>Sentiment:</Text> {sample.sentiment}</Text>
+                          <Text style={{ fontSize: 13 }}><Text strong>Subject:</Text> {sample.subject}</Text>
+                        </Space>
+                        <Button 
+                          size="small" 
+                          type="link" 
+                          onClick={() => {
+                            setCustomerIntent(sample.intent)
+                            setCustomerSentiment(sample.sentiment)
+                            setConversationSubject(sample.subject)
+                          }}
+                          style={{ padding: 0, marginLeft: 8 }}
+                        >
+                          Try it
+                        </Button>
+                      </Space>
+                    </Card>
+                  ))}
+                </Space>
+              </div>
+
               {error && (
                 <Alert message="Error" description={error} type="error" showIcon />
               )}
@@ -507,7 +554,18 @@ export default function ConversationSimulationPage() {
       key: 'history',
       label: 'History',
       children: (
-        <Card title="Simulation History">
+        <Card 
+          title="Simulation History"
+          extra={
+            <Button 
+              icon={<ReloadOutlined />} 
+              onClick={() => loadHistory(historyData?.page || 1, historyData?.page_size || 10)}
+              loading={historyLoading}
+            >
+              Reload
+            </Button>
+          }
+        >
           {historyError && (
             <Alert message="Error" description={historyError} type="error" showIcon style={{ marginBottom: 16 }} />
           )}
