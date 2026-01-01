@@ -197,32 +197,51 @@ export default function ConversationSimulationPage() {
   const renderConversationHistory = (history: ConversationMessage[]) => {
     return (
       <Space direction="vertical" size="small" style={{ width: '100%' }}>
-        {history.map((msg, index) => (
-          <Card 
-            key={index} 
-            size="small"
-            style={{ 
-              background: msg.agent_name === 'C1Agent' ? '#e6f7ff' : '#f6ffed',
-            }}
-          >
-            <Space direction="vertical" size="small" style={{ width: '100%' }}>
-              <div>
-                <Tag color={msg.agent_name === 'C1Agent' ? 'blue' : 'green'}>
-                  {msg.agent_name === 'C1Agent' ? 'Service Rep' : 'Customer'}
-                </Tag>
-                <Text type="secondary" style={{ fontSize: 12 }}>
-                  {new Date(msg.timestamp).toLocaleTimeString()}
+        {history.map((msg, index) => {
+          const isOrchestrator = msg.agent_name === 'OrchestratorAgent' || msg.agent_name === 'System';
+          const isC1 = msg.agent_name === 'C1Agent';
+          
+          // Determine background color
+          let bgColor = '#ffffff';
+          if (isC1) bgColor = '#e6f7ff'; // Blue for C1
+          else if (!isOrchestrator) bgColor = '#f6ffed'; // Green for C2
+          
+          // Determine tag color
+          let tagColor = 'default';
+          if (isC1) tagColor = 'blue';
+          else if (!isOrchestrator) tagColor = 'green';
+
+          return (
+            <Card 
+              key={index} 
+              size="small"
+              style={{ 
+                background: bgColor,
+                border: isOrchestrator ? 'none' : undefined,
+                boxShadow: isOrchestrator ? 'none' : undefined
+              }}
+              bodyStyle={isOrchestrator ? { padding: '4px 0', fontStyle: 'italic', color: '#888', textAlign: 'center' } : undefined}
+            >
+              {isOrchestrator ? (
+                <Text type="secondary" italic style={{ fontSize: 12 }}>
+                  {msg.message}
                 </Text>
-              </div>
-              <Text>{msg.message}</Text>
-              {msg.tokens_used && (
-                <Text type="secondary" style={{ fontSize: 12 }}>
-                  Tokens: {msg.tokens_used}
-                </Text>
+              ) : (
+                <Space direction="vertical" size="small" style={{ width: '100%' }}>
+                  <div>
+                    <Tag color={tagColor}>
+                      {msg.agent_name}
+                    </Tag>
+                    <Text type="secondary" style={{ fontSize: 12 }}>
+                      {new Date(msg.timestamp).toLocaleTimeString()}
+                    </Text>
+                  </div>
+                  <Text>{msg.message}</Text>
+                </Space>
               )}
-            </Space>
-          </Card>
-        ))}
+            </Card>
+          );
+        })}
       </Space>
     )
   }
@@ -326,7 +345,6 @@ export default function ConversationSimulationPage() {
           return (
             <Space direction="vertical" size={0}>
               <Text type="secondary" style={{ fontSize: 12 }}>{record.result.conversation_history.length} msgs</Text>
-              <Text type="secondary" style={{ fontSize: 12 }}>{record.result.total_tokens_used} tokens</Text>
             </Space>
           );
         }
@@ -448,10 +466,6 @@ export default function ConversationSimulationPage() {
                   <div>
                     <Text type="secondary">Total Messages: </Text>
                     <Text strong>{result.conversation_history.length}</Text>
-                  </div>
-                  <div>
-                    <Text type="secondary">Total Tokens: </Text>
-                    <Text strong>{result.total_tokens_used || 'N/A'}</Text>
                   </div>
                   <div>
                     <Text type="secondary">Time Taken: </Text>

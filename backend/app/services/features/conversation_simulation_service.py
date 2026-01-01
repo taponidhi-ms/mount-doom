@@ -90,10 +90,6 @@ trigger:
       variable: Local.TurnCount
       value: 0
 
-    - kind: CreateConversation
-      id: create_orch_conversation
-      conversationId: Local.OrchConversationId
-
     # Start Loop - C1 Turn
     - kind: InvokeAzureAgent
       id: c1_agent_turn
@@ -104,28 +100,6 @@ trigger:
         messages: "=Local.LatestMessage"
       output:
         messages: Local.LatestMessage
-
-    # Orchestrator Check 1
-    - kind: InvokeAzureAgent
-      id: orch_check_1
-      conversationId: "=Local.OrchConversationId"
-      agent:
-        name: {orch_agent.agent_version_object.name}
-      input:
-        messages: "=Local.LatestMessage"
-      output:
-        messages: Local.OrchResponse
-
-    # Check if completed
-    - kind: ConditionGroup
-      id: check_completion_1
-      conditions:
-        - condition: '=!IsBlank(Find("Completed", Last(Local.OrchResponse).Text))'
-          id: is_completed_1
-          actions:
-            - kind: EndConversation
-              id: end_workflow_1
-      elseActions: []
 
     # C2 Agent Turn
     - kind: InvokeAzureAgent
@@ -138,16 +112,27 @@ trigger:
       output:
         messages: Local.LatestMessage
 
-    # Orchestrator Check 2
+    # Orchestrator Check
     - kind: InvokeAzureAgent
-      id: orch_check_2
-      conversationId: "=Local.OrchConversationId"
+      id: orch_check
+      conversationId: "=System.ConversationId"
       agent:
         name: {orch_agent.agent_version_object.name}
       input:
         messages: "=Local.LatestMessage"
       output:
         messages: Local.OrchResponse
+
+    # Check if completed
+    - kind: ConditionGroup
+      id: check_completion
+      conditions:
+        - condition: '=!IsBlank(Find("Conversation is completed", Last(Local.OrchResponse).Text))'
+          id: is_completed
+          actions:
+            - kind: EndConversation
+              id: end_workflow
+      elseActions: []
 
     # Increment Turn Count
     - kind: SetVariable
@@ -199,67 +184,30 @@ trigger:
         logger.info("Stream created, processing events...")
 
         conversation_history: List[ConversationMessage] = []
-        total_tokens = 0
         conversation_status = "Ongoing"
         current_actor = None
-        current_tokens = None
-        event_count = 0
 
         logger.info("Processing stream events...")
         for event in stream:
-            event_count += 1
-            # Detailed logging for debugging
-            logger.info(f"Stream event #{event_count}", event_type=str(event.type))
-            if hasattr(event, 'text'):
-                logger.info(f"Event text: {event.text}")
-            if hasattr(event, 'item'):
-                logger.info(f"Event item: {event.item}")
-            
             if event.type == ResponseStreamEventType.RESPONSE_OUTPUT_ITEM_ADDED and event.item.type == "workflow_action":
-                logger.info("Workflow action added", action_id=event.item.action_id)
                 if event.item.action_id == "c1_agent_turn":
                     current_actor = self.C1_AGENT_NAME
-                    current_tokens = None
-                    logger.info(">>> C1 Agent (Service Rep) turn started")
                 elif event.item.action_id == "c2_agent_turn":
                     current_actor = self.C2_AGENT_NAME
-                    current_tokens = None
-                    logger.info(">>> C2 Agent (Customer) turn started")
-                elif event.item.action_id in ["orch_check_1", "orch_check_2"]:
+                elif event.item.action_id == "orch_check":
                     current_actor = self.ORCHESTRATOR_AGENT_NAME
-                    current_tokens = None
-                    logger.info(">>> Orchestrator checking conversation status", action_id=event.item.action_id)
             
             elif event.type == ResponseStreamEventType.RESPONSE_OUTPUT_TEXT_DONE:
                 if current_actor:
-                    message_preview = event.text[:100] + "..." if len(event.text) > 100 else event.text
-                    logger.info("Message received", 
-                               actor=current_actor, 
-                               message_length=len(event.text),
-                               message_preview=message_preview,
-                               tokens=current_tokens)
+                    logger.info("Message received", actor=current_actor, message_preview=event.text[:100] + "...")
                     conversation_history.append(ConversationMessage(
                         agent_name=current_actor,
                         message=event.text,
-                        tokens_used=current_tokens,
                         timestamp=datetime.utcnow()
                     ))
-                    logger.debug("Message added to history", history_length=len(conversation_history))
-            
-            elif event.type == ResponseStreamEventType.RESPONSE_OUTPUT_ITEM_DONE:
-                # Extract tokens for the current item
-                if hasattr(event, 'item') and hasattr(event.item, 'usage') and event.item.usage:
-                    current_tokens = event.item.usage.total_tokens
-                    logger.debug("Token usage recorded", tokens=current_tokens, actor=current_actor)
-                    # Update the last message in history with token usage if it matches
-                    if conversation_history and conversation_history[-1].agent_name == current_actor:
-                        conversation_history[-1].tokens_used = current_tokens
             
             elif event.type == ResponseStreamEventType.RESPONSE_COMPLETED:
                 logger.info("Stream completed")
-                if hasattr(event, 'usage') and event.usage:
-                    total_tokens = event.usage.total_tokens
-                    logger.info("Total token usage", total_tokens=total_tokens)
 
         # Determine final status
         logger.info("Determining final conversation status...")
@@ -268,10 +216,10 @@ trigger:
         if orch_msgs:
             last_orch_message = orch_msgs[-1].message
             logger.debug("Last orchestrator message", message=last_orch_message[:100])
-            if "Completed" in last_orch_message:
+            if "Conversation is completed" in last_orch_message:
                 conversation_status = "Completed"
                 logger.info("Conversation marked as Completed by orchestrator")
-        
+
         end_time = datetime.utcnow()
         total_time_ms = (end_time - start_time).total_seconds() * 1000
         
@@ -279,15 +227,12 @@ trigger:
         logger.info("Conversation simulation completed",
                    status=conversation_status,
                    total_messages=len(conversation_history),
-                   total_tokens=total_tokens,
-                   total_time_ms=round(total_time_ms, 2),
-                   events_processed=event_count)
+                   total_time_ms=round(total_time_ms, 2))
         logger.info("="*60)
 
         return ConversationSimulationResult(
             conversation_history=conversation_history,
             conversation_status=conversation_status,
-            total_tokens_used=total_tokens,
             total_time_taken_ms=total_time_ms,
             start_time=start_time,
             end_time=end_time,
@@ -302,7 +247,6 @@ trigger:
         conversation_properties: Dict[str, Any],
         conversation_history: list,
         conversation_status: str,
-        total_tokens_used: Optional[int],
         total_time_taken_ms: float,
         c1_agent_details: Dict[str, Any],
         c2_agent_details: Dict[str, Any],
@@ -316,7 +260,6 @@ trigger:
             conversation_properties: Properties of the conversation
             conversation_history: List of conversation messages
             conversation_status: Status of the conversation
-            total_tokens_used: Total tokens used
             total_time_taken_ms: Total time taken in milliseconds
             c1_agent_details: Details about C1 agent
             c2_agent_details: Details about C2 agent
@@ -326,7 +269,6 @@ trigger:
         logger.info("Saving conversation simulation to database",
                    status=conversation_status,
                    messages=len(conversation_history),
-                   tokens=total_tokens_used,
                    time_ms=round(total_time_taken_ms, 2),
                    conversation_id=conversation_id)
         
@@ -337,7 +279,6 @@ trigger:
             "conversation_properties": conversation_properties,
             "conversation_history": conversation_history,
             "conversation_status": conversation_status,
-            "total_tokens_used": total_tokens_used,
             "total_time_taken_ms": total_time_taken_ms,
             "c1_agent_details": c1_agent_details,
             "c2_agent_details": c2_agent_details,

@@ -145,7 +145,6 @@ class ConversationMessage(BaseModel):
     """A single message in a conversation."""
     agent_name: str
     message: str
-    tokens_used: Optional[int] = None
     timestamp: datetime
 
 
@@ -153,7 +152,6 @@ class ConversationSimulationResult(BaseModel):
     """Result from conversation simulation service."""
     conversation_history: List[ConversationMessage]
     conversation_status: str
-    total_tokens_used: Optional[int] = None
     total_time_taken_ms: float
     start_time: datetime
     end_time: datetime
@@ -174,7 +172,6 @@ class ConversationSimulationResponse(BaseModel):
     """Response for conversation simulation use case."""
     conversation_history: List[ConversationMessage]
     conversation_status: str
-    total_tokens_used: Optional[int] = None
     total_time_taken_ms: float
     start_time: datetime
     end_time: datetime

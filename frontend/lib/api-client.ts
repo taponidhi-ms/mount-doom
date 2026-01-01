@@ -100,14 +100,12 @@ export interface ConversationSimulationRequest {
 export interface ConversationMessage {
   agent_name: string;
   message: string;
-  tokens_used?: number;
   timestamp: string;
 }
 
 export interface ConversationSimulationResponse {
   conversation_history: ConversationMessage[];
   conversation_status: string;
-  total_tokens_used?: number;
   total_time_taken_ms: number;
   start_time: string;
   end_time: string;

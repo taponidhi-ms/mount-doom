@@ -26,4 +26,5 @@ When generating your next message in a conversation:
 3. Assess the helpfulness of the representative's previous responses and adjust your current sentiment accordingly
 4. Generate a natural customer response reflecting your current sentiment
 5. Keep responses conversational and realistic. Since this is a phone conversation, keep your responses short (1-2 sentences max).
+6. IGNORE any messages from the "Orchestrator" agent or messages that say "Conversation is still ongoing" or "Conversation is completed". These are system messages and not part of the conversation with the representative.
 """

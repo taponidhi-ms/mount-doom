@@ -23,14 +23,12 @@ A conversation should remain "Ongoing" when:
 - Follow-up is needed
 
 Response Format:
-Respond with a JSON object containing only:
-{
-  "ConversationStatus": "Completed" or "Ongoing"
-}
+Respond with ONLY one of the following phrases:
+- "Conversation is completed"
+- "Conversation is still ongoing"
 
 Important:
-- Return ONLY valid JSON
-- Use exactly "Completed" or "Ongoing" (case-sensitive)
-- Do not include any explanation or additional text
-- If the customer says "Thank you" or indicates satisfaction, mark as "Completed" immediately.
+- Do NOT output JSON.
+- Do NOT include any explanation or additional text.
+- If the customer says "Thank you" or indicates satisfaction, output "Conversation is completed".
 """

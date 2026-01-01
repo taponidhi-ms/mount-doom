@@ -59,15 +59,13 @@ async def simulate_conversation(request: ConversationSimulationRequest):
         
         logger.info("Simulation completed, preparing for database save",
                    status=simulation_result.conversation_status,
-                   messages=len(simulation_result.conversation_history),
-                   total_tokens=simulation_result.total_tokens_used)
+                   messages=len(simulation_result.conversation_history))
 
         # Save to database using service method
         conversation_history_dict = [
             {
                 "agent_name": msg.agent_name,
                 "message": msg.message,
-                "tokens_used": msg.tokens_used,
                 "timestamp": msg.timestamp.isoformat()
             }
             for msg in simulation_result.conversation_history
@@ -81,7 +79,6 @@ async def simulate_conversation(request: ConversationSimulationRequest):
             conversation_properties=conv_props_dict,
             conversation_history=conversation_history_dict,
             conversation_status=simulation_result.conversation_status,
-            total_tokens_used=simulation_result.total_tokens_used,
             total_time_taken_ms=total_time_taken_ms,
             c1_agent_details={
                 "agent_name": c1_agent_details.agent_name,
