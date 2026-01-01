@@ -8,6 +8,7 @@ import json
 from app.services.ai.azure_ai_service import azure_ai_service
 from app.services.db.cosmos_db_service import cosmos_db_service
 from app.models.schemas import PersonaGeneratorResult
+from app.instruction_sets.persona_generator import PERSONA_GENERATOR_AGENT_INSTRUCTIONS
 
 logger = structlog.get_logger()
 
@@ -16,8 +17,7 @@ class PersonaGeneratorService:
     """Service for generating exact personas using the Persona Generator Agent."""
 
     PERSONA_GENERATOR_AGENT_NAME = "PersonaGeneratorAgent"
-    PERSONA_GENERATOR_AGENT_MODULE = "app.instruction_sets.persona_generator"
-    PERSONA_GENERATOR_AGENT_CONSTANT = "PERSONA_GENERATOR_AGENT_INSTRUCTIONS"
+    PERSONA_GENERATOR_AGENT_INSTRUCTIONS = PERSONA_GENERATOR_AGENT_INSTRUCTIONS
 
     def __init__(self):
         pass
@@ -63,12 +63,11 @@ class PersonaGeneratorService:
             logger.info("Starting persona generation", prompt_length=len(prompt))
             logger.debug("Prompt preview", prompt=prompt[:200] + "..." if len(prompt) > 200 else prompt)
 
-            # Create agent from module
+            # Create agent with instructions
             logger.info("Creating Persona Generator Agent...")
-            agent = azure_ai_service.create_agent_from_module(
+            agent = azure_ai_service.create_agent(
                 agent_name=self.PERSONA_GENERATOR_AGENT_NAME,
-                module_name=self.PERSONA_GENERATOR_AGENT_MODULE,
-                constant_name=self.PERSONA_GENERATOR_AGENT_CONSTANT
+                instructions=self.PERSONA_GENERATOR_AGENT_INSTRUCTIONS
             )
             logger.info("Persona Generator Agent ready", agent_version=agent.agent_version_object.version)
 

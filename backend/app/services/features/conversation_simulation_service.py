@@ -10,6 +10,9 @@ from app.services.ai.azure_ai_service import azure_ai_service
 from app.services.db.cosmos_db_service import cosmos_db_service
 from app.models.schemas import ConversationMessage, AgentDetails, ConversationSimulationResult
 from app.core.config import settings
+from app.instruction_sets.c1_agent import C1_AGENT_INSTRUCTIONS
+from app.instruction_sets.c2_agent import C2_AGENT_INSTRUCTIONS
+from app.instruction_sets.orchestrator import ORCHESTRATOR_AGENT_INSTRUCTIONS
 
 logger = structlog.get_logger()
 
@@ -18,16 +21,13 @@ class ConversationSimulationService:
     """Service for simulating multi-agent conversations."""
 
     C1_AGENT_NAME = "C1Agent"
-    C1_AGENT_MODULE = "app.instruction_sets.c1_agent"
-    C1_AGENT_CONSTANT = "C1_AGENT_INSTRUCTIONS"
+    C1_AGENT_INSTRUCTIONS = C1_AGENT_INSTRUCTIONS
 
     C2_AGENT_NAME = "C2Agent"
-    C2_AGENT_MODULE = "app.instruction_sets.c2_agent"
-    C2_AGENT_CONSTANT = "C2_AGENT_INSTRUCTIONS"
+    C2_AGENT_INSTRUCTIONS = C2_AGENT_INSTRUCTIONS
 
     ORCHESTRATOR_AGENT_NAME = "OrchestratorAgent"
-    ORCHESTRATOR_AGENT_MODULE = "app.instruction_sets.orchestrator"
-    ORCHESTRATOR_AGENT_CONSTANT = "ORCHESTRATOR_AGENT_INSTRUCTIONS"
+    ORCHESTRATOR_AGENT_INSTRUCTIONS = ORCHESTRATOR_AGENT_INSTRUCTIONS
 
     def __init__(self):
         pass
@@ -51,26 +51,23 @@ class ConversationSimulationService:
                    conversation_subject=conversation_properties.get('ConversationSubject'))
         logger.info("="*60)
 
-        # Create agents from modules
+        # Create agents with instructions
         logger.info("Creating agents for simulation...")
-        c1_agent = azure_ai_service.create_agent_from_module(
-            self.C1_AGENT_NAME, 
-            self.C1_AGENT_MODULE, 
-            self.C1_AGENT_CONSTANT
+        c1_agent = azure_ai_service.create_agent(
+            agent_name=self.C1_AGENT_NAME,
+            instructions=self.C1_AGENT_INSTRUCTIONS
         )
         logger.debug("C1 Agent ready", agent_name=self.C1_AGENT_NAME, version=c1_agent.agent_version_object.version)
         
-        c2_agent = azure_ai_service.create_agent_from_module(
-            self.C2_AGENT_NAME, 
-            self.C2_AGENT_MODULE, 
-            self.C2_AGENT_CONSTANT
+        c2_agent = azure_ai_service.create_agent(
+            agent_name=self.C2_AGENT_NAME,
+            instructions=self.C2_AGENT_INSTRUCTIONS
         )
         logger.debug("C2 Agent ready", agent_name=self.C2_AGENT_NAME, version=c2_agent.agent_version_object.version)
         
-        orch_agent = azure_ai_service.create_agent_from_module(
-            self.ORCHESTRATOR_AGENT_NAME, 
-            self.ORCHESTRATOR_AGENT_MODULE, 
-            self.ORCHESTRATOR_AGENT_CONSTANT
+        orch_agent = azure_ai_service.create_agent(
+            agent_name=self.ORCHESTRATOR_AGENT_NAME,
+            instructions=self.ORCHESTRATOR_AGENT_INSTRUCTIONS
         )
         logger.debug("Orchestrator Agent ready", agent_name=self.ORCHESTRATOR_AGENT_NAME, version=orch_agent.agent_version_object.version)
         

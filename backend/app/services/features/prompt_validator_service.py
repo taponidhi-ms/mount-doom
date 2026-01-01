@@ -7,6 +7,7 @@ from typing import Optional
 from app.services.ai.azure_ai_service import azure_ai_service
 from app.services.db.cosmos_db_service import cosmos_db_service
 from app.models.schemas import PromptValidatorResult
+from app.instruction_sets.prompt_validator import PROMPT_VALIDATOR_AGENT_INSTRUCTIONS
 
 logger = structlog.get_logger()
 
@@ -15,8 +16,7 @@ class PromptValidatorService:
     """Service for validating simulation prompts using the Prompt Validator Agent."""
 
     PROMPT_VALIDATOR_AGENT_NAME = "PromptValidatorAgent"
-    PROMPT_VALIDATOR_AGENT_MODULE = "app.instruction_sets.prompt_validator"
-    PROMPT_VALIDATOR_AGENT_CONSTANT = "PROMPT_VALIDATOR_AGENT_INSTRUCTIONS"
+    PROMPT_VALIDATOR_AGENT_INSTRUCTIONS = PROMPT_VALIDATOR_AGENT_INSTRUCTIONS
 
     def __init__(self):
         pass
@@ -41,12 +41,11 @@ class PromptValidatorService:
             logger.info("Starting prompt validation", prompt_length=len(prompt))
             logger.debug("Prompt to validate", prompt=prompt[:200] + "..." if len(prompt) > 200 else prompt)
 
-            # Create agent from module
+            # Create agent with instructions
             logger.info("Creating Prompt Validator Agent...")
-            agent = azure_ai_service.create_agent_from_module(
+            agent = azure_ai_service.create_agent(
                 agent_name=self.PROMPT_VALIDATOR_AGENT_NAME,
-                module_name=self.PROMPT_VALIDATOR_AGENT_MODULE,
-                constant_name=self.PROMPT_VALIDATOR_AGENT_CONSTANT
+                instructions=self.PROMPT_VALIDATOR_AGENT_INSTRUCTIONS
             )
             logger.info("Prompt Validator Agent ready", agent_version=agent.agent_version_object.version)
 
