@@ -7,7 +7,6 @@ from app.core.config import settings
 from typing import Optional, NamedTuple, Dict, TYPE_CHECKING
 import structlog
 import os
-import importlib
 from pathlib import Path
 
 if TYPE_CHECKING:
@@ -79,34 +78,6 @@ class AzureAIService:
             self._openai_client = self._client.get_openai_client()
         return self._openai_client
 
-    def _load_instructions_from_module(self, module_name: str, constant_name: str) -> str:
-        """
-        Load instructions from a Python module constant.
-        
-        Args:
-            module_name: The module name (e.g., 'app.instruction_sets.persona_distribution')
-            constant_name: The name of the constant containing instructions
-            
-        Returns:
-            str: The instructions text
-        """
-        logger.debug("Loading instructions from module", module=module_name, constant=constant_name)
-        
-        try:
-            module = importlib.import_module(module_name)
-            instructions = getattr(module, constant_name)
-            logger.debug("Instructions loaded from module", length=len(instructions))
-            return instructions
-        except ImportError as e:
-            logger.error("Module not found", module=module_name, error=str(e))
-            raise
-        except AttributeError as e:
-            logger.error("Constant not found in module", module=module_name, constant=constant_name, error=str(e))
-            raise
-        except Exception as e:
-            logger.error("Error loading instructions from module", module=module_name, error=str(e))
-            raise
-
     def _load_instructions_from_file(self, instructions_path: str) -> str:
         """
         Load instructions from a text file.
@@ -137,26 +108,6 @@ class AzureAIService:
         except Exception as e:
             logger.error("Error reading instructions file", path=str(full_path), error=str(e))
             raise
-
-    def create_agent_from_module(
-            self,
-            agent_name: str,
-            module_name: str,
-            constant_name: str
-    ) -> Agent:
-        """
-        Get or create an agent with instructions loaded from a Python module.
-        
-        Args:
-            agent_name: The name of the agent
-            module_name: The module name (e.g., 'app.instruction_sets.persona_distribution')
-            constant_name: The name of the constant containing instructions
-            
-        Returns:
-            Agent: The created or cached Agent object
-        """
-        instructions = self._load_instructions_from_module(module_name, constant_name)
-        return self.create_agent(agent_name, instructions)
 
     def create_agent_from_file(
             self,

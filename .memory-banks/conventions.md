@@ -328,9 +328,8 @@ Each use case service (PersonaDistributionService, PromptValidatorService, etc.)
 - File naming convention: `{agent_type}.py` (e.g., `persona_distribution.py`)
 - Each module exports a constant: `{AGENT_TYPE}_INSTRUCTIONS` (e.g., `PERSONA_DISTRIBUTION_AGENT_INSTRUCTIONS`)
 - Services import the instruction constants directly from the instruction_sets modules
-- Three agent creation methods available:
+- Two agent creation methods available:
   - `create_agent(agent_name, instructions)` - Direct text with imported instructions (preferred)
-  - `create_agent_from_module(agent_name, module_name, constant_name)` - Loads from Python module (legacy)
   - `create_agent_from_file(agent_name, instructions_path)` - Loads from text file (legacy support)
 
 ### Agent Usage Pattern
