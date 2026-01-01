@@ -57,19 +57,29 @@ Services contain:
 - Conversation management
 - Token and timing tracking
 - Data transformation and formatting
+- **Database persistence logic** (document structure, ID generation, saving)
 
 #### CosmosDBService
-Handles all Cosmos DB operations for persisting results
+**Infrastructure service for Cosmos DB - Singleton pattern**
+
+Responsibilities:
+- Client initialization and management
+- Database reference management  
+- Generic container operations
+- Container name constants
 
 Methods:
-- `save_persona_generation()` - Save persona generation result
-- `save_general_prompt()` - Save general prompt result
-- `save_prompt_validator()` - Save prompt validation result
-- `save_conversation_simulation()` - Save conversation simulation result
+- `ensure_container()` - Ensure a container exists, create if needed
+- `save_document()` - Generic method to save any document to a container
 - `browse_container()` - Browse container with pagination and ordering
   - Supports custom ordering by field (default: timestamp DESC)
   - Returns paginated results with total count and page info
   - Used by all browse endpoints
+
+Does NOT contain:
+- Feature-specific business logic
+- Document structure definitions
+- Feature-specific save methods
 
 ### Routes (One per use case)
 - `/api/v1/persona-generation/*` - Delegates to PersonaGenerationService
@@ -89,7 +99,7 @@ Methods:
 Routes only:
 1. Extract request parameters
 2. Call appropriate service method
-3. Save results via CosmosDBService
+3. Save results via service's save_to_database() method
 4. Return formatted response
 
 ## Frontend Architecture
@@ -140,11 +150,15 @@ Pages:
    - Uses AzureAIService to create agents/clients
    - Manages conversation flow
    - Tracks metrics (tokens, timing)
+   - Defines document structure for persistence
+   - Calls CosmosDBService.save_document() to persist data
 6. **AzureAIService**:
    - Creates agents or gets clients
    - Communicates with Azure AI API
 7. **CosmosDBService**:
-   - Persists results to database
+   - Provides generic infrastructure for Cosmos DB operations
+   - Ensures containers exist
+   - Saves documents with generic save_document() method
 8. Backend returns response to frontend
 9. Frontend displays results with metrics in Generate tab
 10. Frontend reloads history to show new result
