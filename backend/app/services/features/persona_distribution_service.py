@@ -16,7 +16,8 @@ class PersonaDistributionService:
     """Service for generating persona distributions using the Persona Distribution Generator Agent."""
 
     PERSONA_DISTRIBUTION_AGENT_NAME = "PersonaDistributionGeneratorAgent"
-    PERSONA_DISTRIBUTION_AGENT_INSTRUCTIONS_FILE = "persona_distribution_agent.txt"
+    PERSONA_DISTRIBUTION_AGENT_MODULE = "app.instruction_sets.persona_distribution"
+    PERSONA_DISTRIBUTION_AGENT_CONSTANT = "PERSONA_DISTRIBUTION_AGENT_INSTRUCTIONS"
 
     def __init__(self):
         pass
@@ -62,11 +63,12 @@ class PersonaDistributionService:
             logger.info("Starting persona distribution generation", prompt_length=len(prompt))
             logger.debug("Prompt preview", prompt=prompt[:200] + "..." if len(prompt) > 200 else prompt)
 
-            # Create agent from file
+            # Create agent from module
             logger.info("Creating Persona Distribution Generator Agent...")
-            agent = azure_ai_service.create_agent_from_file(
+            agent = azure_ai_service.create_agent_from_module(
                 agent_name=self.PERSONA_DISTRIBUTION_AGENT_NAME,
-                instructions_path=self.PERSONA_DISTRIBUTION_AGENT_INSTRUCTIONS_FILE
+                module_name=self.PERSONA_DISTRIBUTION_AGENT_MODULE,
+                constant_name=self.PERSONA_DISTRIBUTION_AGENT_CONSTANT
             )
             logger.info("Persona Distribution Generator Agent ready", agent_version=agent.agent_version_object.version)
 

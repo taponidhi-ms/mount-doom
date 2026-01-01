@@ -15,7 +15,8 @@ class PromptValidatorService:
     """Service for validating simulation prompts using the Prompt Validator Agent."""
 
     PROMPT_VALIDATOR_AGENT_NAME = "PromptValidatorAgent"
-    PROMPT_VALIDATOR_AGENT_INSTRUCTIONS_FILE = "prompt_validator_agent.txt"
+    PROMPT_VALIDATOR_AGENT_MODULE = "app.instruction_sets.prompt_validator"
+    PROMPT_VALIDATOR_AGENT_CONSTANT = "PROMPT_VALIDATOR_AGENT_INSTRUCTIONS"
 
     def __init__(self):
         pass
@@ -40,11 +41,12 @@ class PromptValidatorService:
             logger.info("Starting prompt validation", prompt_length=len(prompt))
             logger.debug("Prompt to validate", prompt=prompt[:200] + "..." if len(prompt) > 200 else prompt)
 
-            # Create agent from file
+            # Create agent from module
             logger.info("Creating Prompt Validator Agent...")
-            agent = azure_ai_service.create_agent_from_file(
+            agent = azure_ai_service.create_agent_from_module(
                 agent_name=self.PROMPT_VALIDATOR_AGENT_NAME,
-                instructions_path=self.PROMPT_VALIDATOR_AGENT_INSTRUCTIONS_FILE
+                module_name=self.PROMPT_VALIDATOR_AGENT_MODULE,
+                constant_name=self.PROMPT_VALIDATOR_AGENT_CONSTANT
             )
             logger.info("Prompt Validator Agent ready", agent_version=agent.agent_version_object.version)
 
