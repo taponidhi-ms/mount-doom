@@ -13,7 +13,6 @@ from app.models.db import ConversationSimulationDocument, AgentDetails
 from app.core.config import settings
 from app.instruction_sets.c1_agent import C1_AGENT_INSTRUCTIONS
 from app.instruction_sets.c2_agent import C2_AGENT_INSTRUCTIONS
-from app.instruction_sets.orchestrator import ORCHESTRATOR_AGENT_INSTRUCTIONS
 
 logger = structlog.get_logger()
 
@@ -26,9 +25,6 @@ class ConversationSimulationService:
 
     C2_AGENT_NAME = "C2Agent"
     C2_AGENT_INSTRUCTIONS = C2_AGENT_INSTRUCTIONS
-
-    ORCHESTRATOR_AGENT_NAME = "OrchestratorAgent"
-    ORCHESTRATOR_AGENT_INSTRUCTIONS = ORCHESTRATOR_AGENT_INSTRUCTIONS
 
     def __init__(self):
         pass
@@ -66,12 +62,6 @@ class ConversationSimulationService:
         )
         logger.debug("C2 Agent ready", agent_name=self.C2_AGENT_NAME, version=c2_agent.agent_version_object.version)
         
-        orch_agent = azure_ai_service.create_agent(
-            agent_name=self.ORCHESTRATOR_AGENT_NAME,
-            instructions=self.ORCHESTRATOR_AGENT_INSTRUCTIONS
-        )
-        logger.debug("Orchestrator Agent ready", agent_name=self.ORCHESTRATOR_AGENT_NAME, version=orch_agent.agent_version_object.version)
-        
         logger.info("All agents created successfully")
 
         # Workflow YAML
@@ -102,6 +92,17 @@ trigger:
       output:
         messages: Local.LatestMessage
 
+    # Check C1 Termination
+    - kind: ConditionGroup
+      id: check_c1_termination
+      conditions:
+        - condition: '=!IsBlank(Find("transfer this call to my supervisor", Last(Local.LatestMessage).Text))'
+          id: c1_terminates
+          actions:
+            - kind: EndConversation
+              id: end_workflow_c1
+      elseActions: []
+
     # C2 Agent Turn
     - kind: InvokeAzureAgent
       id: c2_agent_turn
@@ -113,26 +114,15 @@ trigger:
       output:
         messages: Local.LatestMessage
 
-    # Orchestrator Check
-    - kind: InvokeAzureAgent
-      id: orch_check
-      conversationId: "=System.ConversationId"
-      agent:
-        name: {orch_agent.agent_version_object.name}
-      input:
-        messages: "=Local.LatestMessage"
-      output:
-        messages: Local.OrchResponse
-
-    # Check if completed
+    # Check C2 Termination
     - kind: ConditionGroup
-      id: check_completion
+      id: check_c2_termination
       conditions:
-        - condition: '=!IsBlank(Find("Conversation is completed", Last(Local.OrchResponse).Text))'
-          id: is_completed
+        - condition: '=!IsBlank(Find("end this call now", Last(Local.LatestMessage).Text))'
+          id: c2_terminates
           actions:
             - kind: EndConversation
-              id: end_workflow
+              id: end_workflow_c2
       elseActions: []
 
     # Increment Turn Count
@@ -195,8 +185,6 @@ trigger:
                     current_actor = self.C1_AGENT_NAME
                 elif event.item.action_id == "c2_agent_turn":
                     current_actor = self.C2_AGENT_NAME
-                elif event.item.action_id == "orch_check":
-                    current_actor = self.ORCHESTRATOR_AGENT_NAME
             
             elif event.type == ResponseStreamEventType.RESPONSE_OUTPUT_TEXT_DONE:
                 if current_actor:
@@ -212,14 +200,14 @@ trigger:
 
         # Determine final status
         logger.info("Determining final conversation status...")
-        orch_msgs = [m for m in conversation_history if m.agent_name == self.ORCHESTRATOR_AGENT_NAME]
-        logger.debug("Orchestrator messages count", count=len(orch_msgs))
-        if orch_msgs:
-            last_orch_message = orch_msgs[-1].message
-            logger.debug("Last orchestrator message", message=last_orch_message[:100])
-            if "Conversation is completed" in last_orch_message:
+        if conversation_history:
+            last_message = conversation_history[-1].message.lower()
+            if "end this call now" in last_message or "transfer this call to my supervisor" in last_message:
                 conversation_status = "Completed"
-                logger.info("Conversation marked as Completed by orchestrator")
+                logger.info("Conversation marked as Completed by termination phrase")
+            else:
+                # If max turns reached, it might also be considered completed or just stopped
+                conversation_status = "Completed" if len(conversation_history) >= max_turns * 2 else "Ongoing"
 
         end_time = datetime.utcnow()
         total_time_ms = (end_time - start_time).total_seconds() * 1000
@@ -239,7 +227,7 @@ trigger:
             end_time=end_time,
             c1_agent_details=c1_agent.agent_details,
             c2_agent_details=c2_agent.agent_details,
-            orchestrator_agent_details=orch_agent.agent_details,
+
             conversation_id=conversation.id
         )
 
@@ -251,7 +239,6 @@ trigger:
         total_time_taken_ms: float,
         c1_agent_details: Dict[str, Any],
         c2_agent_details: Dict[str, Any],
-        orchestrator_agent_details: Dict[str, Any],
         conversation_id: str
     ):
         """
@@ -264,7 +251,6 @@ trigger:
             total_time_taken_ms: Total time taken in milliseconds
             c1_agent_details: Details about C1 agent
             c2_agent_details: Details about C2 agent
-            orchestrator_agent_details: Details about orchestrator agent
             conversation_id: The conversation ID from Azure AI
         """
         logger.info("Saving conversation simulation to database",
@@ -282,8 +268,7 @@ trigger:
             conversation_status=conversation_status,
             total_time_taken_ms=total_time_taken_ms,
             c1_agent_details=AgentDetails(**c1_agent_details),
-            c2_agent_details=AgentDetails(**c2_agent_details),
-            orchestrator_agent_details=AgentDetails(**orchestrator_agent_details)
+            c2_agent_details=AgentDetails(**c2_agent_details)
         )
         
         # Use generic save method from CosmosDBService

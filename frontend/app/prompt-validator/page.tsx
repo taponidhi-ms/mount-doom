@@ -234,6 +234,32 @@ export default function PromptValidatorPage() {
               showTotal: (total) => `Total ${total} items`,
               onChange: (page, pageSize) => loadHistory(page, pageSize),
             }}
+            expandable={{
+              expandedRowRender: (record) => (
+                <div>
+                  <Space direction="vertical" style={{ width: '100%' }}>
+                    <div>
+                      <Text strong>Prompt:</Text>
+                      <Paragraph>{record.prompt}</Paragraph>
+                    </div>
+                    <div>
+                      <Text strong>Validation Result:</Text>
+                      <Paragraph>
+                        <pre style={{ 
+                          background: '#f5f5f5', 
+                          padding: '12px', 
+                          borderRadius: '4px',
+                          whiteSpace: 'pre-wrap',
+                          wordWrap: 'break-word'
+                        }}>
+                          {record.response}
+                        </pre>
+                      </Paragraph>
+                    </div>
+                  </Space>
+                </div>
+              ),
+            }}
           />
         </Card>
       ),

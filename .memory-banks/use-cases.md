@@ -167,7 +167,6 @@
 **Participants**:
 - **C1Agent**: Customer Service Representative (fixed agent name)
 - **C2Agent**: Customer (fixed agent name)
-- **OrchestratorAgent**: Determines conversation completion (fixed agent name)
 
 **Workflow**:
 1. User provides customer configuration:
@@ -176,15 +175,15 @@
 2. Max turns is hardcoded to 20 in backend
 3. Simulation starts (sequentially for batch):
    - C1Agent speaks first (as service rep)
-   - OrchestratorAgent checks if conversation is complete
+   - Check for termination phrase ("transfer this call to my supervisor")
    - C2Agent responds (as customer)
-   - OrchestratorAgent checks again
+   - Check for termination phrase ("end this call now")
    - Repeat until complete or max turns (20) reached
-4. Full conversation stored in Cosmos DB `conversation_simulation` container with details for all three agents
+4. Full conversation stored in Cosmos DB `conversation_simulation` container with details for agents
 5. Frontend displays conversation history with metrics
 
 **Agents**:
-- All three agents use fixed names and instructions defined in service classes
+- Agents use fixed names and instructions defined in service classes
 - Automatic versioning for each agent based on their instruction hash
 - Model: gpt-4 (default from settings)
 
@@ -202,12 +201,10 @@ ConversationProperties: {json}
 messages: {history}
 ```
 
-**Orchestrator Response**:
-```json
-{
-  "ConversationStatus": "Ongoing" | "Completed"
-}
-```
+**Completion Logic**:
+- Conversation ends if C1 says "i will transfer this call to my supervisor now"
+- Conversation ends if C2 says "I will end this call now."
+- Conversation ends if max turns (20) reached
 
 **Metrics Tracked**:
 - Per-message tokens and timing
@@ -219,7 +216,7 @@ messages: {history}
 
 **Database Schema**:
 - Document ID: conversation_id from Azure AI
-- Fields: conversation_properties, conversation_history, conversation_status, total_tokens_used, total_time_taken_ms, c1_agent_details, c2_agent_details, orchestrator_agent_details, timestamp
+- Fields: conversation_properties, conversation_history, conversation_status, total_tokens_used, total_time_taken_ms, c1_agent_details, c2_agent_details, timestamp
 
 **Key Features**:
 - Turn-by-turn simulation

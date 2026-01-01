@@ -242,22 +242,18 @@ response = openai_client.responses.create(
 ### Workflow Pattern
 For each conversation turn:
 1. **C1 Agent** (service representative): Generates response based on conversation context
-2. **Orchestrator Agent**: Checks if conversation should continue
-3. If not completed:
-   - **C2 Agent** (customer): Generates customer response
-   - **Orchestrator Agent**: Checks again for completion
-4. If completed or max turns reached: End conversation
+2. **C2 Agent** (customer): Generates customer response
+3. If completed or max turns reached: End conversation
 
 ### ConversationSimulationService Methods
 - `simulate_conversation()`: Main orchestration method that runs full conversation
-  - Creates all three agents
+  - Creates both agents
   - Manages shared conversation lifecycle
   - Runs conversation turns until completion or max_turns
   - Returns complete results with all metrics
 
 - `_invoke_c1_agent()`: Helper to invoke C1 agent on shared conversation
 - `_invoke_c2_agent()`: Helper to invoke C2 agent on shared conversation
-- `_invoke_orchestrator_agent()`: Helper to check conversation status
 
 ### Benefits
 - Shared context across all turns and agents

@@ -22,9 +22,7 @@ async def simulate_conversation(request: ConversationSimulationRequest):
     
     The workflow uses a single shared conversation where:
     1. C1 agent generates a service representative response
-    2. Orchestrator checks if conversation should continue
-    3. C2 agent generates a customer response
-    4. Orchestrator checks again if conversation should end
+    2. C2 agent generates a customer response
     This repeats until max_turns (10) or completion status is reached.
     """
     MAX_TURNS = 10  # Hardcoded max turns (5 turns each for C1 and C2)
@@ -73,7 +71,6 @@ async def simulate_conversation(request: ConversationSimulationRequest):
 
         c1_agent_details = simulation_result.c1_agent_details
         c2_agent_details = simulation_result.c2_agent_details
-        orchestrator_agent_details = simulation_result.orchestrator_agent_details
 
         await conversation_simulation_service.save_to_database(
             conversation_properties=conv_props_dict,
@@ -94,13 +91,6 @@ async def simulate_conversation(request: ConversationSimulationRequest):
                 "model_deployment_name": c2_agent_details.model_deployment_name,
                 "created_at": c2_agent_details.created_at
             },
-            orchestrator_agent_details={
-                "agent_name": orchestrator_agent_details.agent_name,
-                "agent_version": orchestrator_agent_details.agent_version,
-                "instructions": orchestrator_agent_details.instructions,
-                "model_deployment_name": orchestrator_agent_details.model_deployment_name,
-                "created_at": orchestrator_agent_details.created_at
-            },
             conversation_id=simulation_result.conversation_id
         )
         
@@ -111,13 +101,11 @@ async def simulate_conversation(request: ConversationSimulationRequest):
         return ConversationSimulationResponse(
             conversation_history=simulation_result.conversation_history,
             conversation_status=simulation_result.conversation_status,
-            total_tokens_used=simulation_result.total_tokens_used,
             total_time_taken_ms=total_time_taken_ms,
             start_time=start_time,
             end_time=end_time,
             c1_agent_details=c1_agent_details,
             c2_agent_details=c2_agent_details,
-            orchestrator_agent_details=orchestrator_agent_details,
             conversation_id=simulation_result.conversation_id
         )
 

@@ -198,18 +198,18 @@ export default function ConversationSimulationPage() {
     return (
       <Space direction="vertical" size="small" style={{ width: '100%' }}>
         {history.map((msg, index) => {
-          const isOrchestrator = msg.agent_name === 'OrchestratorAgent' || msg.agent_name === 'System';
+          const isSystem = msg.agent_name === 'System';
           const isC1 = msg.agent_name === 'C1Agent';
           
           // Determine background color
           let bgColor = '#ffffff';
           if (isC1) bgColor = '#e6f7ff'; // Blue for C1
-          else if (!isOrchestrator) bgColor = '#f6ffed'; // Green for C2
+          else if (!isSystem) bgColor = '#f6ffed'; // Green for C2
           
           // Determine tag color
           let tagColor = 'default';
           if (isC1) tagColor = 'blue';
-          else if (!isOrchestrator) tagColor = 'green';
+          else if (!isSystem) tagColor = 'green';
 
           return (
             <Card 
@@ -217,12 +217,12 @@ export default function ConversationSimulationPage() {
               size="small"
               style={{ 
                 background: bgColor,
-                border: isOrchestrator ? 'none' : undefined,
-                boxShadow: isOrchestrator ? 'none' : undefined
+                border: isSystem ? 'none' : undefined,
+                boxShadow: isSystem ? 'none' : undefined
               }}
-              bodyStyle={isOrchestrator ? { padding: '4px 0', fontStyle: 'italic', color: '#888', textAlign: 'center' } : undefined}
+              bodyStyle={isSystem ? { padding: '4px 0', fontStyle: 'italic', color: '#888', textAlign: 'center' } : undefined}
             >
-              {isOrchestrator ? (
+              {isSystem ? (
                 <Text type="secondary" italic style={{ fontSize: 12 }}>
                   {msg.message}
                 </Text>
@@ -249,7 +249,7 @@ export default function ConversationSimulationPage() {
   const columns = [
     {
       title: 'Timestamp',
-      dataIndex: 'start_time',
+      dataIndex: 'timestamp',
       key: 'timestamp',
       render: (text: string) => new Date(text).toLocaleString(),
       width: 180,
@@ -402,7 +402,7 @@ export default function ConversationSimulationPage() {
               
               <Alert 
                 message="Note" 
-                description="Conversations will run up to 20 turns or until completion is detected by the orchestrator agent."
+                description="Conversations will run up to 20 turns or until completion is detected by the agents (e.g. 'I will end this call now')."
                 type="info" 
                 showIcon 
               />

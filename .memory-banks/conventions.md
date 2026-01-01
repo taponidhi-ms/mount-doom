@@ -91,10 +91,9 @@
 
 3. **Conversation Simulation** (Most Verbose):
    - Every stream event with event count and type
-   - Workflow action changes (C1, C2, Orchestrator turns)
+   - Workflow action changes (C1, C2 turns)
    - Each message received (actor, length, preview, tokens)
    - Token usage per message
-   - Orchestrator status checks
    - Final conversation status determination
 
 4. **API Requests**:
@@ -373,12 +372,11 @@ async def your_method(self, prompt: str):
 ### Multi-Agent Workflow (ConversationSimulationService)
 For conversation simulation with multiple agents:
 - Single conversation per simulation maintained across all turns
-- All agents (C1, C2, Orchestrator) operate on same conversation for context continuity
+- All agents (C1, C2) operate on same conversation for context continuity
 - Each agent invocation:
   1. Adds message to shared conversation
   2. Creates response using agent
   3. Returns tokens and response text
-- Orchestrator checks completion status after each agent turn
 - Workflow continues until completion status or max_turns reached
 
 ### Automatic Versioning

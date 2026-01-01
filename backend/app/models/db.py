@@ -63,5 +63,4 @@ class ConversationSimulationDocument(BaseDocument):
     total_time_taken_ms: float
     c1_agent_details: AgentDetails
     c2_agent_details: AgentDetails
-    orchestrator_agent_details: AgentDetails
     total_tokens_used: Optional[int] = None

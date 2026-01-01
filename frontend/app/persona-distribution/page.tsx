@@ -252,6 +252,48 @@ export default function PersonaDistributionPage() {
               showTotal: (total) => `Total ${total} items`,
               onChange: (page, pageSize) => loadHistory(page, pageSize),
             }}
+            expandable={{
+              expandedRowRender: (record) => (
+                <div>
+                  <Space direction="vertical" style={{ width: '100%' }}>
+                    <div>
+                      <Text strong>Prompt:</Text>
+                      <Paragraph>{record.prompt}</Paragraph>
+                    </div>
+                    <div>
+                      <Text strong>Response:</Text>
+                      <Paragraph>
+                        <pre style={{ 
+                          background: '#f5f5f5', 
+                          padding: '12px', 
+                          borderRadius: '4px',
+                          whiteSpace: 'pre-wrap',
+                          wordWrap: 'break-word'
+                        }}>
+                          {record.response}
+                        </pre>
+                      </Paragraph>
+                    </div>
+                    {record.parsed_output && (
+                      <div>
+                        <Text strong>Parsed Output:</Text>
+                        <Paragraph>
+                          <pre style={{ 
+                            background: '#e6f7ff', 
+                            padding: '12px', 
+                            borderRadius: '4px',
+                            whiteSpace: 'pre-wrap',
+                            wordWrap: 'break-word'
+                          }}>
+                            {JSON.stringify(record.parsed_output, null, 2)}
+                          </pre>
+                        </Paragraph>
+                      </div>
+                    )}
+                  </Space>
+                </div>
+              ),
+            }}
           />
         </Card>
       ),

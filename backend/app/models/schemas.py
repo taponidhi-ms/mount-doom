@@ -157,7 +157,6 @@ class ConversationSimulationResult(BaseModel):
     end_time: datetime
     c1_agent_details: AgentDetails
     c2_agent_details: AgentDetails
-    orchestrator_agent_details: AgentDetails
     conversation_id: str
 
 
@@ -177,7 +176,6 @@ class ConversationSimulationResponse(BaseModel):
     end_time: datetime
     c1_agent_details: AgentDetails
     c2_agent_details: AgentDetails
-    orchestrator_agent_details: AgentDetails
     conversation_id: str
 
 

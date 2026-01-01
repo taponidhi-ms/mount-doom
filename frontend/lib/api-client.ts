@@ -111,7 +111,6 @@ export interface ConversationSimulationResponse {
   end_time: string;
   c1_agent_details: AgentDetails;
   c2_agent_details: AgentDetails;
-  orchestrator_agent_details: AgentDetails;
   conversation_id: string;
 }
 

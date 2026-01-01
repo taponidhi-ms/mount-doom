@@ -30,7 +30,6 @@ This application uses a **fixed agent architecture** where each use case has pre
 - **PromptValidatorAgent** - Validates simulation prompts for quality
 - **C1Agent** - Customer service representative in conversations
 - **C2Agent** - Customer in conversations
-- **OrchestratorAgent** - Determines conversation completion status
 
 ### Agent Versioning
 - Agent versions are automatically generated based on instruction set changes
@@ -159,7 +158,7 @@ The API will be available at:
 ### Conversation Simulation
 
 - `GET /api/v1/conversation-simulation/models` - Get available models
-- `POST /api/v1/conversation-simulation/simulate` - Simulate conversation using C1Agent, C2Agent, and OrchestratorAgent
+- `POST /api/v1/conversation-simulation/simulate` - Simulate conversation using C1Agent and C2Agent
 
 ### Health Check
 
@@ -212,7 +211,7 @@ curl -X POST "http://localhost:8000/api/v1/conversation-simulation/simulate" \
   }'
 ```
 
-Response includes details for all three agents (C1Agent, C2Agent, OrchestratorAgent).
+Response includes details for both agents (C1Agent and C2Agent).
 
 ## Authentication
 
@@ -233,7 +232,7 @@ All use case results are automatically stored in Cosmos DB in separate container
 - `persona_generation` - Persona generation results with PersonaAgent details
 - `general_prompt` - General prompt results (model-only, no agent)
 - `prompt_validator` - Validation results with PromptValidatorAgent details
-- `conversation_simulation` - Conversation results with C1Agent, C2Agent, and OrchestratorAgent details
+- `conversation_simulation` - Conversation results with C1Agent and C2Agent details
 
 ### Stored Information
 Each record includes:
