@@ -14,7 +14,7 @@
 
 **Agent**: 
 - PersonaDistributionGeneratorAgent (fixed agent name)
-- Instructions defined in `persona_distribution_agent.txt`
+- Instructions defined in `app/instruction_sets/persona_distribution.py`
 - Automatic versioning based on instruction hash
 - Model: gpt-4 (default from settings)
 
@@ -63,7 +63,7 @@
 
 **Agent**: 
 - PersonaGeneratorAgent (fixed agent name)
-- Instructions defined in `persona_generator_agent.txt`
+- Instructions defined in `app/instruction_sets/persona_generator.py`
 - Automatic versioning based on instruction hash
 - Model: gpt-4 (default from settings)
 
@@ -139,7 +139,7 @@
 
 **Agent**:
 - PromptValidatorAgent (fixed agent name)
-- Instructions defined in `prompt_validator_agent.txt`
+- Instructions defined in `app/instruction_sets/prompt_validator.py`
 - Automatic versioning based on instruction hash
 - Model: gpt-4 (default from settings)
 

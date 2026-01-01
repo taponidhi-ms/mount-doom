@@ -65,7 +65,7 @@ Mount Doom is a fullstack AI agent simulation platform built with FastAPI (backe
 - Use Pydantic for validation
 - Use structlog for logging
 - Error handling with HTTPException
-- Agent instructions stored in static text files in `backend/app/instructions/`
+- Agent instructions stored in python files in `backend/app/instruction_sets/`
 
 ### Frontend (TypeScript)
 - Use TypeScript for all files
@@ -83,7 +83,7 @@ backend/app/
 ├── core/            # Configuration
 ├── models/          # Pydantic schemas
 ├── services/        # Business logic (Azure AI, Cosmos DB)
-├── instructions/    # Agent instruction text files
+├── instruction_sets/ # Agent instruction python files
 └── main.py         # FastAPI app
 ```
 
@@ -101,8 +101,8 @@ frontend/
 - Services are singletons
 - Use dependency injection
 - Separate Azure AI and Cosmos DB concerns
-- Agent instructions stored in text files
-- Use `create_agent_from_file()` to load instructions from files
+- Agent instructions stored in python files
+- Use `create_agent()` with instructions from python module
 
 ### Frontend API Pattern
 - Centralized API client in `lib/api-client.ts`
@@ -135,10 +135,10 @@ frontend/
 ## Common Tasks
 
 ### Adding New Use Case
-1. Create instruction file in `backend/app/instructions/[agent_name].txt`
+1. Create instruction file in `backend/app/instruction_sets/[agent_name].py`
 2. Create route in `backend/app/api/routes/`
 3. Add schema in `backend/app/models/schemas.py`
-4. Create service in `backend/app/services/features/` using `create_agent_from_file()`
+4. Create service in `backend/app/services/features/` using `create_agent()`
 5. Add Cosmos DB method in `backend/app/services/cosmos_db_service.py`
 6. Create page in `frontend/app/[use-case]/page.tsx` with Ant Design components
 7. Add API methods in `frontend/lib/api-client.ts`
