@@ -8,6 +8,7 @@ import json
 from app.services.ai.azure_ai_service import azure_ai_service
 from app.services.db.cosmos_db_service import cosmos_db_service
 from app.models.schemas import PersonaDistributionResult
+from app.instruction_sets.persona_distribution import PERSONA_DISTRIBUTION_AGENT_INSTRUCTIONS
 
 logger = structlog.get_logger()
 
@@ -16,7 +17,7 @@ class PersonaDistributionService:
     """Service for generating persona distributions using the Persona Distribution Generator Agent."""
 
     PERSONA_DISTRIBUTION_AGENT_NAME = "PersonaDistributionGeneratorAgent"
-    PERSONA_DISTRIBUTION_AGENT_INSTRUCTIONS_FILE = "persona_distribution_agent.txt"
+    PERSONA_DISTRIBUTION_AGENT_INSTRUCTIONS = PERSONA_DISTRIBUTION_AGENT_INSTRUCTIONS
 
     def __init__(self):
         pass
@@ -62,11 +63,11 @@ class PersonaDistributionService:
             logger.info("Starting persona distribution generation", prompt_length=len(prompt))
             logger.debug("Prompt preview", prompt=prompt[:200] + "..." if len(prompt) > 200 else prompt)
 
-            # Create agent from file
+            # Create agent with instructions
             logger.info("Creating Persona Distribution Generator Agent...")
-            agent = azure_ai_service.create_agent_from_file(
+            agent = azure_ai_service.create_agent(
                 agent_name=self.PERSONA_DISTRIBUTION_AGENT_NAME,
-                instructions_path=self.PERSONA_DISTRIBUTION_AGENT_INSTRUCTIONS_FILE
+                instructions=self.PERSONA_DISTRIBUTION_AGENT_INSTRUCTIONS
             )
             logger.info("Persona Distribution Generator Agent ready", agent_version=agent.agent_version_object.version)
 

@@ -297,6 +297,7 @@ export default function PersonaGeneratorPage() {
     <PageLayout
       title="Persona Generator"
       description="Generate exact customer personas for conversation simulations"
+      showBackButton
     >
       <Tabs defaultActiveKey="generate" items={items} />
     </PageLayout>
