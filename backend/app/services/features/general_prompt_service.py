@@ -8,6 +8,7 @@ from app.services.ai.azure_ai_service import azure_ai_service
 from app.services.db.cosmos_db_service import cosmos_db_service
 from app.core.config import settings
 from app.models.schemas import GeneralPromptResult
+from app.models.db import GeneralPromptDocument
 
 logger = structlog.get_logger()
 
@@ -158,15 +159,14 @@ class GeneralPromptService:
         
         # Create document with structure specific to general prompt
         # Use conversation_id as the document ID
-        document = {
-            "id": conversation_id,
-            "model_id": model_id,
-            "prompt": prompt,
-            "response": response,
-            "tokens_used": tokens_used,
-            "time_taken_ms": time_taken_ms,
-            "timestamp": datetime.utcnow().isoformat()
-        }
+        document = GeneralPromptDocument(
+            id=conversation_id,
+            model_deployment_name=model_id,
+            prompt=prompt,
+            response=response,
+            tokens_used=tokens_used,
+            time_taken_ms=time_taken_ms
+        )
         
         # Use generic save method from CosmosDBService
         await cosmos_db_service.save_document(

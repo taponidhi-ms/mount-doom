@@ -8,7 +8,8 @@ from typing import List, Optional, Dict, Any
 from azure.ai.projects.models import WorkflowAgentDefinition, AgentReference, ResponseStreamEventType
 from app.services.ai.azure_ai_service import azure_ai_service
 from app.services.db.cosmos_db_service import cosmos_db_service
-from app.models.schemas import ConversationMessage, AgentDetails, ConversationSimulationResult
+from app.models.schemas import ConversationMessage, AgentDetails as SchemaAgentDetails, ConversationSimulationResult
+from app.models.db import ConversationSimulationDocument, AgentDetails
 from app.core.config import settings
 from app.instruction_sets.c1_agent import C1_AGENT_INSTRUCTIONS
 from app.instruction_sets.c2_agent import C2_AGENT_INSTRUCTIONS
@@ -274,17 +275,16 @@ trigger:
         
         # Create document with structure specific to conversation simulation
         # Use conversation_id as the document ID
-        document = {
-            "id": conversation_id,
-            "conversation_properties": conversation_properties,
-            "conversation_history": conversation_history,
-            "conversation_status": conversation_status,
-            "total_time_taken_ms": total_time_taken_ms,
-            "c1_agent_details": c1_agent_details,
-            "c2_agent_details": c2_agent_details,
-            "orchestrator_agent_details": orchestrator_agent_details,
-            "timestamp": datetime.utcnow().isoformat()
-        }
+        document = ConversationSimulationDocument(
+            id=conversation_id,
+            conversation_properties=conversation_properties,
+            conversation_history=conversation_history,
+            conversation_status=conversation_status,
+            total_time_taken_ms=total_time_taken_ms,
+            c1_agent_details=AgentDetails(**c1_agent_details),
+            c2_agent_details=AgentDetails(**c2_agent_details),
+            orchestrator_agent_details=AgentDetails(**orchestrator_agent_details)
+        )
         
         # Use generic save method from CosmosDBService
         await cosmos_db_service.save_document(

@@ -11,6 +11,8 @@ backend/app/
 ├── api/routes/           # REST API endpoints (one per use case)
 ├── core/                 # Configuration and settings
 ├── models/               # Pydantic schemas
+│   ├── schemas.py        # API request/response schemas
+│   └── db.py             # Cosmos DB document schemas
 ├── instruction_sets/     # Agent instruction definitions as Python string constants
 ├── services/             # Business logic organized by use case
 │   ├── azure_ai_service.py              # Client initialization and agent creation

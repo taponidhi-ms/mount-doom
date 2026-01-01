@@ -7,6 +7,7 @@ from typing import Optional
 from app.services.ai.azure_ai_service import azure_ai_service
 from app.services.db.cosmos_db_service import cosmos_db_service
 from app.models.schemas import PromptValidatorResult
+from app.models.db import PromptValidatorDocument, AgentDetails
 from app.instruction_sets.prompt_validator import PROMPT_VALIDATOR_AGENT_INSTRUCTIONS
 
 logger = structlog.get_logger()
@@ -143,21 +144,22 @@ class PromptValidatorService:
         
         # Create document with structure specific to prompt validator
         # Use conversation_id as the document ID
-        document = {
-            "id": conversation_id,
-            "prompt": prompt,
-            "response": response,
-            "tokens_used": tokens_used,
-            "time_taken_ms": time_taken_ms,
-            "agent_details": {
-                "agent_name": agent_name,
-                "agent_version": agent_version,
-                "instructions": agent_instructions,
-                "model": model,
-                "timestamp": agent_timestamp.isoformat()
-            },
-            "timestamp": datetime.utcnow().isoformat()
-        }
+        agent_details = AgentDetails(
+            agent_name=agent_name,
+            agent_version=agent_version,
+            instructions=agent_instructions,
+            model_deployment_name=model,
+            created_at=agent_timestamp
+        )
+
+        document = PromptValidatorDocument(
+            id=conversation_id,
+            prompt=prompt,
+            response=response,
+            tokens_used=tokens_used,
+            time_taken_ms=time_taken_ms,
+            agent_details=agent_details
+        )
         
         # Use generic save method from CosmosDBService
         await cosmos_db_service.save_document(

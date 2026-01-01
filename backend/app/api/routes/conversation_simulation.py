@@ -84,22 +84,22 @@ async def simulate_conversation(request: ConversationSimulationRequest):
                 "agent_name": c1_agent_details.agent_name,
                 "agent_version": c1_agent_details.agent_version,
                 "instructions": c1_agent_details.instructions,
-                "model": c1_agent_details.model_deployment_name,
-                "timestamp": c1_agent_details.created_at.isoformat()
+                "model_deployment_name": c1_agent_details.model_deployment_name,
+                "created_at": c1_agent_details.created_at
             },
             c2_agent_details={
                 "agent_name": c2_agent_details.agent_name,
                 "agent_version": c2_agent_details.agent_version,
                 "instructions": c2_agent_details.instructions,
-                "model": c2_agent_details.model_deployment_name,
-                "timestamp": c2_agent_details.created_at.isoformat()
+                "model_deployment_name": c2_agent_details.model_deployment_name,
+                "created_at": c2_agent_details.created_at
             },
             orchestrator_agent_details={
                 "agent_name": orchestrator_agent_details.agent_name,
                 "agent_version": orchestrator_agent_details.agent_version,
                 "instructions": orchestrator_agent_details.instructions,
-                "model": orchestrator_agent_details.model_deployment_name,
-                "timestamp": orchestrator_agent_details.created_at.isoformat()
+                "model_deployment_name": orchestrator_agent_details.model_deployment_name,
+                "created_at": orchestrator_agent_details.created_at
             },
             conversation_id=simulation_result.conversation_id
         )

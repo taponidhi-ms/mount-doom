@@ -1,7 +1,8 @@
 from azure.cosmos import CosmosClient, PartitionKey, exceptions
 from azure.identity import DefaultAzureCredential
 from app.core.config import settings
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, Union
+from pydantic import BaseModel
 import structlog
 
 logger = structlog.get_logger()
@@ -97,7 +98,7 @@ class CosmosDBService:
     async def save_document(
         self,
         container_name: str,
-        document: Dict[str, Any]
+        document: Union[Dict[str, Any], BaseModel]
     ):
         """
         Generic method to save a document to a container.
@@ -109,18 +110,24 @@ class CosmosDBService:
         Raises:
             ValueError: If document doesn't have 'id' field
         """
-        if "id" not in document:
+        # Convert Pydantic model to dict if necessary
+        if isinstance(document, BaseModel):
+            doc_dict = document.model_dump(mode='json')
+        else:
+            doc_dict = document
+
+        if "id" not in doc_dict:
             raise ValueError("Document must have an 'id' field")
         
         logger.info("Saving document to Cosmos DB",
                    container=container_name,
-                   document_id=document["id"])
+                   document_id=doc_dict["id"])
         
         container = await self.ensure_container(container_name)
         
-        logger.debug("Creating document", document_id=document["id"], container=container_name)
-        container.create_item(body=document)
-        logger.info("Document saved successfully", document_id=document["id"], container=container_name)
+        logger.debug("Creating document", document_id=doc_dict["id"], container=container_name)
+        container.upsert_item(body=doc_dict)
+        logger.info("Document saved successfully", document_id=doc_dict["id"], container=container_name)
     
     async def browse_container(
         self,
