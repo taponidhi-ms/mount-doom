@@ -318,31 +318,35 @@ The AzureAIService is now a **singleton client factory** with minimal responsibi
 
 ### Service-Specific Agent Configuration
 Each use case service (PersonaDistributionService, PromptValidatorService, etc.) contains:
-- Fixed `agent_name`, `instructions_file` for that use case
-- Agent creation logic by calling `azure_ai_service.create_agent_from_file()`
+- Fixed `agent_name`, `module_name`, and `constant_name` for that use case
+- Agent creation logic by calling `azure_ai_service.create_agent_from_module()`
 - Workflow-specific logic (conversation management, multi-agent orchestration, etc.)
 - Metrics tracking and data transformation
 
 ### Agent Instructions Storage
-- All agent instructions are stored in static text files in `backend/app/instructions/`
-- File naming convention: `{agent_name}.txt` (e.g., `persona_distribution_agent.txt`)
-- Services reference instruction files by filename
-- Two agent creation methods available:
-  - `create_agent_from_file(agent_name, instructions_path)` - Loads from file (preferred)
+- All agent instructions are stored as Python string constants in `backend/app/instruction_sets/`
+- File naming convention: `{agent_type}.py` (e.g., `persona_distribution.py`)
+- Each module exports a constant: `{AGENT_TYPE}_INSTRUCTIONS` (e.g., `PERSONA_DISTRIBUTION_AGENT_INSTRUCTIONS`)
+- Services reference instruction modules by module name and constant name
+- Three agent creation methods available:
+  - `create_agent_from_module(agent_name, module_name, constant_name)` - Loads from Python module (preferred)
+  - `create_agent_from_file(agent_name, instructions_path)` - Loads from text file (legacy support)
   - `create_agent(agent_name, instructions)` - Direct text (for dynamic use cases)
 
 ### Agent Usage Pattern
 ```python
 # In your service class:
-def __init__(self):
-    self.agent_name = PERSONA_DISTRIBUTION_AGENT_NAME
-    self.instructions_file = "persona_distribution_agent.txt"
+class PersonaDistributionService:
+    PERSONA_DISTRIBUTION_AGENT_NAME = "PersonaDistributionGeneratorAgent"
+    PERSONA_DISTRIBUTION_AGENT_MODULE = "app.instruction_sets.persona_distribution"
+    PERSONA_DISTRIBUTION_AGENT_CONSTANT = "PERSONA_DISTRIBUTION_AGENT_INSTRUCTIONS"
 
 async def your_method(self, prompt: str):
-    # Create agent using AzureAIService factory from file
-    agent = azure_ai_service.create_agent_from_file(
-        agent_name=self.agent_name,
-        instructions_path=self.instructions_file
+    # Create agent using AzureAIService factory from module
+    agent = azure_ai_service.create_agent_from_module(
+        agent_name=self.PERSONA_DISTRIBUTION_AGENT_NAME,
+        module_name=self.PERSONA_DISTRIBUTION_AGENT_MODULE,
+        constant_name=self.PERSONA_DISTRIBUTION_AGENT_CONSTANT
     )
     
     # Use agent to process prompt
