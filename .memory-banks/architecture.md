@@ -13,7 +13,7 @@ backend/app/
 ├── models/               # Pydantic schemas
 ├── services/             # Business logic organized by use case
 │   ├── azure_ai_service.py              # Client initialization and agent creation
-│   ├── persona_generation_service.py    # Persona generation business logic
+│   ├── persona_distribution_service.py  # Persona distribution generation business logic
 │   ├── general_prompt_service.py        # General prompt business logic
 │   ├── prompt_validator_service.py      # Prompt validation business logic
 │   ├── conversation_simulation_service.py # Conversation simulation logic
@@ -46,7 +46,7 @@ Does NOT contain:
 
 #### Use Case Services
 Each service handles complete business logic for its use case:
-- **PersonaGenerationService**: Generates personas using Persona Agent
+- **PersonaDistributionService**: Generates persona distributions using Persona Distribution Generator Agent
 - **GeneralPromptService**: Handles direct model responses (no agent)
 - **PromptValidatorService**: Validates prompts using Prompt Validator Agent
 - **ConversationSimulationService**: Multi-agent conversation orchestration
@@ -82,9 +82,9 @@ Does NOT contain:
 - Feature-specific save methods
 
 ### Routes (One per use case)
-- `/api/v1/persona-generation/*` - Delegates to PersonaGenerationService
-  - POST `/generate` - Generate persona
-  - GET `/browse` - Browse past persona generations with pagination
+- `/api/v1/persona-distribution/*` - Delegates to PersonaDistributionService
+  - POST `/generate` - Generate persona distribution
+  - GET `/browse` - Browse past persona distribution generations with pagination
 - `/api/v1/general-prompt/*` - Delegates to GeneralPromptService
   - POST `/generate` - Generate response
   - GET `/browse` - Browse past general prompts with pagination
@@ -108,7 +108,7 @@ Routes only:
 ```
 frontend/
 ├── app/             # Next.js App Router pages
-│   ├── persona-generation/
+│   ├── persona-distribution/
 │   ├── general-prompt/
 │   ├── prompt-validator/
 │   └── conversation-simulation/
@@ -130,7 +130,7 @@ Each use case has a dedicated page with two tabs:
 - **History Tab**: Paginated view of past results
 
 Pages:
-- `/persona-generation` - Generate and view personas
+- `/persona-distribution` - Generate and view persona distributions
 - `/general-prompt` - Generate and view general prompts
 - `/prompt-validator` - Validate and view prompt validations
 - `/conversation-simulation` - Simulate and view conversations

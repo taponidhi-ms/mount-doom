@@ -40,8 +40,8 @@ class AgentDetails(BaseModel):
     created_at: datetime
 
 
-class PersonaGenerationResult(BaseModel):
-    """Result from PersonaGenerationService.generate_persona method."""
+class PersonaDistributionResult(BaseModel):
+    """Result from PersonaDistributionService.generate_persona_distribution method."""
     response_text: str
     tokens_used: Optional[int] = None
     agent_details: AgentDetails
@@ -74,13 +74,13 @@ class BaseResponse(BaseModel):
     agent_details: AgentDetails
 
 
-class PersonaGenerationRequest(BaseRequest):
-    """Request for persona generation use case."""
+class PersonaDistributionRequest(BaseRequest):
+    """Request for persona distribution generation use case."""
     prompt: str
 
 
-class PersonaGenerationResponse(BaseResponse):
-    """Response for persona generation use case."""
+class PersonaDistributionResponse(BaseResponse):
+    """Response for persona distribution generation use case."""
     pass
 
 

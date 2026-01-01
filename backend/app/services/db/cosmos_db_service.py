@@ -28,7 +28,7 @@ class CosmosDBService:
     _database = None
     
     # Container names for each use case
-    PERSONA_GENERATION_CONTAINER = "persona_generation"
+    PERSONA_DISTRIBUTION_CONTAINER = "persona_distribution"
     GENERAL_PROMPT_CONTAINER = "general_prompt"
     PROMPT_VALIDATOR_CONTAINER = "prompt_validator"
     CONVERSATION_SIMULATION_CONTAINER = "conversation_simulation"

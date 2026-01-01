@@ -8,9 +8,9 @@ const { Title, Paragraph } = Typography
 export default function Home() {
   const features = [
     {
-      title: 'Persona Generation',
-      href: '/persona-generation',
-      description: 'Generate personas from simulation prompts using specialized AI agents. Transform your ideas into detailed character profiles.',
+      title: 'Persona Distribution Generator',
+      href: '/persona-distribution',
+      description: 'Generate persona distributions from simulation prompts using specialized AI agents. Transform your ideas into structured conversation parameters with intents, sentiments, and proportions.',
     },
     {
       title: 'General Prompt',
