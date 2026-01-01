@@ -116,7 +116,8 @@ class PromptValidatorService:
         agent_version: str,
         agent_instructions: str,
         model: str,
-        agent_timestamp: datetime
+        agent_timestamp: datetime,
+        conversation_id: str
     ):
         """
         Save prompt validation result to database.
@@ -131,16 +132,18 @@ class PromptValidatorService:
             agent_instructions: Agent instructions
             model: Model deployment name
             agent_timestamp: Timestamp when agent was created
+            conversation_id: The conversation ID from Azure AI
         """
         logger.info("Saving prompt validation to database",
                    agent=agent_name,
                    tokens=tokens_used,
-                   time_ms=round(time_taken_ms, 2))
+                   time_ms=round(time_taken_ms, 2),
+                   conversation_id=conversation_id)
         
         # Create document with structure specific to prompt validator
-        document_id = f"{datetime.utcnow().isoformat()}_{agent_name}"
+        # Use conversation_id as the document ID
         document = {
-            "id": document_id,
+            "id": conversation_id,
             "prompt": prompt,
             "response": response,
             "tokens_used": tokens_used,
@@ -160,7 +163,7 @@ class PromptValidatorService:
             container_name=cosmos_db_service.PROMPT_VALIDATOR_CONTAINER,
             document=document
         )
-        logger.info("Prompt validation saved successfully", document_id=document_id)
+        logger.info("Prompt validation saved successfully", document_id=conversation_id)
 
 
 # Singleton instance

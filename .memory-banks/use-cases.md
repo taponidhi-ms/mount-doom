@@ -8,12 +8,13 @@
 1. User enters a simulation prompt describing the distribution requirements
 2. Backend sends prompt to PersonaDistributionGeneratorAgent via Azure AI Projects
 3. PersonaDistributionGeneratorAgent generates distribution response (parser-based instruction)
-4. Response stored in Cosmos DB `persona_distribution` container with complete agent details
-5. Frontend displays persona distribution with metrics
+4. Backend parses JSON output and stores both raw and parsed versions
+5. Response stored in Cosmos DB `persona_distribution` container with complete agent details
+6. Frontend displays persona distribution with metrics and parsed output
 
 **Agent**: 
 - PersonaDistributionGeneratorAgent (fixed agent name)
-- Instructions defined in `PersonaDistributionService`
+- Instructions defined in `persona_distribution_agent.txt`
 - Automatic versioning based on instruction hash
 - Model: gpt-4 (default from settings)
 
@@ -35,6 +36,11 @@
 - Time taken
 - Start/end timestamps
 - Agent details (name, version, instructions, model)
+- Parsed JSON output (if parsing successful)
+
+**Database Schema**:
+- Document ID: conversation_id from Azure AI
+- Fields: prompt, response, parsed_output, tokens_used, time_taken_ms, agent_details, timestamp
 
 **Browse API**:
 - GET `/api/v1/persona-distribution/browse`
@@ -43,7 +49,60 @@
 
 ---
 
-## Use Case 2: General Prompt
+## Use Case 2: Persona Generator
+
+**Purpose**: Generate exact customer personas with specific intents, sentiments, subjects, and metadata. Outputs a list of detailed personas for conversation simulations.
+
+**Workflow**:
+1. User enters a prompt describing what personas to generate (e.g., "Generate 5 personas for technical support")
+2. Backend sends prompt to PersonaGeneratorAgent via Azure AI Projects
+3. PersonaGeneratorAgent generates exact personas with metadata
+4. Backend parses JSON output and stores both raw and parsed versions
+5. Response stored in Cosmos DB `persona_generator` container with complete agent details
+6. Frontend displays personas with metrics and parsed output
+
+**Agent**: 
+- PersonaGeneratorAgent (fixed agent name)
+- Instructions defined in `persona_generator_agent.txt`
+- Automatic versioning based on instruction hash
+- Model: gpt-4 (default from settings)
+
+**Output Format**:
+```json
+{
+  "CustomerPersonas": [
+    {
+      "CustomerIntent": "<string>",
+      "CustomerSentiment": "<string>",
+      "ConversationSubject": "<string>",
+      "CustomerMetadata": {
+        "key1": "value1",
+        "key2": "value2"
+      }
+    }
+  ]
+}
+```
+
+**Metrics Tracked**:
+- Tokens used
+- Time taken
+- Start/end timestamps
+- Agent details (name, version, instructions, model)
+- Parsed JSON output (if parsing successful)
+
+**Database Schema**:
+- Document ID: conversation_id from Azure AI
+- Fields: prompt, response, parsed_output, tokens_used, time_taken_ms, agent_details, timestamp
+
+**Browse API**:
+- GET `/api/v1/persona-generator/browse`
+- Supports pagination and ordering
+- Returns list of past persona generations
+
+---
+
+## Use Case 3: General Prompt
 
 **Purpose**: Get responses for any general prompt using LLM models directly (without agent).
 
@@ -80,7 +139,7 @@
 
 **Agent**:
 - PromptValidatorAgent (fixed agent name)
-- Instructions defined in `PromptValidatorService`
+- Instructions defined in `prompt_validator_agent.txt`
 - Automatic versioning based on instruction hash
 - Model: gpt-4 (default from settings)
 
@@ -90,6 +149,10 @@
 - Potential improvements
 - Quality assessment
 
+**Database Schema**:
+- Document ID: conversation_id from Azure AI
+- Fields: prompt, response, tokens_used, time_taken_ms, agent_details, timestamp
+
 **Browse API**:
 - GET `/api/v1/prompt-validator/browse`
 - Supports pagination and ordering
@@ -97,7 +160,7 @@
 
 ---
 
-## Use Case 4: Conversation Simulation
+## Use Case 5: Conversation Simulation
 
 **Purpose**: Simulate multi-turn conversations between customer service representative and customer.
 
@@ -153,6 +216,11 @@ messages: {history}
 - Total time taken
 - Conversation status
 - Number of turns completed
+- Conversation ID from Azure AI
+
+**Database Schema**:
+- Document ID: conversation_id from Azure AI
+- Fields: conversation_properties, conversation_history, conversation_status, total_tokens_used, total_time_taken_ms, c1_agent_details, c2_agent_details, orchestrator_agent_details, timestamp
 
 **Key Features**:
 - Turn-by-turn simulation
@@ -182,9 +250,13 @@ messages: {history}
 - Start and end timestamps
 - Full response text or conversation history
 - Copy-to-clipboard JSON export
+- Conversation ID tracking
 
 ### Storage
 - All results saved to Cosmos DB
+- Document IDs use conversation_id from Azure AI
+- Separate containers per use case
+- JSON parsing for persona agents (parsed_output field)
 - Separate containers per use case
 - Complete request/response data
 - Timestamps for analytics

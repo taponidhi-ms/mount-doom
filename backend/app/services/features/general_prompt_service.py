@@ -112,7 +112,8 @@ class GeneralPromptService:
 
             return GeneralPromptResult(
                 response_text=response_text,
-                tokens_used=tokens_used
+                tokens_used=tokens_used,
+                conversation_id=conversation_id
             )
 
         except Exception as e:
@@ -135,7 +136,8 @@ class GeneralPromptService:
         prompt: str,
         response: str,
         tokens_used: Optional[int],
-        time_taken_ms: float
+        time_taken_ms: float,
+        conversation_id: str
     ):
         """
         Save general prompt result to database.
@@ -146,16 +148,18 @@ class GeneralPromptService:
             response: The generated response
             tokens_used: Number of tokens used
             time_taken_ms: Time taken in milliseconds
+            conversation_id: The conversation ID from Azure AI
         """
         logger.info("Saving general prompt to database",
                    model=model_id,
                    tokens=tokens_used,
-                   time_ms=round(time_taken_ms, 2))
+                   time_ms=round(time_taken_ms, 2),
+                   conversation_id=conversation_id)
         
         # Create document with structure specific to general prompt
-        document_id = f"{datetime.utcnow().isoformat()}_{model_id}"
+        # Use conversation_id as the document ID
         document = {
-            "id": document_id,
+            "id": conversation_id,
             "model_id": model_id,
             "prompt": prompt,
             "response": response,
@@ -169,7 +173,7 @@ class GeneralPromptService:
             container_name=cosmos_db_service.GENERAL_PROMPT_CONTAINER,
             document=document
         )
-        logger.info("General prompt saved successfully", document_id=document_id)
+        logger.info("General prompt saved successfully", document_id=conversation_id)
 
 
 # Singleton instance

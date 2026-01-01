@@ -13,6 +13,11 @@ export default function Home() {
       description: 'Generate persona distributions from simulation prompts using specialized AI agents. Transform your ideas into structured conversation parameters with intents, sentiments, and proportions.',
     },
     {
+      title: 'Persona Generator',
+      href: '/persona-generator',
+      description: 'Generate exact customer personas with specific intents, sentiments, subjects, and metadata. Perfect for creating detailed conversation simulation scenarios.',
+    },
+    {
       title: 'General Prompt',
       href: '/general-prompt',
       description: 'Get responses for any general prompt using LLM models directly. Flexible AI assistance for various tasks.',

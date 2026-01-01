@@ -286,7 +286,8 @@ trigger:
             end_time=end_time,
             c1_agent_details=c1_agent.agent_details,
             c2_agent_details=c2_agent.agent_details,
-            orchestrator_agent_details=orch_agent.agent_details
+            orchestrator_agent_details=orch_agent.agent_details,
+            conversation_id=conversation.id
         )
 
     async def save_to_database(
@@ -298,7 +299,8 @@ trigger:
         total_time_taken_ms: float,
         c1_agent_details: Dict[str, Any],
         c2_agent_details: Dict[str, Any],
-        orchestrator_agent_details: Dict[str, Any]
+        orchestrator_agent_details: Dict[str, Any],
+        conversation_id: str
     ):
         """
         Save conversation simulation result to database.
@@ -312,17 +314,19 @@ trigger:
             c1_agent_details: Details about C1 agent
             c2_agent_details: Details about C2 agent
             orchestrator_agent_details: Details about orchestrator agent
+            conversation_id: The conversation ID from Azure AI
         """
         logger.info("Saving conversation simulation to database",
                    status=conversation_status,
                    messages=len(conversation_history),
                    tokens=total_tokens_used,
-                   time_ms=round(total_time_taken_ms, 2))
+                   time_ms=round(total_time_taken_ms, 2),
+                   conversation_id=conversation_id)
         
         # Create document with structure specific to conversation simulation
-        document_id = f"{datetime.utcnow().isoformat()}_conversation"
+        # Use conversation_id as the document ID
         document = {
-            "id": document_id,
+            "id": conversation_id,
             "conversation_properties": conversation_properties,
             "conversation_history": conversation_history,
             "conversation_status": conversation_status,
@@ -339,7 +343,7 @@ trigger:
             container_name=cosmos_db_service.CONVERSATION_SIMULATION_CONTAINER,
             document=document
         )
-        logger.info("Conversation simulation saved successfully", document_id=document_id)
+        logger.info("Conversation simulation saved successfully", document_id=conversation_id)
 
 
 conversation_simulation_service = ConversationSimulationService()

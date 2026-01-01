@@ -151,6 +151,23 @@ export default function PersonaDistributionPage() {
                   </Paragraph>
                 </div>
 
+                {result.parsed_output && (
+                  <div>
+                    <Text strong>Parsed Output:</Text>
+                    <Paragraph>
+                      <pre style={{ 
+                        background: '#e6f7ff', 
+                        padding: '12px', 
+                        borderRadius: '4px',
+                        whiteSpace: 'pre-wrap',
+                        wordWrap: 'break-word'
+                      }}>
+                        {JSON.stringify(result.parsed_output, null, 2)}
+                      </pre>
+                    </Paragraph>
+                  </div>
+                )}
+
                 <Space size="large" wrap>
                   <div>
                     <Text type="secondary">Tokens Used: </Text>

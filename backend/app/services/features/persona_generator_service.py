@@ -1,4 +1,4 @@
-"""Service for persona distribution generation use case."""
+"""Service for persona generator use case."""
 
 from datetime import datetime
 import structlog
@@ -7,16 +7,16 @@ import json
 
 from app.services.ai.azure_ai_service import azure_ai_service
 from app.services.db.cosmos_db_service import cosmos_db_service
-from app.models.schemas import PersonaDistributionResult
+from app.models.schemas import PersonaGeneratorResult
 
 logger = structlog.get_logger()
 
 
-class PersonaDistributionService:
-    """Service for generating persona distributions using the Persona Distribution Generator Agent."""
+class PersonaGeneratorService:
+    """Service for generating exact personas using the Persona Generator Agent."""
 
-    PERSONA_DISTRIBUTION_AGENT_NAME = "PersonaDistributionGeneratorAgent"
-    PERSONA_DISTRIBUTION_AGENT_INSTRUCTIONS_FILE = "persona_distribution_agent.txt"
+    PERSONA_GENERATOR_AGENT_NAME = "PersonaGeneratorAgent"
+    PERSONA_GENERATOR_AGENT_INSTRUCTIONS_FILE = "persona_generator_agent.txt"
 
     def __init__(self):
         pass
@@ -41,16 +41,16 @@ class PersonaDistributionService:
             logger.warning("Failed to parse JSON output", error=str(e), response_preview=response_text[:200])
             return None
 
-    async def generate_persona_distribution(self, prompt: str) -> PersonaDistributionResult:
+    async def generate_personas(self, prompt: str) -> PersonaGeneratorResult:
         """
-        Generate a persona distribution from the given prompt.
+        Generate exact personas from the given prompt.
         
         Args:
-            prompt: The simulation prompt to generate persona distribution from
+            prompt: The prompt describing what personas to generate
             
         Returns:
-            PersonaDistributionResult with:
-            - response_text: The generated persona distribution
+            PersonaGeneratorResult with:
+            - response_text: The generated personas JSON
             - tokens_used: Number of tokens used
             - agent_details: Details about the agent
             - timestamp: When the request was made
@@ -59,16 +59,16 @@ class PersonaDistributionService:
         """
         try:
             logger.info("="*60)
-            logger.info("Starting persona distribution generation", prompt_length=len(prompt))
+            logger.info("Starting persona generation", prompt_length=len(prompt))
             logger.debug("Prompt preview", prompt=prompt[:200] + "..." if len(prompt) > 200 else prompt)
 
             # Create agent from file
-            logger.info("Creating Persona Distribution Generator Agent...")
+            logger.info("Creating Persona Generator Agent...")
             agent = azure_ai_service.create_agent_from_file(
-                agent_name=self.PERSONA_DISTRIBUTION_AGENT_NAME,
-                instructions_path=self.PERSONA_DISTRIBUTION_AGENT_INSTRUCTIONS_FILE
+                agent_name=self.PERSONA_GENERATOR_AGENT_NAME,
+                instructions_path=self.PERSONA_GENERATOR_AGENT_INSTRUCTIONS_FILE
             )
-            logger.info("Persona Distribution Generator Agent ready", agent_version=agent.agent_version_object.version)
+            logger.info("Persona Generator Agent ready", agent_version=agent.agent_version_object.version)
 
             # Create conversation with initial message
             timestamp = datetime.utcnow()
@@ -80,7 +80,7 @@ class PersonaDistributionService:
             logger.info("Conversation created", conversation_id=conversation_id)
 
             # Create response using the agent
-            logger.info("Requesting response from Persona Distribution Generator Agent...")
+            logger.info("Requesting response from Persona Generator Agent...")
             response = azure_ai_service.openai_client.responses.create(
                 conversation=conversation_id,
                 extra_body={"agent": {"name": agent.agent_version_object.name, "type": "agent_reference"}},
@@ -96,7 +96,7 @@ class PersonaDistributionService:
                 logger.error("No response text found in response")
                 raise ValueError("No response found")
             
-            logger.info("Persona distribution generated successfully", 
+            logger.info("Personas generated successfully", 
                        response_length=len(response_text),
                        response_preview=response_text[:150] + "..." if len(response_text) > 150 else response_text)
 
@@ -113,14 +113,14 @@ class PersonaDistributionService:
                 logger.debug("No token usage information available")
             
             logger.info("="*60)
-            logger.info("Persona distribution generation completed",
+            logger.info("Persona generation completed",
                        tokens_used=tokens_used,
                        agent_version=agent.agent_version_object.version,
                        conversation_id=conversation_id,
                        parsed_successfully=parsed_output is not None)
             logger.info("="*60)
 
-            return PersonaDistributionResult(
+            return PersonaGeneratorResult(
                 response_text=response_text,
                 tokens_used=tokens_used,
                 agent_details=agent.agent_details,
@@ -130,7 +130,7 @@ class PersonaDistributionService:
             )
 
         except Exception as e:
-            logger.error("Error generating persona distribution", error=str(e), exc_info=True)
+            logger.error("Error generating personas", error=str(e), exc_info=True)
             raise
 
     async def save_to_database(
@@ -148,7 +148,7 @@ class PersonaDistributionService:
         parsed_output: Optional[Dict[str, Any]]
     ):
         """
-        Save persona distribution generation result to database.
+        Save persona generation result to database.
         
         Args:
             prompt: The input prompt
@@ -163,13 +163,13 @@ class PersonaDistributionService:
             conversation_id: The conversation ID from Azure AI
             parsed_output: Parsed JSON output (if successful)
         """
-        logger.info("Saving persona distribution generation to database",
+        logger.info("Saving persona generation to database",
                    agent=agent_name,
                    tokens=tokens_used,
                    time_ms=round(time_taken_ms, 2),
                    conversation_id=conversation_id)
         
-        # Create document with structure specific to persona distribution generation
+        # Create document with structure specific to persona generation
         # Use conversation_id as the document ID
         document = {
             "id": conversation_id,
@@ -190,11 +190,11 @@ class PersonaDistributionService:
         
         # Use generic save method from CosmosDBService
         await cosmos_db_service.save_document(
-            container_name=cosmos_db_service.PERSONA_DISTRIBUTION_CONTAINER,
+            container_name=cosmos_db_service.PERSONA_GENERATOR_CONTAINER,
             document=document
         )
-        logger.info("Persona distribution generation saved successfully", document_id=conversation_id)
+        logger.info("Persona generation saved successfully", document_id=conversation_id)
 
 
 # Singleton instance
-persona_distribution_service = PersonaDistributionService()
+persona_generator_service = PersonaGeneratorService()

@@ -103,7 +103,8 @@ async def simulate_conversation(request: ConversationSimulationRequest):
                 "instructions": orchestrator_agent_details.instructions,
                 "model": orchestrator_agent_details.model_deployment_name,
                 "timestamp": orchestrator_agent_details.created_at.isoformat()
-            }
+            },
+            conversation_id=simulation_result.conversation_id
         )
         
         logger.info("Returning successful response",
@@ -119,7 +120,8 @@ async def simulate_conversation(request: ConversationSimulationRequest):
             end_time=end_time,
             c1_agent_details=c1_agent_details,
             c2_agent_details=c2_agent_details,
-            orchestrator_agent_details=orchestrator_agent_details
+            orchestrator_agent_details=orchestrator_agent_details,
+            conversation_id=simulation_result.conversation_id
         )
 
     except Exception as e:
