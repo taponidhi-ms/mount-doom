@@ -17,7 +17,7 @@
 ### File Organization
 - One route per use case (calls service)
 - **One service per use case** with business logic:
-  - `PersonaGenerationService`: Persona generation workflow
+  - `PersonaDistributionService`: Persona distribution generation workflow
   - `GeneralPromptService`: Direct model response workflow
   - `PromptValidatorService`: Prompt validation workflow
   - `ConversationSimulationService`: Multi-agent conversation workflow
@@ -313,7 +313,7 @@ The AzureAIService is now a **singleton client factory** with minimal responsibi
 - Prompt building or formatting
 
 ### Service-Specific Agent Configuration
-Each use case service (PersonaGenerationService, PromptValidatorService, etc.) contains:
+Each use case service (PersonaDistributionService, PromptValidatorService, etc.) contains:
 - Fixed `agent_name`, `instructions_file` for that use case
 - Agent creation logic by calling `azure_ai_service.create_agent_from_file()`
 - Workflow-specific logic (conversation management, multi-agent orchestration, etc.)
@@ -331,8 +331,8 @@ Each use case service (PersonaGenerationService, PromptValidatorService, etc.) c
 ```python
 # In your service class:
 def __init__(self):
-    self.agent_name = PERSONA_AGENT_NAME
-    self.instructions_file = "persona_generation_agent.txt"
+    self.agent_name = PERSONA_DISTRIBUTION_AGENT_NAME
+    self.instructions_file = "persona_distribution_agent.txt"
 
 async def your_method(self, prompt: str):
     # Create agent using AzureAIService factory from file

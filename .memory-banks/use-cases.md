@@ -1,21 +1,34 @@
 # Mount Doom - Use Cases
 
-## Use Case 1: Persona Generation
+## Use Case 1: Persona Distribution Generator
 
-**Purpose**: Generate detailed personas from simulation prompts using specialized AI agents.
+**Purpose**: Generate persona distributions from simulation prompts using specialized AI agents. Outputs structured JSON with conversation counts, intents, sentiments, and proportions.
 
 **Workflow**:
-1. User enters a simulation prompt describing the persona requirements
-2. Backend sends prompt to PersonaAgent via Azure AI Projects
-3. PersonaAgent generates detailed persona response (now uses parser-based instruction)
-4. Response stored in Cosmos DB `persona_generation` container with complete agent details
-5. Frontend displays persona with metrics
+1. User enters a simulation prompt describing the distribution requirements
+2. Backend sends prompt to PersonaDistributionGeneratorAgent via Azure AI Projects
+3. PersonaDistributionGeneratorAgent generates distribution response (parser-based instruction)
+4. Response stored in Cosmos DB `persona_distribution` container with complete agent details
+5. Frontend displays persona distribution with metrics
 
 **Agent**: 
-- PersonaAgent (fixed agent name)
-- Instructions defined in `PersonaGenerationService`
+- PersonaDistributionGeneratorAgent (fixed agent name)
+- Instructions defined in `PersonaDistributionService`
 - Automatic versioning based on instruction hash
 - Model: gpt-4 (default from settings)
+
+**Output Format**:
+```json
+{
+  "ConvCount": <integer>,
+  "intents": [{"intent": "<string>", "percentage": <number>, "subject": "<string>"}],
+  "Sentiments": [{"sentiment": "<string>", "percentage": <number>}],
+  "Proportions": [{"intent": "<string>", "count": <integer>}],
+  "IsTranscriptBasedSimulation": <boolean>,
+  "CallerPhoneNumber": "<string>",
+  "RecipientPhoneNumber": "<string>"
+}
+```
 
 **Metrics Tracked**:
 - Tokens used
@@ -24,9 +37,9 @@
 - Agent details (name, version, instructions, model)
 
 **Browse API**:
-- GET `/api/v1/persona-generation/browse`
+- GET `/api/v1/persona-distribution/browse`
 - Supports pagination and ordering
-- Returns list of past persona generations
+- Returns list of past persona distribution generations
 
 ---
 
