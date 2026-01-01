@@ -255,19 +255,20 @@ The CosmosDBService is a singleton infrastructure service that:
 ### Feature Service Persistence
 Each feature service handles its own database persistence:
 - Defines document structure specific to the use case
-- Generates document IDs with appropriate naming conventions
+- Uses conversation_id from Azure AI as document ID
 - Creates documents with all required fields
 - Calls `cosmos_db_service.save_document()` for actual persistence
 
 Example pattern:
 ```python
-async def save_to_database(self, ...params):
+async def save_to_database(self, ...params, conversation_id: str):
     # Define document structure (business logic)
-    document_id = f"{datetime.utcnow().isoformat()}_{identifier}"
+    # Use conversation_id from Azure AI as the document ID
     document = {
-        "id": document_id,
+        "id": conversation_id,
         "prompt": prompt,
         "response": response,
+        "parsed_output": parsed_output,  # For persona agents
         # ... other fields specific to this use case
     }
     
@@ -283,11 +284,14 @@ async def save_to_database(self, ...params):
 - Partition key: `/id`
 - Auto-create containers if missing
 - Store complete request/response data
+- Containers: persona_distribution, persona_generator, general_prompt, prompt_validator, conversation_simulation
 
 ### Document Structure
+- Document ID: conversation_id from Azure AI (ensures uniqueness)
 - Include timestamp
 - Include all metrics
 - Include complete agent details (name, version, instructions, model, timestamp)
+- Include parsed_output for JSON-based agents (persona distribution, persona generator)
 - Use ISO format for dates
 - Structure defined by feature services, not CosmosDBService
 

@@ -14,6 +14,7 @@ backend/app/
 ├── services/             # Business logic organized by use case
 │   ├── azure_ai_service.py              # Client initialization and agent creation
 │   ├── persona_distribution_service.py  # Persona distribution generation business logic
+│   ├── persona_generator_service.py     # Persona generator business logic
 │   ├── general_prompt_service.py        # General prompt business logic
 │   ├── prompt_validator_service.py      # Prompt validation business logic
 │   ├── conversation_simulation_service.py # Conversation simulation logic
@@ -47,6 +48,7 @@ Does NOT contain:
 #### Use Case Services
 Each service handles complete business logic for its use case:
 - **PersonaDistributionService**: Generates persona distributions using Persona Distribution Generator Agent
+- **PersonaGeneratorService**: Generates exact personas using Persona Generator Agent
 - **GeneralPromptService**: Handles direct model responses (no agent)
 - **PromptValidatorService**: Validates prompts using Prompt Validator Agent
 - **ConversationSimulationService**: Multi-agent conversation orchestration
@@ -85,6 +87,9 @@ Does NOT contain:
 - `/api/v1/persona-distribution/*` - Delegates to PersonaDistributionService
   - POST `/generate` - Generate persona distribution
   - GET `/browse` - Browse past persona distribution generations with pagination
+- `/api/v1/persona-generator/*` - Delegates to PersonaGeneratorService
+  - POST `/generate` - Generate exact personas
+  - GET `/browse` - Browse past persona generations with pagination
 - `/api/v1/general-prompt/*` - Delegates to GeneralPromptService
   - POST `/generate` - Generate response
   - GET `/browse` - Browse past general prompts with pagination
