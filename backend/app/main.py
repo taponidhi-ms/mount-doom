@@ -89,6 +89,7 @@ logger.info("=" * 80)
 # This ensures services initialized during import use the proper logging config
 from app.api.routes import (
     persona_distribution,
+    persona_generator,
     general_prompt,
     prompt_validator,
     conversation_simulation
@@ -115,6 +116,8 @@ app.add_middleware(
 logger.info("Registering API routes...")
 app.include_router(persona_distribution.router, prefix="/api/v1")
 logger.debug("Registered route", router="persona_distribution", prefix="/api/v1")
+app.include_router(persona_generator.router, prefix="/api/v1")
+logger.debug("Registered route", router="persona_generator", prefix="/api/v1")
 app.include_router(general_prompt.router, prefix="/api/v1")
 logger.debug("Registered route", router="general_prompt", prefix="/api/v1")
 app.include_router(prompt_validator.router, prefix="/api/v1")

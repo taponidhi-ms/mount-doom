@@ -46,7 +46,9 @@ async def generate_persona_distribution(request: PersonaDistributionRequest):
             agent_version=agent_response.agent_details.agent_version,
             agent_instructions=agent_response.agent_details.instructions,
             model=agent_response.agent_details.model_deployment_name,
-            agent_timestamp=agent_response.agent_details.created_at
+            agent_timestamp=agent_response.agent_details.created_at,
+            conversation_id=agent_response.conversation_id,
+            parsed_output=agent_response.parsed_output
         )
         
         logger.info("Returning successful persona distribution generation response")
@@ -57,7 +59,8 @@ async def generate_persona_distribution(request: PersonaDistributionRequest):
             time_taken_ms=time_taken_ms,
             start_time=start_time,
             end_time=end_time,
-            agent_details=agent_response.agent_details
+            agent_details=agent_response.agent_details,
+            parsed_output=agent_response.parsed_output
         )
     
     except Exception as e:

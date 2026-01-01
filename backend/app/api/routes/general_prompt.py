@@ -46,7 +46,8 @@ async def generate_response(request: GeneralPromptRequest):
             prompt=request.prompt,
             response=result.response_text,
             tokens_used=result.tokens_used,
-            time_taken_ms=time_taken_ms
+            time_taken_ms=time_taken_ms,
+            conversation_id=result.conversation_id
         )
         
         logger.info("Returning successful general prompt response")

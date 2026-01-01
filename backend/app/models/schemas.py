@@ -47,6 +47,17 @@ class PersonaDistributionResult(BaseModel):
     agent_details: AgentDetails
     timestamp: datetime
     conversation_id: str
+    parsed_output: Optional[Dict[str, Any]] = None
+
+
+class PersonaGeneratorResult(BaseModel):
+    """Result from PersonaGeneratorService.generate_personas method."""
+    response_text: str
+    tokens_used: Optional[int] = None
+    agent_details: AgentDetails
+    timestamp: datetime
+    conversation_id: str
+    parsed_output: Optional[Dict[str, Any]] = None
 
 
 class PromptValidatorResult(BaseModel):
@@ -62,6 +73,7 @@ class GeneralPromptResult(BaseModel):
     """Result from GeneralPromptService.generate_response method."""
     response_text: str
     tokens_used: Optional[int] = None
+    conversation_id: str
 
 
 class BaseResponse(BaseModel):
@@ -81,7 +93,17 @@ class PersonaDistributionRequest(BaseRequest):
 
 class PersonaDistributionResponse(BaseResponse):
     """Response for persona distribution generation use case."""
-    pass
+    parsed_output: Optional[Dict[str, Any]] = None
+
+
+class PersonaGeneratorRequest(BaseRequest):
+    """Request for persona generator use case."""
+    prompt: str
+
+
+class PersonaGeneratorResponse(BaseResponse):
+    """Response for persona generator use case."""
+    parsed_output: Optional[Dict[str, Any]] = None
 
 
 class GeneralPromptRequest(BaseRequest):
@@ -138,6 +160,7 @@ class ConversationSimulationResult(BaseModel):
     c1_agent_details: AgentDetails
     c2_agent_details: AgentDetails
     orchestrator_agent_details: AgentDetails
+    conversation_id: str
 
 
 class ConversationSimulationRequest(BaseRequest):
@@ -158,6 +181,7 @@ class ConversationSimulationResponse(BaseModel):
     c1_agent_details: AgentDetails
     c2_agent_details: AgentDetails
     orchestrator_agent_details: AgentDetails
+    conversation_id: str
 
 
 class AvailableAgentsResponse(BaseModel):
