@@ -397,6 +397,26 @@ For conversation simulation with multiple agents:
 
 ## Documentation
 
+### Documentation Files Policy
+**IMPORTANT**: Documentation should ONLY exist in the following locations:
+- `README.md` files (root, backend, frontend)
+- `.memory-banks/` directory files (architecture.md, conventions.md, use-cases.md, etc.)
+- Code comments and docstrings where necessary
+
+**DO NOT CREATE**:
+- Summary markdown files (e.g., IMPLEMENTATION_SUMMARY.md, FIX_SUMMARY.md)
+- Status markdown files (e.g., PROJECT_STATUS.md, PR_SUMMARY.md)
+- Checklist markdown files (e.g., VERIFICATION_CHECKLIST.md)
+- Guide markdown files (e.g., UI_CHANGES_GUIDE.md, VISUAL_FIX_GUIDE.md)
+- Diagram markdown files (e.g., REFACTORING_DIAGRAM.md)
+- Any other temporary or planning markdown files
+
+**Rationale**: 
+- These files clutter the repository
+- Information becomes stale and inconsistent
+- All relevant information should be in README files or memory banks
+- Planning and notes should be done in PR descriptions or issues, not committed files
+
 ### Code Documentation
 - Docstrings for all public functions
 - Type hints serve as documentation
