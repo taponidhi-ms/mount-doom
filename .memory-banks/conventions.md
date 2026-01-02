@@ -440,6 +440,29 @@ For conversation simulation with multiple agents:
 - Never commit secrets
 - Use Azure KeyVault for production secrets
 
+### Environment Variables for Services
+**Cosmos DB Configuration**:
+- `COSMOS_DB_ENDPOINT` - Cosmos DB endpoint URL (cloud or emulator)
+- `COSMOS_DB_DATABASE_NAME` - Database name
+- `COSMOS_DB_USE_EMULATOR` - Set to `true` for local emulator, `false` for cloud
+- `COSMOS_DB_KEY` - Emulator key (only needed for local emulator)
+
+**Cloud Configuration** (production):
+```env
+COSMOS_DB_ENDPOINT=https://your-account.documents.azure.com:443/
+COSMOS_DB_DATABASE_NAME=mount_doom_db
+COSMOS_DB_USE_EMULATOR=false
+# No COSMOS_DB_KEY needed - uses DefaultAzureCredential
+```
+
+**Local Emulator Configuration** (development):
+```env
+COSMOS_DB_ENDPOINT=https://localhost:8081
+COSMOS_DB_DATABASE_NAME=mount_doom_db
+COSMOS_DB_USE_EMULATOR=true
+COSMOS_DB_KEY=C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==
+```
+
 ### Frontend
 - Use NEXT_PUBLIC_ prefix for public variables
 - Provide .env.local.example template
@@ -464,8 +487,12 @@ For conversation simulation with multiple agents:
 
 ### Backend
 - Use async/await for I/O
+- **Lazy initialization** - Services initialize clients only on first use
+  - Prevents unnecessary connections during dev mode restarts
+  - Improves startup time in development
+  - First request may be slightly slower due to initialization
 - Implement connection pooling
-- Cache expensive operations
+- Cache expensive operations (e.g., agent caching in AzureAIService)
 - Monitor token usage
 
 ### Frontend
