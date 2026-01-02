@@ -13,10 +13,11 @@ class CosmosDBService:
     Infrastructure service for Cosmos DB.
     
     Responsibilities:
-    - Client initialization and management
+    - Client initialization and management (lazy initialization)
     - Database reference management
     - Generic container operations
     - Container name constants
+    - Support for both local emulator and cloud instances
     
     Does NOT contain:
     - Feature-specific business logic
@@ -41,33 +42,72 @@ class CosmosDBService:
         return cls._instance
     
     def __init__(self):
-        if self._client is None:
-            self._initialize_client()
+        # Don't initialize client here - use lazy initialization
+        # This prevents initialization on module import during dev mode restarts
+        pass
     
     def _initialize_client(self):
-        """Initialize the Cosmos DB Client."""
+        """Initialize the Cosmos DB Client with support for both local emulator and cloud."""
         try:
-            logger.info("Initializing Cosmos DB Client...",
-                       endpoint=settings.cosmos_db_endpoint[:50] + "...",
-                       database=settings.cosmos_db_database_name)
-            credential = DefaultAzureCredential()
-            self._client = CosmosClient(
-                url=settings.cosmos_db_endpoint,
-                credential=credential
-            )
+            if settings.cosmos_db_use_emulator:
+                # Use local Cosmos DB emulator
+                logger.info("Initializing Cosmos DB Client for LOCAL EMULATOR...",
+                           endpoint=settings.cosmos_db_endpoint,
+                           database=settings.cosmos_db_database_name)
+                
+                # For local emulator, use the provided key (or default emulator key)
+                emulator_key = settings.cosmos_db_key or "C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw=="
+                
+                self._client = CosmosClient(
+                    url=settings.cosmos_db_endpoint,
+                    credential=emulator_key
+                )
+                logger.info("Using local Cosmos DB emulator with key authentication")
+            else:
+                # Use Azure Cloud Cosmos DB with DefaultAzureCredential
+                logger.info("Initializing Cosmos DB Client for AZURE CLOUD...",
+                           endpoint=settings.cosmos_db_endpoint[:50] + "...",
+                           database=settings.cosmos_db_database_name)
+                
+                credential = DefaultAzureCredential()
+                self._client = CosmosClient(
+                    url=settings.cosmos_db_endpoint,
+                    credential=credential
+                )
+                logger.info("Using Azure Cloud Cosmos DB with DefaultAzureCredential")
+            
             logger.debug("CosmosClient created, getting database client...")
             self._database = self._client.get_database_client(
                 settings.cosmos_db_database_name
             )
             logger.info("Cosmos DB Client initialized successfully",
-                       database=settings.cosmos_db_database_name)
+                       database=settings.cosmos_db_database_name,
+                       is_emulator=settings.cosmos_db_use_emulator)
         except Exception as e:
-            logger.error("Failed to initialize Cosmos DB Client", error=str(e), exc_info=True)
+            logger.error("Failed to initialize Cosmos DB Client", 
+                        error=str(e), 
+                        is_emulator=settings.cosmos_db_use_emulator,
+                        exc_info=True)
             raise
+    
+    @property
+    def client(self) -> CosmosClient:
+        """Get the Cosmos DB Client instance (lazy initialization)."""
+        if self._client is None:
+            self._initialize_client()
+        return self._client
+    
+    @property
+    def database(self):
+        """Get the database client (lazy initialization)."""
+        if self._database is None:
+            self._initialize_client()
+        return self._database
     
     async def ensure_container(self, container_name: str) -> Any:
         """
         Ensure a container exists, create if it doesn't.
+        Uses lazy initialization via database property.
         
         Args:
             container_name: Name of the container
@@ -77,7 +117,7 @@ class CosmosDBService:
         """
         try:
             logger.debug("Checking container existence", container=container_name)
-            container = self._database.get_container_client(container_name)
+            container = self.database.get_container_client(container_name)
             # Try to read container properties to check if it exists
             container.read()
             logger.debug("Container exists", container=container_name)
@@ -85,7 +125,7 @@ class CosmosDBService:
         except exceptions.CosmosResourceNotFoundError:
             # Container doesn't exist, create it
             logger.info("Container not found, creating", container=container_name)
-            container = self._database.create_container(
+            container = self.database.create_container(
                 id=container_name,
                 partition_key=PartitionKey(path="/id")
             )
