@@ -56,6 +56,12 @@ class CosmosDBService:
                            database=settings.cosmos_db_database_name)
                 
                 # For local emulator, use the provided key (or default emulator key)
+                # Note: The default key below is the standard, well-known Cosmos DB Emulator key
+                # documented by Microsoft. It's safe to use as a fallback because:
+                # 1. It only works with the local emulator (not cloud instances)
+                # 2. The emulator only accepts local connections
+                # 3. It's the same for all Cosmos DB Emulator installations
+                # See: https://learn.microsoft.com/en-us/azure/cosmos-db/emulator
                 emulator_key = settings.cosmos_db_key or "C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw=="
                 
                 self._client = CosmosClient(
