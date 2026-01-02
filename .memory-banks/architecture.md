@@ -37,16 +37,23 @@ backend/app/
 #### AzureAIService
 **Responsibility**: Client initialization and agent/client factory
 
+**Lazy Initialization**: Clients are initialized on first access, not on module import.
+This prevents unnecessary connections during dev mode restarts.
+
 Only contains:
-- `client` property: Returns AIProjectClient instance
-- `openai_client` property: Returns OpenAI client instance
+- `client` property: Returns AIProjectClient instance (lazy initialization)
+- `openai_client` property: Returns OpenAI client instance (lazy initialization)
 - `create_agent()` method: Creates agents with given name, instructions, and model
+- `_initialize_client()` private method: Initializes clients when first accessed
 
 Does NOT contain:
 - Business logic for any use case
 - Generic methods that wrap Azure API calls
 - Caching of use case-specific agents
 - Prompt building or workflow orchestration
+
+**Token Management**: Uses DefaultAzureCredential which automatically handles token refresh.
+No manual token management required.
 
 #### Use Case Services
 Each service handles complete business logic for its use case:
@@ -67,13 +74,23 @@ Services contain:
 #### CosmosDBService
 **Infrastructure service for Cosmos DB - Singleton pattern**
 
+**Lazy Initialization**: Client is initialized on first access, not on module import.
+This prevents unnecessary connections during dev mode restarts.
+
+**Local Emulator Support**: Supports both Azure Cloud Cosmos DB and local Cosmos DB Emulator:
+- Cloud mode: Uses DefaultAzureCredential for authentication
+- Emulator mode: Uses emulator key (no Azure authentication required)
+- Configured via `COSMOS_DB_USE_EMULATOR` environment variable
+
 Responsibilities:
-- Client initialization and management
+- Client initialization and management (lazy)
 - Database reference management  
 - Generic container operations
 - Container name constants
 
 Methods:
+- `client` property: Returns CosmosClient instance (lazy initialization)
+- `database` property: Returns database client (lazy initialization)
 - `ensure_container()` - Ensure a container exists, create if needed
 - `save_document()` - Generic method to save any document to a container
 - `browse_container()` - Browse container with pagination and ordering
@@ -187,7 +204,9 @@ Pages:
 ## Authentication
 - Uses Azure DefaultAzureCredential
 - Supports multiple auth methods (CLI, Managed Identity, etc.)
+- **Automatic token refresh** - DefaultAzureCredential handles token refresh automatically
 - No manual token management required
+- For local Cosmos DB emulator, no Azure authentication needed (uses emulator key)
 
 ## Error Handling
 - Backend: HTTP exceptions with appropriate status codes

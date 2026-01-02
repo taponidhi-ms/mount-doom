@@ -69,7 +69,7 @@ All agent instructions are defined in the `app/instruction_sets/` module:
 
 - Python 3.9 or higher
 - Azure AI Projects subscription
-- Azure Cosmos DB account
+- Azure Cosmos DB account (or local Cosmos DB Emulator for testing)
 - Azure credentials configured
 
 ### Installation
@@ -100,9 +100,16 @@ Edit `.env` file with your Azure configuration:
 # Azure AI Projects
 AZURE_AI_PROJECT_CONNECTION_STRING=your_connection_string
 
-# Cosmos DB
+# Cosmos DB - Cloud Instance
 COSMOS_DB_ENDPOINT=https://your-account.documents.azure.com:443/
 COSMOS_DB_DATABASE_NAME=mount_doom_db
+COSMOS_DB_USE_EMULATOR=false
+
+# Cosmos DB - Local Emulator (for testing)
+# COSMOS_DB_ENDPOINT=https://localhost:8081
+# COSMOS_DB_DATABASE_NAME=mount_doom_db
+# COSMOS_DB_USE_EMULATOR=true
+# COSMOS_DB_KEY=C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==
 
 # Model IDs (for direct model access in general prompt)
 GENERAL_MODEL_1=gpt-4
@@ -110,6 +117,52 @@ GENERAL_MODEL_2=gpt-35-turbo
 ```
 
 **Note:** Agent IDs are no longer required in configuration. Each use case uses fixed agent names defined in the `instruction_sets` module.
+
+### Using Local Cosmos DB Emulator
+
+For local development and testing, you can use the Cosmos DB Emulator instead of an Azure Cosmos DB instance:
+
+1. **Install Cosmos DB Emulator**:
+   - Windows: Download from [Microsoft Cosmos DB Emulator](https://aka.ms/cosmosdb-emulator)
+   - Linux/macOS: Use Docker container:
+     ```bash
+     docker pull mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator
+     docker run -p 8081:8081 -p 10251:10251 -p 10252:10252 -p 10253:10253 -p 10254:10254 \
+       --name=cosmos-emulator \
+       -e AZURE_COSMOS_EMULATOR_PARTITION_COUNT=10 \
+       -e AZURE_COSMOS_EMULATOR_ENABLE_DATA_PERSISTENCE=true \
+       mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator
+     ```
+
+2. **Configure Environment Variables**:
+   Set `COSMOS_DB_USE_EMULATOR=true` in your `.env` file:
+   ```env
+   COSMOS_DB_ENDPOINT=https://localhost:8081
+   COSMOS_DB_DATABASE_NAME=mount_doom_db
+   COSMOS_DB_USE_EMULATOR=true
+   COSMOS_DB_KEY=C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==
+   ```
+   
+   The default emulator key is provided above. You can use a custom key if you configured the emulator with one.
+
+3. **Benefits of Local Emulator**:
+   - No Azure subscription required for Cosmos DB testing
+   - No authentication needed (uses emulator key)
+   - Faster development iteration
+   - No cloud costs for local testing
+   - Same API and functionality as cloud Cosmos DB
+
+### Lazy Initialization
+
+The backend now uses **lazy initialization** for Azure AI and Cosmos DB clients:
+
+- **What it means**: Clients are initialized only when first used, not on module import
+- **Benefits**:
+  - Faster dev mode restarts when code changes
+  - No unnecessary connections during startup
+  - Better development experience with hot reload
+- **When initialization happens**: On first API request that needs the service
+- **Note**: First request may be slightly slower due to initialization overhead
 
 ## Running the API
 
@@ -218,11 +271,26 @@ Response includes details for both agents (C1Agent and C2Agent).
 The backend uses `DefaultAzureCredential` for Azure authentication, which supports:
 - Environment variables
 - Managed Identity
-- Azure CLI authentication
+- Azure CLI authentication (`az login`)
 - Visual Studio Code authentication
+- Interactive browser authentication
 - And more...
 
-Ensure your Azure credentials are configured properly before running the application.
+### Token Refresh
+
+**Important**: `DefaultAzureCredential` automatically handles token refresh for you:
+
+- Tokens are refreshed automatically before expiration
+- No manual intervention required (no need to run `az account get-access-token`)
+- If using Azure CLI authentication, ensure you're logged in with `az login`
+- The service maintains the credential and refreshes it as needed
+
+**If you experience authentication issues after extended periods**:
+1. Try re-running `az login` to refresh your Azure CLI authentication
+2. Check that your Azure subscription is active
+3. Verify your credentials have the necessary permissions
+
+The automatic token refresh should prevent the need for manual token management in most cases.
 
 ## Data Storage
 

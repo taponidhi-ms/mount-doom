@@ -13,6 +13,8 @@ class Settings(BaseSettings):
     # Cosmos DB Configuration
     cosmos_db_endpoint: str
     cosmos_db_database_name: str
+    cosmos_db_use_emulator: bool = False
+    cosmos_db_key: str = ""  # For local emulator, use default key
     
     # Default Model Configuration
     default_model_deployment: str = "gpt-4.1"

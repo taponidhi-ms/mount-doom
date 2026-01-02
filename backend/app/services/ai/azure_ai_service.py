@@ -25,11 +25,14 @@ class AzureAIService:
     """Service for initializing and managing Azure AI Projects clients.
     
     This service is responsible for:
-    - Initializing and caching the AIProjectClient and OpenAI client
+    - Initializing and caching the AIProjectClient and OpenAI client (lazy initialization)
     - Creating agents with specified names, instructions, and model deployments
     
     Business logic for specific usecases should be implemented in dedicated service classes
     that use this service to get clients and create agents as needed.
+    
+    Lazy initialization ensures clients are only created when first accessed, preventing
+    unnecessary initialization during dev mode restarts.
     """
 
     _instance: Optional['AzureAIService'] = None
@@ -43,21 +46,33 @@ class AzureAIService:
         return cls._instance
 
     def __init__(self):
-        if self._client is None:
-            self._initialize_client()
+        # Don't initialize client here - use lazy initialization
+        # This prevents initialization on module import during dev mode restarts
+        pass
 
     def _initialize_client(self):
-        """Initialize the Azure AI Project Client."""
+        """Initialize the Azure AI Project Client with automatic token refresh."""
         try:
             logger.info("Initializing Azure AI Project Client...", 
                        endpoint=settings.azure_ai_project_connection_string[:50] + "...")
+            
+            # DefaultAzureCredential handles token refresh automatically
+            # It will try multiple authentication methods in order:
+            # 1. Environment variables
+            # 2. Managed Identity
+            # 3. Azure CLI (az login)
+            # 4. Azure PowerShell
+            # 5. Interactive browser
+            credential = DefaultAzureCredential()
+            
             self._client = AIProjectClient(
                 endpoint=settings.azure_ai_project_connection_string,
-                credential=DefaultAzureCredential()
+                credential=credential
             )
             logger.debug("AIProjectClient created, getting OpenAI client...")
             self._openai_client = self._client.get_openai_client()
             logger.info("Azure AI Project Client initialized successfully")
+            logger.info("Token refresh will be handled automatically by DefaultAzureCredential")
         except Exception as e:
             logger.error("Failed to initialize Azure AI Project Client", error=str(e), exc_info=True)
             raise
@@ -71,9 +86,12 @@ class AzureAIService:
 
     @property
     def openai_client(self) -> "OpenAI":
-        """Get the Azure OpenAI Client instance."""
+        """Get the Azure OpenAI Client instance (lazy initialization)."""
         if self._openai_client is None:
-            self._openai_client = self._client.get_openai_client()
+            if self._client is None:
+                self._initialize_client()
+            else:
+                self._openai_client = self._client.get_openai_client()
         return self._openai_client
 
     def create_agent(
