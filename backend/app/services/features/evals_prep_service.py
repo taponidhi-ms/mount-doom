@@ -140,7 +140,7 @@ class EvalsPrepService:
                     
                     # Select sentiment based on overall distribution
                     # Simple approach: cycle through sentiments
-                    if sentiments and len(sentiments) > 0:
+                    if sentiments:
                         sentiment_idx = i % len(sentiments)
                         sentiment_obj = sentiments[sentiment_idx]
                         sentiment_name = sentiment_obj.get("sentiment", "neutral") if isinstance(sentiment_obj, dict) else "neutral"
