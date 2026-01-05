@@ -64,3 +64,9 @@ class ConversationSimulationDocument(BaseDocument):
     c1_agent_details: AgentDetails
     c2_agent_details: AgentDetails
     total_tokens_used: Optional[int] = None
+
+class EvalsPrepDocument(BaseDocument):
+    """Document for CXA AI Evals preparation."""
+    source_run_ids: List[str]
+    cxa_evals_config: Dict[str, Any]
+    cxa_evals_input_data: List[Dict[str, Any]]

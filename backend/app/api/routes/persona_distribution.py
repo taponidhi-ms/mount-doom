@@ -3,10 +3,14 @@ from app.models.schemas import (
     PersonaDistributionRequest,
     PersonaDistributionResponse,
     AgentDetails,
-    BrowseResponse
+    BrowseResponse,
+    PrepareEvalsRequest,
+    PrepareEvalsResponse,
+    EvalsDataResponse
 )
 from app.core.config import settings
 from app.services.features.persona_distribution_service import persona_distribution_service
+from app.services.features.evals_prep_service import evals_prep_service
 from app.services.db.cosmos_db_service import cosmos_db_service
 from datetime import datetime
 import time
@@ -101,3 +105,75 @@ async def browse_persona_distributions(
     except Exception as e:
         logger.error("Error browsing persona distributions", error=str(e), exc_info=True)
         raise HTTPException(status_code=500, detail=f"Error browsing persona distributions: {str(e)}")
+
+
+@router.post("/prepare-evals", response_model=PrepareEvalsResponse)
+async def prepare_evals(request: PrepareEvalsRequest):
+    """
+    Prepare CXA AI Evals dataset from selected persona distribution runs.
+    
+    Combines multiple persona distribution runs into a standardized format
+    for evaluation in the CXA AI Evals framework.
+    """
+    logger.info("Received evals preparation request", run_ids_count=len(request.selected_run_ids))
+    
+    try:
+        # Prepare evals using the service
+        result = await evals_prep_service.prepare_evals(request.selected_run_ids)
+        
+        # Save to database
+        await evals_prep_service.save_to_database(
+            evals_id=result["evals_id"],
+            source_run_ids=result["source_run_ids"],
+            cxa_evals_config=result["cxa_evals_config"],
+            cxa_evals_input_data=result["cxa_evals_input_data"]
+        )
+        
+        logger.info("Evals preparation completed successfully", evals_id=result["evals_id"])
+        
+        return PrepareEvalsResponse(
+            evals_id=result["evals_id"],
+            timestamp=result["timestamp"],
+            source_run_ids=result["source_run_ids"],
+            personas_count=len(result["cxa_evals_input_data"]),
+            message=f"Successfully prepared evals from {len(result['source_run_ids'])} runs with {len(result['cxa_evals_input_data'])} personas"
+        )
+    
+    except ValueError as e:
+        logger.error("Validation error in evals preparation", error=str(e), exc_info=True)
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error("Error preparing evals", error=str(e), exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Error preparing evals: {str(e)}")
+
+
+@router.get("/evals/latest", response_model=EvalsDataResponse)
+async def get_latest_evals():
+    """
+    Get the most recently prepared evals dataset.
+    
+    Returns the latest CXA AI Evals configuration and input data.
+    """
+    logger.info("Fetching latest evals preparation")
+    
+    try:
+        result = await evals_prep_service.get_latest_evals()
+        
+        if not result:
+            raise HTTPException(status_code=404, detail="No evals preparations found")
+        
+        logger.info("Returning latest evals", evals_id=result.get("id"))
+        
+        return EvalsDataResponse(
+            evals_id=result["id"],
+            timestamp=result["timestamp"],
+            source_run_ids=result["source_run_ids"],
+            cxa_evals_config=result["cxa_evals_config"],
+            cxa_evals_input_data=result["cxa_evals_input_data"]
+        )
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("Error fetching latest evals", error=str(e), exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Error fetching latest evals: {str(e)}")

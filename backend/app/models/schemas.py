@@ -198,3 +198,30 @@ class BrowseResponse(BaseModel):
     total_pages: int
     has_next: bool
     has_previous: bool
+
+
+class PrepareEvalsRequest(BaseModel):
+    """Request for preparing CXA AI Evals from selected runs."""
+    selected_run_ids: List[str] = Field(
+        ..., 
+        min_length=1,
+        description="List of persona distribution run IDs to combine"
+    )
+
+
+class PrepareEvalsResponse(BaseModel):
+    """Response for evals preparation."""
+    evals_id: str
+    timestamp: datetime
+    source_run_ids: List[str]
+    personas_count: int
+    message: str
+
+
+class EvalsDataResponse(BaseModel):
+    """Response containing prepared evals data."""
+    evals_id: str
+    timestamp: datetime
+    source_run_ids: List[str]
+    cxa_evals_config: Dict[str, Any]
+    cxa_evals_input_data: List[Dict[str, Any]]
