@@ -14,9 +14,6 @@ logger = structlog.get_logger()
 class EvalsPrepService:
     """Service for preparing evaluation datasets from persona distribution generations."""
 
-    def __init__(self):
-        pass
-
     def _generate_evals_config(self) -> Dict[str, Any]:
         """
         Generate the CXA evals configuration with predefined rules.
@@ -143,8 +140,12 @@ class EvalsPrepService:
                     
                     # Select sentiment based on overall distribution
                     # Simple approach: cycle through sentiments
-                    sentiment_idx = i % len(sentiments) if sentiments else 0
-                    sentiment_name = sentiments[sentiment_idx].get("sentiment", "neutral") if sentiments else "neutral"
+                    if sentiments and len(sentiments) > 0:
+                        sentiment_idx = i % len(sentiments)
+                        sentiment_obj = sentiments[sentiment_idx]
+                        sentiment_name = sentiment_obj.get("sentiment", "neutral") if isinstance(sentiment_obj, dict) else "neutral"
+                    else:
+                        sentiment_name = "neutral"
                     
                     persona = {
                         "conversation_id": f"{run_document.get('id', 'unknown')}_conv_{conversation_index}",
