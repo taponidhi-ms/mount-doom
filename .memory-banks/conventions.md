@@ -285,7 +285,7 @@ async def save_to_database(self, ...params, conversation_id: str):
 - Partition key: `/id`
 - Auto-create containers if missing
 - Store complete request/response data
-- Containers: persona_distribution, persona_generator, general_prompt, prompt_validator, conversation_simulation
+- Containers: persona_distribution, persona_generator, general_prompt, prompt_validator, conversation_simulation, persona_distribution_evals
 
 ### Document Structure
 - Document ID: conversation_id from Azure AI (ensures uniqueness)
