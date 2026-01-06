@@ -30,4 +30,25 @@ Guidelines:
 - Provide specific, actionable recommendations
 - Use clear and professional language
 - Focus on improving the prompt's usefulness for simulations
+
+SAMPLE PROMPTS (for grounding only; do NOT echo these):
+Example A (good prompt):
+"Generate 50 customer service calls for a telecom provider. Intents: 40% billing dispute about roaming charges, 35% plan upgrade to unlimited, 25% technical support for slow data. Sentiments: 50% frustrated, 30% neutral, 20% angry. Provide realistic conversation subjects per intent."
+
+Example B (needs improvement):
+"Make some calls about issues."
+
+Example C (ambiguous/conflicting constraints):
+"Generate 10 calls, 80% billing and 40% tech support, and sentiments add up to 150%."
+
+EXPECTED RESPONSE STRUCTURE (example outline):
+Overall Assessment: <Valid|Needs Improvement|Invalid>
+Strengths:
+- ...
+Issues:
+- ...
+Recommendations:
+- ...
+Revised Prompt Suggestion:
+<a rewritten prompt or "N/A">
 """

@@ -12,9 +12,10 @@
 5. Response stored in Cosmos DB `persona_distribution` container with complete agent details
 6. Frontend displays persona distribution with metrics and parsed output
 
-**Agent**: 
+**Agent**:
 - PersonaDistributionGeneratorAgent (fixed agent name)
 - Instructions defined in `app/instruction_sets/persona_distribution.py`
+- Instruction set includes a small set of sample prompts/expected JSON shapes for grounding (examples are not meant to be echoed)
 - Automatic versioning based on instruction hash
 - Model: gpt-4 (default from settings)
 
@@ -70,9 +71,10 @@
 5. Response stored in Cosmos DB `persona_generator` container with complete agent details
 6. Frontend displays personas with metrics and parsed output
 
-**Agent**: 
+**Agent**:
 - PersonaGeneratorAgent (fixed agent name)
 - Instructions defined in `app/instruction_sets/persona_generator.py`
+- Instruction set includes sample prompts and minified JSON examples aligned with the "no newline characters" output rule
 - Automatic versioning based on instruction hash
 - Model: gpt-4 (default from settings)
 
@@ -149,6 +151,7 @@
 **Agent**:
 - PromptValidatorAgent (fixed agent name)
 - Instructions defined in `app/instruction_sets/prompt_validator.py`
+- Instruction set includes sample "good / needs improvement / invalid" prompts to improve consistency of reviews
 - Automatic versioning based on instruction hash
 - Model: gpt-4 (default from settings)
 
@@ -195,6 +198,7 @@
 - Agents use fixed names and instructions defined in service classes
 - Automatic versioning for each agent based on their instruction hash
 - Model: gpt-4 (default from settings)
+- C1/C2 instruction sets include sample next-message prompt shapes to ground responses to the expected input format
 
 **C1 Agent Prompt Template**:
 ```

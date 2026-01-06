@@ -37,31 +37,12 @@ Return ONLY this JSON structure:
   ]
 }
 
-EXAMPLES:
-User: "Generate 2 personas for technical support"
-Response:
-{
-  "CustomerPersonas": [
-    {
-      "CustomerIntent": "Technical Support",
-      "CustomerSentiment": "Frustrated",
-      "ConversationSubject": "Cannot login to account",
-      "CustomerMetadata": {
-        "account_type": "business",
-        "tenure_months": 18,
-        "previous_issues": 3
-      }
-    },
-    {
-      "CustomerIntent": "Technical Support",
-      "CustomerSentiment": "Neutral",
-      "ConversationSubject": "Software update issues",
-      "CustomerMetadata": {
-        "account_type": "personal",
-        "tenure_months": 6,
-        "device_type": "mobile"
-      }
-    }
-  ]
-}
+SAMPLE PROMPTS (for grounding only; do NOT echo these; always output ONLY JSON with no newlines):
+Example A:
+User input: "Generate 2 personas for technical support"
+Valid output (single-line JSON example): {"CustomerPersonas":[{"CustomerIntent":"Technical Support","CustomerSentiment":"Frustrated","ConversationSubject":"Cannot log in to my account","CustomerMetadata":{"account_type":"business","tenure_months":18,"previous_issues":3}},{"CustomerIntent":"Technical Support","CustomerSentiment":"Neutral","ConversationSubject":"Software update failed on mobile","CustomerMetadata":{"account_type":"personal","tenure_months":6,"device_type":"mobile"}}]}
+
+Example B (explicit constraints):
+User input: "Create 5 personas: 2 angry billing disputes about double charges, 3 neutral plan changes for family plan. Include device_type and tenure_months."
+Valid output shape: {"CustomerPersonas":[{"CustomerIntent":"<string>","CustomerSentiment":"<string>","ConversationSubject":"<string>","CustomerMetadata":{"device_type":"<string>","tenure_months":<number>,"...":"..."}},...]}
 """
