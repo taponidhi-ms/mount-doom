@@ -28,6 +28,9 @@
 - Configuration in core/config.py
 - Agent configuration constants in instruction_sets/
 
+### Configuration (.env)
+- Backend settings are loaded from `backend/.env` via `app/core/config.py` using an absolute path, so starting the server from the repo root (or other folders) still picks up the correct environment.
+
 ### Error Handling
 - Use HTTPException for API errors
 - Include descriptive error messages
@@ -157,6 +160,14 @@ logger.info("="*60)
 - Inline styles for custom layouts
 - Responsive design with Ant Design grid system
 - Proper accessibility with ARIA labels and semantic HTML
+
+## Local Tooling Conventions
+
+### Local Evals Runner
+- `LocalEvalsRunner/` is a repo-root folder for running CXA AI Evals locally.
+- The CLI executable `Microsoft.CXA.AIEvals.Cli.exe` is manually downloaded and must not be committed.
+- Any folder named `output` under `LocalEvalsRunner/` must not be committed.
+- Evals input files should be stored under per-agent/per-eval folders with the names `cxa_evals_config.json` and `cxa_evals_input_data.json`.
 
 ### UI Components (Ant Design)
 Standard components used across pages:

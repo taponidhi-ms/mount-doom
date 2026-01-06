@@ -63,3 +63,8 @@ coverage/
 tmp/
 temp/
 *.tmp
+
+# Local evals runner (local-only artifacts)
+/LocalEvalsRunner/Microsoft.CXA.AIEvals.Cli.exe
+/LocalEvalsRunner/**/output/
+/LocalEvalsRunner/**/output/**

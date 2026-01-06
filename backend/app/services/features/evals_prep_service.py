@@ -38,7 +38,7 @@ class EvalsPrepService:
                     "dev"
                 ],
                 "turn_mode": "multi_turn",
-                "metric": "default",
+                "metric": "groundedness",
                 "lower_bound_score": 1,
                 "upper_bound_score": 10,
                 "score_threshold": 7

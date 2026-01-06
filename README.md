@@ -91,6 +91,7 @@ Frontend: http://localhost:3000
 
 - [Backend README](backend/README.md) - Detailed backend documentation
 - [Frontend README](frontend/README.md) - Detailed frontend documentation
+- [Local Evals Runner](LocalEvalsRunner/README.md) - Run CXA AI evals locally
 - API Docs: http://localhost:8000/docs (when backend is running)
 
 ## License
