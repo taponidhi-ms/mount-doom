@@ -54,8 +54,8 @@
 - Combines multiple persona distribution runs into standardized evals format
 - Generates predefined evaluation rules (no LLM usage)
 - Stores results in `persona_distribution_evals` container
-- Frontend: "Prepare for Evals" tab with multi-select table and download buttons
-- Output: `cxa_evals_config.json` and `cxa_evals_input_data.json` files
+- Frontend: "Prepare for Evals" tab with multi-select table and a single zip download
+- Output: a zip named by `evals_id` containing `cxa_evals_config.json` and `cxa_evals_input_data.json`
 
 ---
 

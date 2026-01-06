@@ -142,7 +142,7 @@ class PersonaDistributionService:
         tokens_used: Optional[int],
         time_taken_ms: float,
         agent_name: str,
-        agent_version: str,
+        agent_version: Optional[str],
         agent_instructions: str,
         model: str,
         agent_timestamp: datetime,

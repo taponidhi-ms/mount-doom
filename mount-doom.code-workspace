@@ -9,6 +9,10 @@
       "name": "Frontend"
     },
     {
+      "path": "LocalEvalsRunner",
+      "name": "LocalEvalsRunner"
+    },
+    {
       "path": ".",
       "name": "Root"
     }

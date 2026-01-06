@@ -178,6 +178,34 @@ class ApiClient {
     }
   }
 
+  private async requestBlob(
+    endpoint: string,
+    options?: RequestInit
+  ): Promise<ApiResponse<Blob>> {
+    try {
+      const response = await fetch(`${this.baseUrl}${endpoint}`, {
+        ...options,
+        headers: {
+          ...options?.headers,
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        return {
+          error: errorData.detail || `HTTP ${response.status}: ${response.statusText}`,
+        };
+      }
+
+      const data = await response.blob();
+      return { data };
+    } catch (error) {
+      return {
+        error: error instanceof Error ? error.message : 'An unknown error occurred',
+      };
+    }
+  }
+
   // Models API - Removed (GPT-4 is hardcoded in backend)
 
   // Persona Distribution APIs
@@ -212,6 +240,10 @@ class ApiClient {
 
   async getLatestEvals(): Promise<ApiResponse<EvalsDataResponse>> {
     return this.request<EvalsDataResponse>('/api/v1/persona-distribution/evals/latest');
+  }
+
+  async downloadEvalsZip(evalsId: string): Promise<ApiResponse<Blob>> {
+    return this.requestBlob(`/api/v1/persona-distribution/evals/${evalsId}/download`);
   }
 
   // Persona Generator APIs

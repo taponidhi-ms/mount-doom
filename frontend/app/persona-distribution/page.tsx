@@ -27,6 +27,7 @@ export default function PersonaDistributionPage() {
   const [selectedRunIds, setSelectedRunIds] = useState<string[]>([])
   const [preparingEvals, setPreparingEvals] = useState(false)
   const [preparedEvals, setPreparedEvals] = useState<EvalsDataResponse | null>(null)
+  const [downloadingEvalsZip, setDownloadingEvalsZip] = useState(false)
 
   const loadHistory = async (page: number = 1, pageSize: number = 10) => {
     setHistoryLoading(true)
@@ -81,17 +82,29 @@ export default function PersonaDistributionPage() {
     }
   }
 
-  const downloadJSON = (data: any, filename: string) => {
-    const jsonStr = JSON.stringify(data, null, 2)
-    const blob = new Blob([jsonStr], { type: 'application/json' })
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
-    link.download = filename
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-    URL.revokeObjectURL(url)
+  const downloadEvalsZip = async () => {
+    if (!preparedEvals?.evals_id) {
+      message.error('No evals ID available to download')
+      return
+    }
+
+    setDownloadingEvalsZip(true)
+    const response = await apiClient.downloadEvalsZip(preparedEvals.evals_id)
+    setDownloadingEvalsZip(false)
+
+    if (response.data) {
+      const url = URL.createObjectURL(response.data)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `${preparedEvals.evals_id}.zip`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      URL.revokeObjectURL(url)
+      message.success('Download started')
+    } else if (response.error) {
+      message.error('Failed to download zip: ' + response.error)
+    }
   }
 
   const samplePrompts = [
@@ -429,7 +442,7 @@ export default function PersonaDistributionPage() {
               <Space direction="vertical" size="middle" style={{ width: '100%' }}>
                 <Alert
                   message="Evals Prepared Successfully!"
-                  description={`Successfully prepared evals from ${preparedEvals.source_run_ids.length} runs with ${preparedEvals.cxa_evals_input_data.conversations?.length || 0} conversations. Download the files below to use in CXA AI Evals framework.`}
+                  description={`Successfully prepared evals from ${preparedEvals.source_run_ids.length} runs with ${preparedEvals.cxa_evals_input_data.conversations?.length || 0} conversations. Download the zip below to use in CXA AI Evals framework.`}
                   type="success"
                   showIcon
                 />
@@ -439,18 +452,10 @@ export default function PersonaDistributionPage() {
                     type="primary"
                     icon={<DownloadOutlined />}
                     size="large"
-                    onClick={() => downloadJSON(preparedEvals.cxa_evals_config, 'cxa_evals_config.json')}
+                    onClick={downloadEvalsZip}
+                    loading={downloadingEvalsZip}
                   >
-                    Download Config JSON
-                  </Button>
-                  
-                  <Button
-                    type="primary"
-                    icon={<DownloadOutlined />}
-                    size="large"
-                    onClick={() => downloadJSON(preparedEvals.cxa_evals_input_data, 'cxa_evals_input_data.json')}
-                  >
-                    Download Input Data JSON
+                    Download ZIP
                   </Button>
                 </Space>
 

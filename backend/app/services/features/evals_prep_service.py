@@ -15,7 +15,7 @@ logger = structlog.get_logger()
 class EvalsPrepService:
     """Service for preparing evaluation datasets from persona distribution generations."""
 
-    def _generate_evals_config(self) -> Dict[str, Any]:
+    def _generate_evals_config(self, evals_id: str) -> Dict[str, Any]:
         """
         Generate the CXA evals configuration matching the required template.
         
@@ -28,9 +28,8 @@ class EvalsPrepService:
             "team_name": "Omnichannel",
             "agent_name": "ttulsi_persona_generator_agent",
             "source": {
-                "source_folder_path": ".\\tests\\resources\\input\\input_data\\input_multi_turn_example.json",
-                "source_file_type": "json",
-                "variable_columns": []
+                "source_folder_path": evals_id,
+                "source_file_type": "json"
             },
             "eval_config": {
                 "options": [
@@ -38,7 +37,7 @@ class EvalsPrepService:
                     "dev"
                 ],
                 "turn_mode": "multi_turn",
-                "metric": "groundedness",
+                "metric": "groundness",
                 "lower_bound_score": 1,
                 "upper_bound_score": 10,
                 "score_threshold": 7
@@ -76,7 +75,7 @@ class EvalsPrepService:
             },
             "sink": {
                 "type": "LocalFileWriter",
-                "output_folder_path": ".\\tests\\resources\\output_test\\default_multi_turn\\"
+                "output_folder_path": f"{evals_id}\\output"
             },
             "reporting": {
                 "enabled": False,
@@ -94,7 +93,7 @@ class EvalsPrepService:
         logger.info("Evals configuration generated")
         return config
 
-    def _create_conversation_from_run(self, run_document: Dict[str, Any]) -> Dict[str, Any]:
+    def _create_conversation_from_run(self, run_document: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         """
         Create a conversation object from a persona distribution run document.
         
@@ -161,6 +160,9 @@ class EvalsPrepService:
         logger.info("Starting evals preparation", run_ids_count=len(selected_run_ids))
         
         try:
+            evals_id = str(uuid.uuid4())
+            timestamp = datetime.utcnow()
+
             # Fetch all selected runs from Cosmos DB
             container = await cosmos_db_service.ensure_container(
                 cosmos_db_service.PERSONA_DISTRIBUTION_CONTAINER
@@ -199,16 +201,12 @@ class EvalsPrepService:
                 raise ValueError("No conversations could be created from the selected runs")
             
             # Generate evals configuration
-            evals_config = self._generate_evals_config()
+            evals_config = self._generate_evals_config(evals_id)
             
             # Create evals input data with conversations structure
             evals_input_data = {
                 "conversations": all_conversations
             }
-            
-            # Create evals document
-            evals_id = str(uuid.uuid4())
-            timestamp = datetime.utcnow()
             
             logger.info("Evals preparation completed",
                        evals_id=evals_id,
