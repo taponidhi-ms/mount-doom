@@ -102,12 +102,13 @@ class EvalsPrepService:
             run_document: Document from persona_distribution container
             
         Returns:
-            Conversation dictionary with system/user/assistant format
+            Conversation dictionary with system/user/assistant format and groundness_fact
         """
         try:
             conversation_id = run_document.get("id", "unknown")
             prompt = run_document.get("prompt", "")
             response = run_document.get("response", "")
+            groundness_fact = run_document.get("groundness_fact")
             
             conversation = {
                 "Id": conversation_id,
@@ -125,13 +126,15 @@ class EvalsPrepService:
                         "role": "assistant",
                         "content": response
                     }
-                ]
+                ],
+                "groundness_fact": groundness_fact
             }
             
             logger.info("Created conversation from run",
                        conversation_id=conversation_id,
                        prompt_length=len(prompt),
-                       response_length=len(response))
+                       response_length=len(response),
+                       has_groundness_fact=groundness_fact is not None)
             
             return conversation
             

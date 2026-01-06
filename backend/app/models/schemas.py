@@ -48,6 +48,7 @@ class PersonaDistributionResult(BaseModel):
     timestamp: datetime
     conversation_id: str
     parsed_output: Optional[Dict[str, Any]] = None
+    groundness_fact: Optional[Dict[str, Any]] = None
 
 
 class PersonaGeneratorResult(BaseModel):
@@ -94,6 +95,7 @@ class PersonaDistributionRequest(BaseRequest):
 class PersonaDistributionResponse(BaseResponse):
     """Response for persona distribution generation use case."""
     parsed_output: Optional[Dict[str, Any]] = None
+    groundness_fact: Optional[Dict[str, Any]] = None
 
 
 class PersonaGeneratorRequest(BaseRequest):

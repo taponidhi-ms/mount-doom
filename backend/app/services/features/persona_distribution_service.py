@@ -10,6 +10,7 @@ from app.services.db.cosmos_db_service import cosmos_db_service
 from app.models.schemas import PersonaDistributionResult
 from app.models.db import PersonaDistributionDocument, AgentDetails
 from app.instruction_sets.persona_distribution import PERSONA_DISTRIBUTION_AGENT_INSTRUCTIONS
+from app.instruction_sets.persona_distribution_groundness_fact import PERSONA_DISTRIBUTION_GROUNDNESS_FACT_AGENT_INSTRUCTIONS
 
 logger = structlog.get_logger()
 
@@ -19,6 +20,9 @@ class PersonaDistributionService:
 
     PERSONA_DISTRIBUTION_AGENT_NAME = "PersonaDistributionGeneratorAgent"
     PERSONA_DISTRIBUTION_AGENT_INSTRUCTIONS = PERSONA_DISTRIBUTION_AGENT_INSTRUCTIONS
+    
+    GROUNDNESS_FACT_AGENT_NAME = "PersonaDistributionGroundnessFactAgent"
+    GROUNDNESS_FACT_AGENT_INSTRUCTIONS = PERSONA_DISTRIBUTION_GROUNDNESS_FACT_AGENT_INSTRUCTIONS
 
     def __init__(self):
         pass
@@ -41,6 +45,75 @@ class PersonaDistributionService:
             return parsed
         except json.JSONDecodeError as e:
             logger.warning("Failed to parse JSON output", error=str(e), response_preview=response_text[:200])
+            return None
+
+    async def _extract_groundness_fact(self, prompt: str) -> Optional[Dict[str, Any]]:
+        """
+        Extract the groundness fact from the prompt - what should be expected in the output.
+        
+        Args:
+            prompt: The original input prompt
+            
+        Returns:
+            Groundness fact (expected requirements) dict or None if extraction fails
+        """
+        try:
+            logger.info("="*60)
+            logger.info("Starting groundness fact extraction")
+            
+            # Create groundness fact agent
+            logger.info("Creating Groundness Fact Extractor Agent...")
+            groundness_agent = azure_ai_service.create_agent(
+                agent_name=self.GROUNDNESS_FACT_AGENT_NAME,
+                instructions=self.GROUNDNESS_FACT_AGENT_INSTRUCTIONS
+            )
+            logger.info("Groundness Fact Agent ready", agent_version=groundness_agent.agent_version_object.version)
+            
+            # Construct extraction input
+            extraction_input = f"""PROMPT: {prompt}
+
+Extract the groundness facts from the PROMPT."""
+            
+            logger.info("Creating conversation for groundness extraction...")
+            conversation = azure_ai_service.openai_client.conversations.create(
+                items=[{"type": "message", "role": "user", "content": extraction_input}]
+            )
+            groundness_conversation_id = conversation.id
+            logger.info("Groundness conversation created", conversation_id=groundness_conversation_id)
+            
+            # Get groundness extraction
+            logger.info("Requesting groundness fact extraction...")
+            extraction_response = azure_ai_service.openai_client.responses.create(
+                conversation=groundness_conversation_id,
+                extra_body={"agent": {"name": groundness_agent.agent_version_object.name, "type": "agent_reference"}},
+                input=""
+            )
+            logger.info("Groundness extraction received")
+            
+            # Extract response text
+            extraction_text = extraction_response.output_text
+            if extraction_text is None:
+                logger.error("No extraction text found in groundness response")
+                return None
+            
+            logger.info("Groundness fact extraction completed", 
+                       extraction_length=len(extraction_text),
+                       extraction_preview=extraction_text[:150] + "..." if len(extraction_text) > 150 else extraction_text)
+            
+            # Parse groundness fact JSON
+            groundness_fact = self._parse_json_output(extraction_text)
+            
+            if groundness_fact:
+                logger.info("Groundness fact parsed successfully",
+                           expected_count=groundness_fact.get("expected_conversation_count"),
+                           intents_count=len(groundness_fact.get("expected_intents", [])))
+            
+            logger.info("="*60)
+            return groundness_fact
+            
+        except Exception as e:
+            logger.error("Error extracting groundness fact", error=str(e), exc_info=True)
+            # Don't fail the entire request if groundness extraction fails
             return None
 
     async def generate_persona_distribution(self, prompt: str) -> PersonaDistributionResult:
@@ -105,6 +178,10 @@ class PersonaDistributionService:
             # Parse JSON output
             parsed_output = self._parse_json_output(response_text)
 
+            # Extract groundness fact (expected requirements from prompt)
+            logger.info("Extracting groundness fact from prompt...")
+            groundness_fact = await self._extract_groundness_fact(prompt)
+
             # Extract token usage
             logger.debug("Extracting token usage...")
             tokens_used = None
@@ -119,7 +196,8 @@ class PersonaDistributionService:
                        tokens_used=tokens_used,
                        agent_version=agent.agent_version_object.version,
                        conversation_id=conversation_id,
-                       parsed_successfully=parsed_output is not None)
+                       parsed_successfully=parsed_output is not None,
+                       groundness_extracted=groundness_fact is not None)
             logger.info("="*60)
 
             return PersonaDistributionResult(
@@ -128,7 +206,8 @@ class PersonaDistributionService:
                 agent_details=agent.agent_details,
                 timestamp=timestamp,
                 conversation_id=conversation_id,
-                parsed_output=parsed_output
+                parsed_output=parsed_output,
+                groundness_fact=groundness_fact
             )
 
         except Exception as e:
@@ -147,7 +226,8 @@ class PersonaDistributionService:
         model: str,
         agent_timestamp: datetime,
         conversation_id: str,
-        parsed_output: Optional[Dict[str, Any]]
+        parsed_output: Optional[Dict[str, Any]],
+        groundness_fact: Optional[Dict[str, Any]]
     ):
         """
         Save persona distribution generation result to database.
@@ -164,12 +244,14 @@ class PersonaDistributionService:
             agent_timestamp: Timestamp when agent was created
             conversation_id: The conversation ID from Azure AI
             parsed_output: Parsed JSON output (if successful)
+            groundness_fact: Groundness evaluation result (if successful)
         """
         logger.info("Saving persona distribution generation to database",
                    agent=agent_name,
                    tokens=tokens_used,
                    time_ms=round(time_taken_ms, 2),
-                   conversation_id=conversation_id)
+                   conversation_id=conversation_id,
+                   has_groundness_fact=groundness_fact is not None)
         
         # Create document with structure specific to persona distribution generation
         # Use conversation_id as the document ID
@@ -188,7 +270,8 @@ class PersonaDistributionService:
             parsed_output=parsed_output,
             tokens_used=tokens_used,
             time_taken_ms=time_taken_ms,
-            agent_details=agent_details
+            agent_details=agent_details,
+            groundness_fact=groundness_fact
         )
         
         # Use generic save method from CosmosDBService

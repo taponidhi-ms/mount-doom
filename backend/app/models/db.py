@@ -23,6 +23,7 @@ class PersonaDistributionDocument(BaseDocument):
     tokens_used: Optional[int] = None
     time_taken_ms: float
     agent_details: AgentDetails
+    groundness_fact: Optional[Dict[str, Any]] = None
 
 class PersonaGeneratorDocument(BaseDocument):
     """Document for persona generation."""
