@@ -131,12 +131,13 @@ async def prepare_evals(request: PrepareEvalsRequest):
         
         logger.info("Evals preparation completed successfully", evals_id=result["evals_id"])
         
+        conversations_count = len(result["cxa_evals_input_data"].get("conversations", []))
         return PrepareEvalsResponse(
             evals_id=result["evals_id"],
             timestamp=result["timestamp"],
             source_run_ids=result["source_run_ids"],
-            personas_count=len(result["cxa_evals_input_data"]),
-            message=f"Successfully prepared evals from {len(result['source_run_ids'])} runs with {len(result['cxa_evals_input_data'])} personas"
+            conversations_count=conversations_count,
+            message=f"Successfully prepared evals from {len(result['source_run_ids'])} runs with {conversations_count} conversations"
         )
     
     except ValueError as e:

@@ -214,7 +214,7 @@ class PrepareEvalsResponse(BaseModel):
     evals_id: str
     timestamp: datetime
     source_run_ids: List[str]
-    personas_count: int
+    conversations_count: int
     message: str
 
 
@@ -224,4 +224,4 @@ class EvalsDataResponse(BaseModel):
     timestamp: datetime
     source_run_ids: List[str]
     cxa_evals_config: Dict[str, Any]
-    cxa_evals_input_data: List[Dict[str, Any]]
+    cxa_evals_input_data: Dict[str, Any]  # Contains "conversations" key

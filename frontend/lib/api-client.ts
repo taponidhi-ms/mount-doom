@@ -65,7 +65,7 @@ export interface PrepareEvalsResponse {
   evals_id: string;
   timestamp: string;
   source_run_ids: string[];
-  personas_count: number;
+  conversations_count: number;
   message: string;
 }
 
@@ -74,7 +74,7 @@ export interface EvalsDataResponse {
   timestamp: string;
   source_run_ids: string[];
   cxa_evals_config: any;
-  cxa_evals_input_data: any[];
+  cxa_evals_input_data: any;  // Object with "conversations" key
 }
 
 // Persona Generator

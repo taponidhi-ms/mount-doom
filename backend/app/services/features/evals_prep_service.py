@@ -7,6 +7,7 @@ import uuid
 
 from app.services.db.cosmos_db_service import cosmos_db_service
 from app.models.db import EvalsPrepDocument
+from app.instruction_sets.persona_distribution import PERSONA_DISTRIBUTION_AGENT_INSTRUCTIONS
 
 logger = structlog.get_logger()
 
@@ -16,165 +17,130 @@ class EvalsPrepService:
 
     def _generate_evals_config(self) -> Dict[str, Any]:
         """
-        Generate the CXA evals configuration with predefined rules.
+        Generate the CXA evals configuration matching the required template.
         
         Returns:
             Dict containing the evaluation configuration
         """
-        logger.info("Generating CXA evals configuration with predefined rules")
+        logger.info("Generating CXA evals configuration")
         
         config = {
-            "version": "1.0",
-            "eval_type": "persona_distribution",
-            "description": "Evaluation of PersonaDistributionGeneratorAgent accuracy",
-            "custom_rules": [
-                {
-                    "rule_id": "intent_distribution_accuracy",
-                    "rule_name": "Intent Distribution Accuracy",
-                    "rule_type": "distribution_check",
-                    "description": "Verifies that the actual distribution of intents matches the expected distribution",
-                    "target_field": "CustomerIntent",
-                    "tolerance_percentage": 5,
-                    "metric": "percentage_deviation"
-                },
-                {
-                    "rule_id": "sentiment_distribution_accuracy",
-                    "rule_name": "Sentiment Distribution Accuracy",
-                    "rule_type": "distribution_check",
-                    "description": "Verifies that the actual distribution of sentiments matches the expected distribution",
-                    "target_field": "CustomerSentiment",
-                    "tolerance_percentage": 5,
-                    "metric": "percentage_deviation"
-                },
-                {
-                    "rule_id": "subject_variation",
-                    "rule_name": "Subject Variation Check",
-                    "rule_type": "variety_check",
-                    "description": "Ensures that conversation subjects are appropriately varied within each intent category",
-                    "target_field": "ConversationSubject",
-                    "min_unique_count": 2
-                },
-                {
-                    "rule_id": "total_count_accuracy",
-                    "rule_name": "Total Conversation Count Accuracy",
-                    "rule_type": "count_check",
-                    "description": "Verifies that the total number of conversations matches the expected count",
-                    "tolerance_percentage": 2
+            "team_name": "Omnichannel",
+            "agent_name": "ttulsi_persona_generator_agent",
+            "source": {
+                "source_folder_path": ".\\tests\\resources\\input\\input_data\\input_multi_turn_example.json",
+                "source_file_type": "json",
+                "variable_columns": []
+            },
+            "eval_config": {
+                "options": [
+                    "enable_logging",
+                    "dev"
+                ],
+                "turn_mode": "multi_turn",
+                "metric": "default",
+                "lower_bound_score": 1,
+                "upper_bound_score": 10,
+                "score_threshold": 7
+            },
+            "llm_config": {
+                "default_adapter": "capi",
+                "adapters": {
+                    "capi": {
+                        "enabled": True,
+                        "type": "capi",
+                        "model": "gpt-xyz",
+                        "prompt_parameters": {
+                            "temperature": 0,
+                            "top_p": 1,
+                            "max_completion_tokens": 2000
+                        },
+                        "authorization": {
+                            "endpoint": "https://capi-resourceproxy.wus-il002.gateway.test.island.powerapps.com/v0/resourceproxy/envid.360f9d1b-9200-f011-9981-000d3a32ddb4/azureopenai/llm/gpt-41-mini-2025-04-14/chatcompletions",
+                            "client_id": "079f5a03-090f-4720-90b9-e03942091e6e",
+                            "tenant_id": "f8cdef31-a31e-4b4a-93e4-5f571e91255a",
+                            "resource_uri": "api://4309f23c-178a-4fc7-a36e-68d8fee6ca7b",
+                            "key_vault_name": "crmanalyticstip",
+                            "certificate_secret_name": "dynamics-cca-data-analytics-test",
+                            "headers": {
+                                "x-ms-source": "{\"consumptionSource\":\"Api\",\"partnerSource\":\"D365Sales.Copilot.CXAEvals\"}",
+                                "x-ms-client-principal-id": "b1ee8c0b-c63a-45f8-b198-90ed3dd5b87e",
+                                "x-ms-client-tenant-id": "04f02989-9a26-4c15-bf84-5ee3f23b1301"
+                            },
+                            "token_cache_seconds": 300
+                        },
+                        "timeout_seconds": 60,
+                        "retries": 2
+                    }
                 }
-            ],
-            "variable_columns": [
-                "CustomerIntent",
-                "CustomerSentiment",
-                "ConversationSubject"
-            ],
-            "metrics": [
-                "intent_distribution_accuracy_score",
-                "sentiment_distribution_accuracy_score",
-                "subject_variation_score",
-                "total_count_accuracy_score"
-            ]
+            },
+            "sink": {
+                "type": "LocalFileWriter",
+                "output_folder_path": ".\\tests\\resources\\output_test\\default_multi_turn\\"
+            },
+            "reporting": {
+                "enabled": False,
+                "authorization": {
+                    "client_id": "079f5a03-090f-4720-90b9-e03942091e6e",
+                    "tenant_id": "72f988bf-86f1-41af-91ab-2d7cd011db47",
+                    "resource_uri": "api://evaluation-results-api",
+                    "key_vault_name": "crmanalyticstip",
+                    "certificate_secret_name": "dynamics-cca-data-analytics-test",
+                    "token_cache_seconds": 3600
+                }
+            }
         }
         
-        logger.info("Evals configuration generated", 
-                   rules_count=len(config["custom_rules"]),
-                   variable_columns=config["variable_columns"])
+        logger.info("Evals configuration generated")
         return config
 
-    def _extract_personas_from_run(self, run_document: Dict[str, Any]) -> List[Dict[str, Any]]:
+    def _create_conversation_from_run(self, run_document: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Extract persona data from a single persona distribution run document.
+        Create a conversation object from a persona distribution run document.
         
         Args:
             run_document: Document from persona_distribution container
             
         Returns:
-            List of persona dictionaries with intent, sentiment, subject, and expected distribution
+            Conversation dictionary with system/user/assistant format
         """
-        personas = []
-        
         try:
-            parsed_output = run_document.get("parsed_output")
-            if not parsed_output:
-                logger.warning("No parsed_output found in run document", 
-                             run_id=run_document.get("id"))
-                return personas
+            conversation_id = run_document.get("id", "unknown")
+            prompt = run_document.get("prompt", "")
+            response = run_document.get("response", "")
             
-            # Extract expected distribution data
-            intents = parsed_output.get("intents", [])
-            sentiments = parsed_output.get("Sentiments", [])
-            proportions = parsed_output.get("Proportions", [])
-            conv_count = parsed_output.get("ConvCount", 0)
-            
-            # Create a mapping of intent to expected percentage and count
-            intent_map = {}
-            for intent_obj in intents:
-                intent_name = intent_obj.get("intent", "")
-                intent_map[intent_name] = {
-                    "percentage": intent_obj.get("percentage", 0),
-                    "subject": intent_obj.get("subject", ""),
-                    "count": 0
-                }
-            
-            # Update counts from proportions
-            for prop in proportions:
-                intent_name = prop.get("intent", "")
-                if intent_name in intent_map:
-                    intent_map[intent_name]["count"] = prop.get("count", 0)
-            
-            # Create sentiment mapping
-            sentiment_map = {}
-            for sentiment_obj in sentiments:
-                sentiment_name = sentiment_obj.get("sentiment", "")
-                sentiment_map[sentiment_name] = sentiment_obj.get("percentage", 0)
-            
-            # Generate persona entries based on proportions
-            conversation_index = 0
-            for intent_name, intent_data in intent_map.items():
-                count = intent_data["count"]
-                subject = intent_data["subject"]
-                
-                # Distribute sentiments across this intent's personas
-                # For simplicity, assign sentiments proportionally
-                for i in range(count):
-                    conversation_index += 1
-                    
-                    # Select sentiment based on overall distribution
-                    # Simple approach: cycle through sentiments
-                    if sentiments:
-                        sentiment_idx = i % len(sentiments)
-                        sentiment_obj = sentiments[sentiment_idx]
-                        sentiment_name = sentiment_obj.get("sentiment", "neutral") if isinstance(sentiment_obj, dict) else "neutral"
-                    else:
-                        sentiment_name = "neutral"
-                    
-                    persona = {
-                        "conversation_id": f"{run_document.get('id', 'unknown')}_conv_{conversation_index}",
-                        "source_run_id": run_document.get("id"),
-                        "CustomerIntent": intent_name,
-                        "CustomerSentiment": sentiment_name,
-                        "ConversationSubject": subject,
-                        "expected_distribution": {
-                            "intent": intent_name,
-                            "intent_percentage": intent_data["percentage"],
-                            "intent_count": count,
-                            "sentiment": sentiment_name,
-                            "sentiment_percentage": sentiment_map.get(sentiment_name, 0),
-                            "total_conversations": conv_count
-                        }
+            conversation = {
+                "Id": conversation_id,
+                "scenario_name": "persona_distribution_generation",
+                "conversation": [
+                    {
+                        "role": "system",
+                        "content": PERSONA_DISTRIBUTION_AGENT_INSTRUCTIONS
+                    },
+                    {
+                        "role": "user",
+                        "content": prompt
+                    },
+                    {
+                        "role": "assistant",
+                        "content": response
                     }
-                    personas.append(persona)
+                ]
+            }
             
-            logger.info("Extracted personas from run",
-                       run_id=run_document.get("id"),
-                       personas_count=len(personas))
+            logger.info("Created conversation from run",
+                       conversation_id=conversation_id,
+                       prompt_length=len(prompt),
+                       response_length=len(response))
+            
+            return conversation
             
         except Exception as e:
-            logger.error("Error extracting personas from run",
+            logger.error("Error creating conversation from run",
                         run_id=run_document.get("id", "unknown"),
                         error=str(e),
                         exc_info=True)
-        
-        return personas
+            return None
 
     async def prepare_evals(self, selected_run_ids: List[str]) -> Dict[str, Any]:
         """
@@ -187,7 +153,7 @@ class EvalsPrepService:
             Dict containing:
             - evals_id: Unique identifier for this evals preparation
             - cxa_evals_config: Evaluation configuration
-            - cxa_evals_input_data: Combined persona data
+            - cxa_evals_input_data: Combined conversations data
             - source_run_ids: List of source run IDs
             - timestamp: When evals were prepared
         """
@@ -200,7 +166,7 @@ class EvalsPrepService:
                 cosmos_db_service.PERSONA_DISTRIBUTION_CONTAINER
             )
             
-            all_personas = []
+            all_conversations = []
             valid_run_ids = []
             
             for run_id in selected_run_ids:
@@ -211,14 +177,15 @@ class EvalsPrepService:
                         partition_key=run_id
                     )
                     
-                    # Extract personas from this run
-                    personas = self._extract_personas_from_run(run_document)
-                    all_personas.extend(personas)
-                    valid_run_ids.append(run_id)
-                    
-                    logger.info("Processed run successfully",
-                               run_id=run_id,
-                               personas_extracted=len(personas))
+                    # Create conversation from this run
+                    conversation = self._create_conversation_from_run(run_document)
+                    if conversation:
+                        all_conversations.append(conversation)
+                        valid_run_ids.append(run_id)
+                        
+                        logger.info("Processed run successfully",
+                                   run_id=run_id,
+                                   conversation_id=conversation.get("Id"))
                     
                 except Exception as e:
                     logger.error("Failed to fetch or process run document",
@@ -228,11 +195,16 @@ class EvalsPrepService:
                     # Continue with other runs even if one fails
                     continue
             
-            if not all_personas:
-                raise ValueError("No personas could be extracted from the selected runs")
+            if not all_conversations:
+                raise ValueError("No conversations could be created from the selected runs")
             
             # Generate evals configuration
             evals_config = self._generate_evals_config()
+            
+            # Create evals input data with conversations structure
+            evals_input_data = {
+                "conversations": all_conversations
+            }
             
             # Create evals document
             evals_id = str(uuid.uuid4())
@@ -240,7 +212,7 @@ class EvalsPrepService:
             
             logger.info("Evals preparation completed",
                        evals_id=evals_id,
-                       total_personas=len(all_personas),
+                       total_conversations=len(all_conversations),
                        source_runs=len(valid_run_ids))
             
             result = {
@@ -248,7 +220,7 @@ class EvalsPrepService:
                 "timestamp": timestamp,
                 "source_run_ids": valid_run_ids,
                 "cxa_evals_config": evals_config,
-                "cxa_evals_input_data": all_personas
+                "cxa_evals_input_data": evals_input_data
             }
             
             logger.info("="*60)
@@ -263,7 +235,7 @@ class EvalsPrepService:
         evals_id: str,
         source_run_ids: List[str],
         cxa_evals_config: Dict[str, Any],
-        cxa_evals_input_data: List[Dict[str, Any]]
+        cxa_evals_input_data: Dict[str, Any]
     ):
         """
         Save prepared evals to database.
@@ -272,12 +244,13 @@ class EvalsPrepService:
             evals_id: Unique identifier for this evals preparation
             source_run_ids: List of source persona distribution run IDs
             cxa_evals_config: Evaluation configuration object
-            cxa_evals_input_data: Input data array
+            cxa_evals_input_data: Input data with conversations structure
         """
+        conversations_count = len(cxa_evals_input_data.get("conversations", []))
         logger.info("Saving evals preparation to database",
                    evals_id=evals_id,
                    source_runs=len(source_run_ids),
-                   personas_count=len(cxa_evals_input_data))
+                   conversations_count=conversations_count)
         
         document = EvalsPrepDocument(
             id=evals_id,

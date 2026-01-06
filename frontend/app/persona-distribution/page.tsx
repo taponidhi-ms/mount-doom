@@ -429,7 +429,7 @@ export default function PersonaDistributionPage() {
               <Space direction="vertical" size="middle" style={{ width: '100%' }}>
                 <Alert
                   message="Evals Prepared Successfully!"
-                  description={`Successfully prepared evals from ${preparedEvals.source_run_ids.length} runs with ${preparedEvals.cxa_evals_input_data.length} personas. Download the files below to use in CXA AI Evals framework.`}
+                  description={`Successfully prepared evals from ${preparedEvals.source_run_ids.length} runs with ${preparedEvals.cxa_evals_input_data.conversations?.length || 0} conversations. Download the files below to use in CXA AI Evals framework.`}
                   type="success"
                   showIcon
                 />
@@ -486,7 +486,7 @@ export default function PersonaDistributionPage() {
                 </div>
 
                 <div>
-                  <Text strong>Input Data Preview (first 3 personas):</Text>
+                  <Text strong>Input Data Preview (first 3 conversations):</Text>
                   <pre style={{ 
                     background: '#e6f7ff', 
                     padding: '12px', 
@@ -495,7 +495,11 @@ export default function PersonaDistributionPage() {
                     overflow: 'auto',
                     marginTop: 8
                   }}>
-                    {JSON.stringify(preparedEvals.cxa_evals_input_data.slice(0, 3), null, 2)}
+                    {JSON.stringify(
+                      { conversations: preparedEvals.cxa_evals_input_data.conversations?.slice(0, 3) || [] },
+                      null,
+                      2
+                    )}
                   </pre>
                 </div>
               </Space>
