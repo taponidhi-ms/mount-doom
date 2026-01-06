@@ -149,24 +149,6 @@ export default function PersonaDistributionPage() {
       render: (text: string) => text?.substring(0, 100) + (text?.length > 100 ? '...' : ''),
     },
     {
-      title: 'Groundness Fact',
-      dataIndex: 'groundness_fact',
-      key: 'groundness',
-      width: 140,
-      render: (groundness_fact: any) => {
-        if (!groundness_fact) {
-          return <Text type="secondary">N/A</Text>
-        }
-        const count = groundness_fact.expected_conversation_count
-        const intents = groundness_fact.expected_intents?.length || 0
-        return (
-          <Text>
-            {count ? `${count} conv` : 'N/A'}, {intents} intents
-          </Text>
-        )
-      },
-    },
-    {
       title: 'Tokens',
       dataIndex: 'tokens_used',
       key: 'tokens',
@@ -273,38 +255,6 @@ export default function PersonaDistributionPage() {
                   </div>
                 )}
 
-                {result.groundness_fact && (
-                  <div>
-                    <Text strong>Groundness Fact (Expected Requirements):</Text>
-                    <Paragraph>
-                      <pre style={{ 
-                        background: '#f0f5ff', 
-                        padding: '12px', 
-                        borderRadius: '4px',
-                        whiteSpace: 'pre-wrap',
-                        wordWrap: 'break-word',
-                        border: '1px solid #adc6ff'
-                      }}>
-                        {JSON.stringify(result.groundness_fact, null, 2)}
-                      </pre>
-                    </Paragraph>
-                    {result.groundness_fact.expected_conversation_count && (
-                      <Space size="large" wrap>
-                        <div>
-                          <Text type="secondary">Expected Conversations: </Text>
-                          <Text strong>
-                            {result.groundness_fact.expected_conversation_count}
-                          </Text>
-                        </div>
-                        <div>
-                          <Text type="secondary">Expected Intents: </Text>
-                          <Text strong>{result.groundness_fact.expected_intents?.length || 0}</Text>
-                        </div>
-                      </Space>
-                    )}
-                  </div>
-                )}
-
                 <Space size="large" wrap>
                   <div>
                     <Text type="secondary">Tokens Used: </Text>
@@ -396,23 +346,6 @@ export default function PersonaDistributionPage() {
                             wordWrap: 'break-word'
                           }}>
                             {JSON.stringify(record.parsed_output, null, 2)}
-                          </pre>
-                        </Paragraph>
-                      </div>
-                    )}
-                    {record.groundness_fact && (
-                      <div>
-                        <Text strong>Groundness Fact (Expected Requirements):</Text>
-                        <Paragraph>
-                          <pre style={{ 
-                            background: '#f0f5ff', 
-                            padding: '12px', 
-                            borderRadius: '4px',
-                            whiteSpace: 'pre-wrap',
-                            wordWrap: 'break-word',
-                            border: '1px solid #adc6ff'
-                          }}>
-                            {JSON.stringify(record.groundness_fact, null, 2)}
                           </pre>
                         </Paragraph>
                       </div>
