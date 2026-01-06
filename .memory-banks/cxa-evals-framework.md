@@ -16,7 +16,7 @@ The primary goal is to evaluate whether the LLM (PersonaDistributionGeneratorAge
 ## Data Structures
 
 ### Evals Input Data Format
-The input data file contains a list of conversations/personas with their properties and groundness facts:
+The input data file contains a list of conversations/personas with their properties:
 ```json
 [
   {
@@ -28,22 +28,6 @@ The input data file contains a list of conversations/personas with their propert
       "intent": "billing inquiry",
       "sentiment": "negative",
       "percentage": 60
-    },
-    "groundness_fact": {
-      "expected_conversation_count": 10,
-      "expected_intents": [
-        {"intent": "billing inquiry", "percentage": 60, "subject": "late fee reversal"}
-      ],
-      "expected_sentiments": [
-        {"sentiment": "negative", "percentage": 70}
-      ],
-      "expected_phone_numbers": {
-        "caller": "+1-206-555-0100",
-        "recipient": "+1-425-555-0199"
-      },
-      "is_transcript_based": false,
-      "explicit_constraints": ["Must have exactly 10 calls"],
-      "generation_flexibility": "Sentiments can be generated if not specified"
     }
   },
   ...
@@ -88,60 +72,6 @@ The following rules are used to evaluate persona distribution accuracy:
 3. **Subject Variation**: Ensures that conversation subjects are appropriately varied within each intent category
 
 These rules are hardcoded and do not require LLM evaluation.
-
-## Groundness Fact Extraction
-
-**Purpose**: Extract the expected requirements from the prompt to serve as ground truth for later evaluation by CXA Evals.
-
-**Agent**: PersonaDistributionGroundnessFactAgent
-- Specialized agent that extracts expected requirements from the prompt
-- Identifies what SHOULD be in a valid output based on the prompt specifications
-- Provides structured groundness fact that CXA Evals will use to evaluate actual outputs
-
-**Extraction Focus**:
-1. **Expected Values**: Conversation counts, intents, sentiments, percentages, subjects
-2. **Explicit Constraints**: Specific requirements mentioned in the prompt
-3. **Generation Flexibility**: What can be randomly generated vs. what must match exactly
-
-**Groundness Fact Output**:
-```json
-{
-  "expected_conversation_count": <integer or "unspecified">,
-  "expected_intents": [
-    {
-      "intent": "<intent name>",
-      "percentage": <number or "unspecified">,
-      "subject": "<subject or 'unspecified'>"
-    }
-  ],
-  "expected_sentiments": [
-    {
-      "sentiment": "<sentiment name>",
-      "percentage": <number or "unspecified">
-    }
-  ],
-  "expected_phone_numbers": {
-    "caller": "<phone number or 'unspecified'>",
-    "recipient": "<phone number or 'unspecified'>"
-  },
-  "is_transcript_based": <boolean>,
-  "explicit_constraints": ["<list of constraints>"],
-  "generation_flexibility": "<description of what can be generated>"
-}
-```
-
-**Purpose in Evaluation**:
-- The groundness fact serves as the **ground truth** reference
-- CXA Evals compares the actual agent output against this groundness fact
-- The evaluation framework determines how well the output matches the expected requirements
-- This separation allows the extraction to happen once, and evaluation to happen later with different scoring mechanisms
-
-**Integration with Evals**:
-- Groundness fact automatically extracted for each persona distribution generation
-- Stored in Cosmos DB with each result
-- Included in evals preparation datasets
-- Each conversation in evals input data contains its groundness_fact
-- CXA Evals uses this as reference to evaluate agent output quality
 
 ## Storage
 Evals preparation results are stored in a dedicated Cosmos DB container:

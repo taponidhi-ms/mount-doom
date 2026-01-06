@@ -54,7 +54,6 @@ export interface PersonaDistributionRequest {
 
 export interface PersonaDistributionResponse extends BaseResponse {
   parsed_output?: any;
-  groundness_fact?: any;
 }
 
 // Evals Preparation
