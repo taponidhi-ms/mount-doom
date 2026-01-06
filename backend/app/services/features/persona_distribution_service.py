@@ -47,76 +47,73 @@ class PersonaDistributionService:
             logger.warning("Failed to parse JSON output", error=str(e), response_preview=response_text[:200])
             return None
 
-    async def _evaluate_groundness_fact(self, prompt: str, response_text: str) -> Optional[Dict[str, Any]]:
+    async def _extract_groundness_fact(self, prompt: str) -> Optional[Dict[str, Any]]:
         """
-        Evaluate the groundness of the persona distribution output against the prompt.
+        Extract the groundness fact from the prompt - what should be expected in the output.
         
         Args:
             prompt: The original input prompt
-            response_text: The generated persona distribution response
             
         Returns:
-            Groundness fact evaluation dict or None if evaluation fails
+            Groundness fact (expected requirements) dict or None if extraction fails
         """
         try:
             logger.info("="*60)
-            logger.info("Starting groundness fact evaluation")
+            logger.info("Starting groundness fact extraction")
             
             # Create groundness fact agent
-            logger.info("Creating Groundness Fact Agent...")
+            logger.info("Creating Groundness Fact Extractor Agent...")
             groundness_agent = azure_ai_service.create_agent(
                 agent_name=self.GROUNDNESS_FACT_AGENT_NAME,
                 instructions=self.GROUNDNESS_FACT_AGENT_INSTRUCTIONS
             )
             logger.info("Groundness Fact Agent ready", agent_version=groundness_agent.agent_version_object.version)
             
-            # Construct evaluation input
-            evaluation_input = f"""PROMPT: {prompt}
+            # Construct extraction input
+            extraction_input = f"""PROMPT: {prompt}
 
-OUTPUT: {response_text}
-
-Evaluate the OUTPUT against the PROMPT and provide your grounding assessment."""
+Extract the groundness facts from the PROMPT."""
             
-            logger.info("Creating conversation for groundness evaluation...")
+            logger.info("Creating conversation for groundness extraction...")
             conversation = azure_ai_service.openai_client.conversations.create(
-                items=[{"type": "message", "role": "user", "content": evaluation_input}]
+                items=[{"type": "message", "role": "user", "content": extraction_input}]
             )
             groundness_conversation_id = conversation.id
             logger.info("Groundness conversation created", conversation_id=groundness_conversation_id)
             
-            # Get groundness evaluation
-            logger.info("Requesting groundness evaluation...")
-            evaluation_response = azure_ai_service.openai_client.responses.create(
+            # Get groundness extraction
+            logger.info("Requesting groundness fact extraction...")
+            extraction_response = azure_ai_service.openai_client.responses.create(
                 conversation=groundness_conversation_id,
                 extra_body={"agent": {"name": groundness_agent.agent_version_object.name, "type": "agent_reference"}},
                 input=""
             )
-            logger.info("Groundness evaluation received")
+            logger.info("Groundness extraction received")
             
-            # Extract evaluation text
-            evaluation_text = evaluation_response.output_text
-            if evaluation_text is None:
-                logger.error("No evaluation text found in groundness response")
+            # Extract response text
+            extraction_text = extraction_response.output_text
+            if extraction_text is None:
+                logger.error("No extraction text found in groundness response")
                 return None
             
-            logger.info("Groundness evaluation completed", 
-                       evaluation_length=len(evaluation_text),
-                       evaluation_preview=evaluation_text[:150] + "..." if len(evaluation_text) > 150 else evaluation_text)
+            logger.info("Groundness fact extraction completed", 
+                       extraction_length=len(extraction_text),
+                       extraction_preview=extraction_text[:150] + "..." if len(extraction_text) > 150 else extraction_text)
             
-            # Parse groundness evaluation JSON
-            groundness_fact = self._parse_json_output(evaluation_text)
+            # Parse groundness fact JSON
+            groundness_fact = self._parse_json_output(extraction_text)
             
             if groundness_fact:
                 logger.info("Groundness fact parsed successfully",
-                           score=groundness_fact.get("groundness_score"),
-                           assessment=groundness_fact.get("overall_assessment"))
+                           expected_count=groundness_fact.get("expected_conversation_count"),
+                           intents_count=len(groundness_fact.get("expected_intents", [])))
             
             logger.info("="*60)
             return groundness_fact
             
         except Exception as e:
-            logger.error("Error evaluating groundness fact", error=str(e), exc_info=True)
-            # Don't fail the entire request if groundness evaluation fails
+            logger.error("Error extracting groundness fact", error=str(e), exc_info=True)
+            # Don't fail the entire request if groundness extraction fails
             return None
 
     async def generate_persona_distribution(self, prompt: str) -> PersonaDistributionResult:
@@ -181,9 +178,9 @@ Evaluate the OUTPUT against the PROMPT and provide your grounding assessment."""
             # Parse JSON output
             parsed_output = self._parse_json_output(response_text)
 
-            # Evaluate groundness fact
-            logger.info("Evaluating groundness fact...")
-            groundness_fact = await self._evaluate_groundness_fact(prompt, response_text)
+            # Extract groundness fact (expected requirements from prompt)
+            logger.info("Extracting groundness fact from prompt...")
+            groundness_fact = await self._extract_groundness_fact(prompt)
 
             # Extract token usage
             logger.debug("Extracting token usage...")
@@ -200,7 +197,7 @@ Evaluate the OUTPUT against the PROMPT and provide your grounding assessment."""
                        agent_version=agent.agent_version_object.version,
                        conversation_id=conversation_id,
                        parsed_successfully=parsed_output is not None,
-                       groundness_evaluated=groundness_fact is not None)
+                       groundness_extracted=groundness_fact is not None)
             logger.info("="*60)
 
             return PersonaDistributionResult(

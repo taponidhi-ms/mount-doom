@@ -9,10 +9,10 @@
 2. Backend sends prompt to PersonaDistributionGeneratorAgent via Azure AI Projects
 3. PersonaDistributionGeneratorAgent generates distribution response (parser-based instruction)
 4. Backend parses JSON output
-5. **Backend evaluates groundness fact** by sending prompt and response to PersonaDistributionGroundnessFactAgent
-6. PersonaDistributionGroundnessFactAgent evaluates how well the output is grounded in the prompt
+5. **Backend extracts groundness fact** by sending prompt to PersonaDistributionGroundnessFactAgent
+6. PersonaDistributionGroundnessFactAgent extracts expected requirements from the prompt (ground truth)
 7. Response stored in Cosmos DB `persona_distribution` container with complete agent details and groundness fact
-8. Frontend displays persona distribution with metrics, parsed output, and groundness evaluation
+8. Frontend displays persona distribution with metrics, parsed output, and groundness fact
 
 **Agents**:
 - **PersonaDistributionGeneratorAgent** (fixed agent name)
@@ -23,9 +23,10 @@
 
 - **PersonaDistributionGroundnessFactAgent** (fixed agent name) - NEW
   - Instructions defined in `app/instruction_sets/persona_distribution_groundness_fact.py`
-  - Evaluates source alignment, traceability, and absence of unsupported claims
-  - Returns structured groundness evaluation with score (1-10) and assessment
+  - Extracts expected requirements from the prompt (ground truth for evaluation)
+  - Returns structured groundness fact with expected counts, intents, sentiments, etc.
   - Model: gpt-4 (default from settings)
+  - Note: This agent extracts WHAT SHOULD BE in the output based on the prompt. CXA Evals will later evaluate HOW WELL the actual output matches this groundness fact.
 
 **Output Format**:
 ```json
@@ -43,12 +44,27 @@
 **Groundness Fact Format** (NEW):
 ```json
 {
-  "groundness_score": <integer 1-10>,
-  "evaluation_summary": "<brief summary>",
-  "alignment_issues": ["<list of issues>"],
-  "traceability_issues": ["<list of issues>"],
-  "unsupported_claims": ["<list of claims>"],
-  "overall_assessment": "<GROUNDED|PARTIALLY_GROUNDED|NOT_GROUNDED>"
+  "expected_conversation_count": <integer or "unspecified">,
+  "expected_intents": [
+    {
+      "intent": "<intent name>",
+      "percentage": <number or "unspecified">,
+      "subject": "<subject or 'unspecified'>"
+    }
+  ],
+  "expected_sentiments": [
+    {
+      "sentiment": "<sentiment name>",
+      "percentage": <number or "unspecified">
+    }
+  ],
+  "expected_phone_numbers": {
+    "caller": "<phone number or 'unspecified'>",
+    "recipient": "<phone number or 'unspecified'>"
+  },
+  "is_transcript_based": <boolean>,
+  "explicit_constraints": ["<list of constraints>"],
+  "generation_flexibility": "<description of what can be generated>"
 }
 ```
 
@@ -58,7 +74,7 @@
 - Start/end timestamps
 - Agent details (name, version, instructions, model)
 - Parsed JSON output (if parsing successful)
-- Groundness fact evaluation (if evaluation successful) - NEW
+- Groundness fact (expected requirements extracted from prompt) - NEW
 
 **Database Schema**:
 - Document ID: conversation_id from Azure AI

@@ -149,19 +149,19 @@ export default function PersonaDistributionPage() {
       render: (text: string) => text?.substring(0, 100) + (text?.length > 100 ? '...' : ''),
     },
     {
-      title: 'Groundness',
+      title: 'Groundness Fact',
       dataIndex: 'groundness_fact',
       key: 'groundness',
-      width: 120,
+      width: 140,
       render: (groundness_fact: any) => {
-        if (!groundness_fact || !groundness_fact.groundness_score) {
+        if (!groundness_fact) {
           return <Text type="secondary">N/A</Text>
         }
-        const score = groundness_fact.groundness_score
-        const color = score >= 8 ? '#52c41a' : score >= 6 ? '#faad14' : '#ff4d4f'
+        const count = groundness_fact.expected_conversation_count
+        const intents = groundness_fact.expected_intents?.length || 0
         return (
-          <Text strong style={{ color }}>
-            {score}/10
+          <Text>
+            {count ? `${count} conv` : 'N/A'}, {intents} intents
           </Text>
         )
       },
@@ -275,7 +275,7 @@ export default function PersonaDistributionPage() {
 
                 {result.groundness_fact && (
                   <div>
-                    <Text strong>Groundness Evaluation:</Text>
+                    <Text strong>Groundness Fact (Expected Requirements):</Text>
                     <Paragraph>
                       <pre style={{ 
                         background: '#f0f5ff', 
@@ -288,20 +288,17 @@ export default function PersonaDistributionPage() {
                         {JSON.stringify(result.groundness_fact, null, 2)}
                       </pre>
                     </Paragraph>
-                    {result.groundness_fact.groundness_score && (
+                    {result.groundness_fact.expected_conversation_count && (
                       <Space size="large" wrap>
                         <div>
-                          <Text type="secondary">Groundness Score: </Text>
-                          <Text strong style={{ 
-                            color: result.groundness_fact.groundness_score >= 8 ? '#52c41a' : 
-                                   result.groundness_fact.groundness_score >= 6 ? '#faad14' : '#ff4d4f'
-                          }}>
-                            {result.groundness_fact.groundness_score}/10
+                          <Text type="secondary">Expected Conversations: </Text>
+                          <Text strong>
+                            {result.groundness_fact.expected_conversation_count}
                           </Text>
                         </div>
                         <div>
-                          <Text type="secondary">Assessment: </Text>
-                          <Text strong>{result.groundness_fact.overall_assessment}</Text>
+                          <Text type="secondary">Expected Intents: </Text>
+                          <Text strong>{result.groundness_fact.expected_intents?.length || 0}</Text>
                         </div>
                       </Space>
                     )}
@@ -405,7 +402,7 @@ export default function PersonaDistributionPage() {
                     )}
                     {record.groundness_fact && (
                       <div>
-                        <Text strong>Groundness Evaluation:</Text>
+                        <Text strong>Groundness Fact (Expected Requirements):</Text>
                         <Paragraph>
                           <pre style={{ 
                             background: '#f0f5ff', 

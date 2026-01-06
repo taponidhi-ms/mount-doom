@@ -30,12 +30,20 @@ The input data file contains a list of conversations/personas with their propert
       "percentage": 60
     },
     "groundness_fact": {
-      "groundness_score": 9,
-      "evaluation_summary": "Excellent alignment...",
-      "alignment_issues": [],
-      "traceability_issues": [],
-      "unsupported_claims": [],
-      "overall_assessment": "GROUNDED"
+      "expected_conversation_count": 10,
+      "expected_intents": [
+        {"intent": "billing inquiry", "percentage": 60, "subject": "late fee reversal"}
+      ],
+      "expected_sentiments": [
+        {"sentiment": "negative", "percentage": 70}
+      ],
+      "expected_phone_numbers": {
+        "caller": "+1-206-555-0100",
+        "recipient": "+1-425-555-0199"
+      },
+      "is_transcript_based": false,
+      "explicit_constraints": ["Must have exactly 10 calls"],
+      "generation_flexibility": "Sentiments can be generated if not specified"
     }
   },
   ...
@@ -81,46 +89,59 @@ The following rules are used to evaluate persona distribution accuracy:
 
 These rules are hardcoded and do not require LLM evaluation.
 
-## Groundness Evaluation
+## Groundness Fact Extraction
 
-**Purpose**: Measure how well the persona distribution output is anchored to the source prompt, ensuring source fidelity.
+**Purpose**: Extract the expected requirements from the prompt to serve as ground truth for later evaluation by CXA Evals.
 
 **Agent**: PersonaDistributionGroundnessFactAgent
-- Specialized agent that evaluates groundedness based on the GroundnessEvaluator framework
-- Measures source alignment, traceability, and absence of unsupported claims
-- Provides structured evaluation with quantifiable scores
+- Specialized agent that extracts expected requirements from the prompt
+- Identifies what SHOULD be in a valid output based on the prompt specifications
+- Provides structured groundness fact that CXA Evals will use to evaluate actual outputs
 
-**Evaluation Criteria**:
-1. **Source Alignment**: All factual statements match the prompt requirements exactly
-2. **Traceability**: Each fact, percentage, or intent can be traced to the prompt
-3. **No Unsupported Claims**: No speculative or inferred content beyond prompt specifications
+**Extraction Focus**:
+1. **Expected Values**: Conversation counts, intents, sentiments, percentages, subjects
+2. **Explicit Constraints**: Specific requirements mentioned in the prompt
+3. **Generation Flexibility**: What can be randomly generated vs. what must match exactly
 
 **Groundness Fact Output**:
 ```json
 {
-  "groundness_score": <integer 1-10>,
-  "evaluation_summary": "<brief summary of grounding quality>",
-  "alignment_issues": ["<list of any alignment issues>"],
-  "traceability_issues": ["<list of any traceability issues>"],
-  "unsupported_claims": ["<list of any unsupported claims>"],
-  "overall_assessment": "<GROUNDED|PARTIALLY_GROUNDED|NOT_GROUNDED>"
+  "expected_conversation_count": <integer or "unspecified">,
+  "expected_intents": [
+    {
+      "intent": "<intent name>",
+      "percentage": <number or "unspecified">,
+      "subject": "<subject or 'unspecified'>"
+    }
+  ],
+  "expected_sentiments": [
+    {
+      "sentiment": "<sentiment name>",
+      "percentage": <number or "unspecified">
+    }
+  ],
+  "expected_phone_numbers": {
+    "caller": "<phone number or 'unspecified'>",
+    "recipient": "<phone number or 'unspecified'>"
+  },
+  "is_transcript_based": <boolean>,
+  "explicit_constraints": ["<list of constraints>"],
+  "generation_flexibility": "<description of what can be generated>"
 }
 ```
 
-**Score Interpretation**:
-- **10**: Perfect grounding - every element directly traceable
-- **8-9**: Excellent grounding - minor discrepancies only
-- **6-7**: Good grounding - some elements may be reasonably inferred
-- **4-5**: Partial grounding - several elements lack clear source traceability
-- **2-3**: Poor grounding - many fabricated or unsupported elements
-- **1**: Not grounded - output does not reflect prompt requirements
+**Purpose in Evaluation**:
+- The groundness fact serves as the **ground truth** reference
+- CXA Evals compares the actual agent output against this groundness fact
+- The evaluation framework determines how well the output matches the expected requirements
+- This separation allows the extraction to happen once, and evaluation to happen later with different scoring mechanisms
 
 **Integration with Evals**:
-- Groundness fact automatically calculated for each persona distribution generation
+- Groundness fact automatically extracted for each persona distribution generation
 - Stored in Cosmos DB with each result
 - Included in evals preparation datasets
 - Each conversation in evals input data contains its groundness_fact
-- Enables evaluation of agent quality and prompt adherence
+- CXA Evals uses this as reference to evaluate agent output quality
 
 ## Storage
 Evals preparation results are stored in a dedicated Cosmos DB container:
