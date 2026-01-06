@@ -149,6 +149,24 @@ export default function PersonaDistributionPage() {
       render: (text: string) => text?.substring(0, 100) + (text?.length > 100 ? '...' : ''),
     },
     {
+      title: 'Groundness',
+      dataIndex: 'groundness_fact',
+      key: 'groundness',
+      width: 120,
+      render: (groundness_fact: any) => {
+        if (!groundness_fact || !groundness_fact.groundness_score) {
+          return <Text type="secondary">N/A</Text>
+        }
+        const score = groundness_fact.groundness_score
+        const color = score >= 8 ? '#52c41a' : score >= 6 ? '#faad14' : '#ff4d4f'
+        return (
+          <Text strong style={{ color }}>
+            {score}/10
+          </Text>
+        )
+      },
+    },
+    {
       title: 'Tokens',
       dataIndex: 'tokens_used',
       key: 'tokens',
@@ -255,6 +273,41 @@ export default function PersonaDistributionPage() {
                   </div>
                 )}
 
+                {result.groundness_fact && (
+                  <div>
+                    <Text strong>Groundness Evaluation:</Text>
+                    <Paragraph>
+                      <pre style={{ 
+                        background: '#f0f5ff', 
+                        padding: '12px', 
+                        borderRadius: '4px',
+                        whiteSpace: 'pre-wrap',
+                        wordWrap: 'break-word',
+                        border: '1px solid #adc6ff'
+                      }}>
+                        {JSON.stringify(result.groundness_fact, null, 2)}
+                      </pre>
+                    </Paragraph>
+                    {result.groundness_fact.groundness_score && (
+                      <Space size="large" wrap>
+                        <div>
+                          <Text type="secondary">Groundness Score: </Text>
+                          <Text strong style={{ 
+                            color: result.groundness_fact.groundness_score >= 8 ? '#52c41a' : 
+                                   result.groundness_fact.groundness_score >= 6 ? '#faad14' : '#ff4d4f'
+                          }}>
+                            {result.groundness_fact.groundness_score}/10
+                          </Text>
+                        </div>
+                        <div>
+                          <Text type="secondary">Assessment: </Text>
+                          <Text strong>{result.groundness_fact.overall_assessment}</Text>
+                        </div>
+                      </Space>
+                    )}
+                  </div>
+                )}
+
                 <Space size="large" wrap>
                   <div>
                     <Text type="secondary">Tokens Used: </Text>
@@ -346,6 +399,23 @@ export default function PersonaDistributionPage() {
                             wordWrap: 'break-word'
                           }}>
                             {JSON.stringify(record.parsed_output, null, 2)}
+                          </pre>
+                        </Paragraph>
+                      </div>
+                    )}
+                    {record.groundness_fact && (
+                      <div>
+                        <Text strong>Groundness Evaluation:</Text>
+                        <Paragraph>
+                          <pre style={{ 
+                            background: '#f0f5ff', 
+                            padding: '12px', 
+                            borderRadius: '4px',
+                            whiteSpace: 'pre-wrap',
+                            wordWrap: 'break-word',
+                            border: '1px solid #adc6ff'
+                          }}>
+                            {JSON.stringify(record.groundness_fact, null, 2)}
                           </pre>
                         </Paragraph>
                       </div>
