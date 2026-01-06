@@ -47,6 +47,15 @@
 - Supports pagination and ordering
 - Returns list of past persona distribution generations
 
+**Evals Preparation**:
+- POST `/api/v1/persona-distribution/prepare-evals` - Prepare CXA AI Evals from selected runs
+- GET `/api/v1/persona-distribution/evals/latest` - Get latest prepared evals
+- Combines multiple persona distribution runs into standardized evals format
+- Generates predefined evaluation rules (no LLM usage)
+- Stores results in `persona_distribution_evals` container
+- Frontend: "Prepare for Evals" tab with multi-select table and download buttons
+- Output: `cxa_evals_config.json` and `cxa_evals_input_data.json` files
+
 ---
 
 ## Use Case 2: Persona Generator

@@ -62,6 +62,7 @@ Each service handles complete business logic for its use case:
 - **GeneralPromptService**: Handles direct model responses (no agent)
 - **PromptValidatorService**: Validates prompts using Prompt Validator Agent
 - **ConversationSimulationService**: Multi-agent conversation orchestration
+- **EvalsPrepService**: Prepares CXA AI Evals datasets from persona distribution runs
 
 Services contain:
 - Agent configuration (name, instructions, model deployment)
@@ -107,6 +108,8 @@ Does NOT contain:
 - `/api/v1/persona-distribution/*` - Delegates to PersonaDistributionService
   - POST `/generate` - Generate persona distribution
   - GET `/browse` - Browse past persona distribution generations with pagination
+  - POST `/prepare-evals` - Prepare CXA AI Evals from selected runs (delegates to EvalsPrepService)
+  - GET `/evals/latest` - Get the most recently prepared evals (delegates to EvalsPrepService)
 - `/api/v1/persona-generator/*` - Delegates to PersonaGeneratorService
   - POST `/generate` - Generate exact personas
   - GET `/browse` - Browse past persona generations with pagination

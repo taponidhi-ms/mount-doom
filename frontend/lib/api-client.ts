@@ -56,6 +56,27 @@ export interface PersonaDistributionResponse extends BaseResponse {
   parsed_output?: any;
 }
 
+// Evals Preparation
+export interface PrepareEvalsRequest {
+  selected_run_ids: string[];
+}
+
+export interface PrepareEvalsResponse {
+  evals_id: string;
+  timestamp: string;
+  source_run_ids: string[];
+  conversations_count: number;
+  message: string;
+}
+
+export interface EvalsDataResponse {
+  evals_id: string;
+  timestamp: string;
+  source_run_ids: string[];
+  cxa_evals_config: any;
+  cxa_evals_input_data: any;  // Object with "conversations" key
+}
+
 // Persona Generator
 export interface PersonaGeneratorRequest {
   prompt: string;
@@ -178,6 +199,19 @@ class ApiClient {
     return this.request<BrowseResponse>(
       `/api/v1/persona-distribution/browse?page=${page}&page_size=${pageSize}&order_by=${orderBy}&order_direction=${orderDirection}`
     );
+  }
+
+  async prepareEvals(
+    selectedRunIds: string[]
+  ): Promise<ApiResponse<PrepareEvalsResponse>> {
+    return this.request<PrepareEvalsResponse>('/api/v1/persona-distribution/prepare-evals', {
+      method: 'POST',
+      body: JSON.stringify({ selected_run_ids: selectedRunIds }),
+    });
+  }
+
+  async getLatestEvals(): Promise<ApiResponse<EvalsDataResponse>> {
+    return this.request<EvalsDataResponse>('/api/v1/persona-distribution/evals/latest');
   }
 
   // Persona Generator APIs
