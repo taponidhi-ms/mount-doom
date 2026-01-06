@@ -64,6 +64,13 @@ class ConversationSimulationService:
         
         logger.info("All agents created successfully")
 
+        customer_context_json = json.dumps(
+          conversation_properties,
+          ensure_ascii=False,
+          separators=(",", ":")
+        )
+        customer_context_yaml = customer_context_json.replace("'", "''")
+
         # Workflow YAML
         workflow_yaml = f"""
 kind: workflow
@@ -101,6 +108,11 @@ trigger:
           actions:
             - kind: EndConversation
               id: end_workflow_c1
+        - condition: '=!IsBlank(Find("end this call now", Last(Local.LatestMessage).Text))'
+          id: c1_ends_call
+          actions:
+            - kind: EndConversation
+              id: end_workflow_c1_end_call
       elseActions: []
 
     # C2 Agent Turn
@@ -110,20 +122,9 @@ trigger:
       agent:
         name: {c2_agent.agent_version_object.name}
       input:
-        messages: "=Local.LatestMessage"
+        messages: "=UserMessage('CustomerContext: {customer_context_yaml} ' + 'RepresentativeLastMessage: ' + Last(Local.LatestMessage).Text)"
       output:
         messages: Local.LatestMessage
-
-    # Check C2 Termination
-    - kind: ConditionGroup
-      id: check_c2_termination
-      conditions:
-        - condition: '=!IsBlank(Find("end this call now", Last(Local.LatestMessage).Text))'
-          id: c2_terminates
-          actions:
-            - kind: EndConversation
-              id: end_workflow_c2
-      elseActions: []
 
     # Increment Turn Count
     - kind: SetVariable
@@ -161,8 +162,8 @@ trigger:
         logger.info("Creating conversation for workflow...")
         conversation = azure_ai_service.openai_client.conversations.create()
         logger.info("Conversation created", conversation_id=conversation.id)
-        
-        input_text = f"Simulation Context: {json.dumps(conversation_properties)}\n\nStart the simulation."
+
+        input_text = f"{simulation_prompt}\n\nStart the simulation."
         logger.debug("Input text prepared", input_length=len(input_text))
 
         logger.info("Starting workflow stream...", conversation_id=conversation.id)

@@ -187,9 +187,8 @@
 2. Max turns is hardcoded to 20 in backend
 3. Simulation starts (sequentially for batch):
    - C1Agent speaks first (as service rep)
-   - Check for termination phrase ("transfer this call to my supervisor")
-   - C2Agent responds (as customer)
-   - Check for termination phrase ("end this call now")
+  - Check for termination phrase after C1 ("transfer this call to my supervisor" or "end this call now")
+  - C2Agent responds (as customer) using injected customer properties
    - Repeat until complete or max turns (20) reached
 4. Full conversation stored in Cosmos DB `conversation_simulation` container with details for agents
 5. Frontend displays conversation history with metrics
@@ -203,20 +202,19 @@
 **C1 Agent Prompt Template**:
 ```
 Generate a next message as an Agent for the following ongoing conversation:
-ConversationProperties: {json}
 messages: {history}
 ```
 
 **C2 Agent Prompt Template**:
 ```
 Generate a next message as a customer for the following ongoing conversation:
-ConversationProperties: {json}
-messages: {history}
+CustomerContext: {json}
+RepresentativeLastMessage: {text}
 ```
 
 **Completion Logic**:
 - Conversation ends if C1 says "i will transfer this call to my supervisor now"
-- Conversation ends if C2 says "I will end this call now."
+- Conversation ends if C1 says "I will end this call now."
 - Conversation ends if max turns (20) reached
 
 **Metrics Tracked**:
