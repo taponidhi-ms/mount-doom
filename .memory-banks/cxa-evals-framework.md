@@ -16,7 +16,7 @@ The primary goal is to evaluate whether the LLM (PersonaDistributionGeneratorAge
 ## Data Structures
 
 ### Evals Input Data Format
-The input data file contains a list of conversations/personas with their properties:
+The input data file contains a list of conversations/personas with their properties and groundness facts:
 ```json
 [
   {
@@ -28,6 +28,14 @@ The input data file contains a list of conversations/personas with their propert
       "intent": "billing inquiry",
       "sentiment": "negative",
       "percentage": 60
+    },
+    "groundness_fact": {
+      "groundness_score": 9,
+      "evaluation_summary": "Excellent alignment...",
+      "alignment_issues": [],
+      "traceability_issues": [],
+      "unsupported_claims": [],
+      "overall_assessment": "GROUNDED"
     }
   },
   ...
@@ -72,6 +80,47 @@ The following rules are used to evaluate persona distribution accuracy:
 3. **Subject Variation**: Ensures that conversation subjects are appropriately varied within each intent category
 
 These rules are hardcoded and do not require LLM evaluation.
+
+## Groundness Evaluation
+
+**Purpose**: Measure how well the persona distribution output is anchored to the source prompt, ensuring source fidelity.
+
+**Agent**: PersonaDistributionGroundnessFactAgent
+- Specialized agent that evaluates groundedness based on the GroundnessEvaluator framework
+- Measures source alignment, traceability, and absence of unsupported claims
+- Provides structured evaluation with quantifiable scores
+
+**Evaluation Criteria**:
+1. **Source Alignment**: All factual statements match the prompt requirements exactly
+2. **Traceability**: Each fact, percentage, or intent can be traced to the prompt
+3. **No Unsupported Claims**: No speculative or inferred content beyond prompt specifications
+
+**Groundness Fact Output**:
+```json
+{
+  "groundness_score": <integer 1-10>,
+  "evaluation_summary": "<brief summary of grounding quality>",
+  "alignment_issues": ["<list of any alignment issues>"],
+  "traceability_issues": ["<list of any traceability issues>"],
+  "unsupported_claims": ["<list of any unsupported claims>"],
+  "overall_assessment": "<GROUNDED|PARTIALLY_GROUNDED|NOT_GROUNDED>"
+}
+```
+
+**Score Interpretation**:
+- **10**: Perfect grounding - every element directly traceable
+- **8-9**: Excellent grounding - minor discrepancies only
+- **6-7**: Good grounding - some elements may be reasonably inferred
+- **4-5**: Partial grounding - several elements lack clear source traceability
+- **2-3**: Poor grounding - many fabricated or unsupported elements
+- **1**: Not grounded - output does not reflect prompt requirements
+
+**Integration with Evals**:
+- Groundness fact automatically calculated for each persona distribution generation
+- Stored in Cosmos DB with each result
+- Included in evals preparation datasets
+- Each conversation in evals input data contains its groundness_fact
+- Enables evaluation of agent quality and prompt adherence
 
 ## Storage
 Evals preparation results are stored in a dedicated Cosmos DB container:

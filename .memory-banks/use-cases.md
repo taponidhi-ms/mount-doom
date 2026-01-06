@@ -8,16 +8,24 @@
 1. User enters a simulation prompt describing the distribution requirements
 2. Backend sends prompt to PersonaDistributionGeneratorAgent via Azure AI Projects
 3. PersonaDistributionGeneratorAgent generates distribution response (parser-based instruction)
-4. Backend parses JSON output and stores both raw and parsed versions
-5. Response stored in Cosmos DB `persona_distribution` container with complete agent details
-6. Frontend displays persona distribution with metrics and parsed output
+4. Backend parses JSON output
+5. **Backend evaluates groundness fact** by sending prompt and response to PersonaDistributionGroundnessFactAgent
+6. PersonaDistributionGroundnessFactAgent evaluates how well the output is grounded in the prompt
+7. Response stored in Cosmos DB `persona_distribution` container with complete agent details and groundness fact
+8. Frontend displays persona distribution with metrics, parsed output, and groundness evaluation
 
-**Agent**:
-- PersonaDistributionGeneratorAgent (fixed agent name)
-- Instructions defined in `app/instruction_sets/persona_distribution.py`
-- Instruction set includes a small set of sample prompts/expected JSON shapes for grounding (examples are not meant to be echoed)
-- Automatic versioning based on instruction hash
-- Model: gpt-4 (default from settings)
+**Agents**:
+- **PersonaDistributionGeneratorAgent** (fixed agent name)
+  - Instructions defined in `app/instruction_sets/persona_distribution.py`
+  - Instruction set includes a small set of sample prompts/expected JSON shapes for grounding (examples are not meant to be echoed)
+  - Automatic versioning based on instruction hash
+  - Model: gpt-4 (default from settings)
+
+- **PersonaDistributionGroundnessFactAgent** (fixed agent name) - NEW
+  - Instructions defined in `app/instruction_sets/persona_distribution_groundness_fact.py`
+  - Evaluates source alignment, traceability, and absence of unsupported claims
+  - Returns structured groundness evaluation with score (1-10) and assessment
+  - Model: gpt-4 (default from settings)
 
 **Output Format**:
 ```json
@@ -32,27 +40,42 @@
 }
 ```
 
+**Groundness Fact Format** (NEW):
+```json
+{
+  "groundness_score": <integer 1-10>,
+  "evaluation_summary": "<brief summary>",
+  "alignment_issues": ["<list of issues>"],
+  "traceability_issues": ["<list of issues>"],
+  "unsupported_claims": ["<list of claims>"],
+  "overall_assessment": "<GROUNDED|PARTIALLY_GROUNDED|NOT_GROUNDED>"
+}
+```
+
 **Metrics Tracked**:
 - Tokens used
 - Time taken
 - Start/end timestamps
 - Agent details (name, version, instructions, model)
 - Parsed JSON output (if parsing successful)
+- Groundness fact evaluation (if evaluation successful) - NEW
 
 **Database Schema**:
 - Document ID: conversation_id from Azure AI
-- Fields: prompt, response, parsed_output, tokens_used, time_taken_ms, agent_details, timestamp
+- Fields: prompt, response, parsed_output, tokens_used, time_taken_ms, agent_details, timestamp, **groundness_fact** (NEW)
 
 **Browse API**:
 - GET `/api/v1/persona-distribution/browse`
 - Supports pagination and ordering
 - Returns list of past persona distribution generations
+- Includes groundness_fact in results - NEW
 
 **Evals Preparation**:
 - POST `/api/v1/persona-distribution/prepare-evals` - Prepare CXA AI Evals from selected runs
 - GET `/api/v1/persona-distribution/evals/latest` - Get latest prepared evals
 - Combines multiple persona distribution runs into standardized evals format
 - Generates predefined evaluation rules (no LLM usage)
+- **Each conversation includes groundness_fact field** - NEW
 - Stores results in `persona_distribution_evals` container
 - Frontend: "Prepare for Evals" tab with multi-select table and download buttons
 - Output: `cxa_evals_config.json` and `cxa_evals_input_data.json` files

@@ -344,14 +344,28 @@ Each use case service (PersonaDistributionService, PromptValidatorService, etc.)
   - `create_agent(agent_name, instructions)` - Direct text with imported instructions (preferred)
   - `create_agent_from_file(agent_name, instructions_path)` - Loads from text file (legacy support)
 
+### Evaluation Agents Pattern
+- Some use cases may have dedicated evaluation agents (e.g., groundness fact evaluation)
+- Evaluation agents follow the same patterns as primary agents
+- Naming convention: `{UseCase}{EvaluationType}Agent` (e.g., `PersonaDistributionGroundnessFactAgent`)
+- Instructions stored in: `{agent_type}_{evaluation_type}.py` (e.g., `persona_distribution_groundness_fact.py`)
+- Evaluation agents are typically invoked after primary agent completes
+- Evaluation failures should be non-blocking (return None, log error, continue workflow)
+- Evaluation results stored as optional fields in documents
+
 ### Agent Usage Pattern
 ```python
 # In your service class:
 from app.instruction_sets.persona_distribution import PERSONA_DISTRIBUTION_AGENT_INSTRUCTIONS
+from app.instruction_sets.persona_distribution_groundness_fact import PERSONA_DISTRIBUTION_GROUNDNESS_FACT_AGENT_INSTRUCTIONS
 
 class PersonaDistributionService:
     PERSONA_DISTRIBUTION_AGENT_NAME = "PersonaDistributionGeneratorAgent"
     PERSONA_DISTRIBUTION_AGENT_INSTRUCTIONS = PERSONA_DISTRIBUTION_AGENT_INSTRUCTIONS
+    
+    # Evaluation agent
+    GROUNDNESS_FACT_AGENT_NAME = "PersonaDistributionGroundnessFactAgent"
+    GROUNDNESS_FACT_AGENT_INSTRUCTIONS = PERSONA_DISTRIBUTION_GROUNDNESS_FACT_AGENT_INSTRUCTIONS
 
 async def your_method(self, prompt: str):
     # Create agent using AzureAIService with instruction string
@@ -370,6 +384,18 @@ async def your_method(self, prompt: str):
         extra_body={"agent": {"name": agent.agent_version_object.name, "type": "agent_reference"}},
         input=""
     )
+    
+    # Optionally evaluate result with evaluation agent
+    try:
+        evaluation_agent = azure_ai_service.create_agent(
+            agent_name=self.GROUNDNESS_FACT_AGENT_NAME,
+            instructions=self.GROUNDNESS_FACT_AGENT_INSTRUCTIONS
+        )
+        # ... perform evaluation
+    except Exception:
+        # Log error but don't fail the request
+        logger.error("Evaluation failed", exc_info=True)
+        evaluation_result = None
 ```
 
 ### Conversation Management
