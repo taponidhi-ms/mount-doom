@@ -10,8 +10,8 @@ from app.models.schemas import (
     EvalsDataResponse
 )
 from app.core.config import settings
-from app.services.features.persona_distribution_service import persona_distribution_service
-from app.services.features.evals_prep_service import evals_prep_service
+from app.services.features.persona_distribution.persona_distribution_service import persona_distribution_service
+from app.services.features.persona_distribution.persona_distribution_evals_service import persona_distribution_evals_service
 from app.services.db.cosmos_db_service import cosmos_db_service
 from datetime import datetime
 import time
@@ -123,15 +123,7 @@ async def prepare_evals(request: PrepareEvalsRequest):
     
     try:
         # Prepare evals using the service
-        result = await evals_prep_service.prepare_evals(request.selected_run_ids)
-        
-        # Save to database
-        await evals_prep_service.save_to_database(
-            evals_id=result["evals_id"],
-            source_run_ids=result["source_run_ids"],
-            cxa_evals_config=result["cxa_evals_config"],
-            cxa_evals_input_data=result["cxa_evals_input_data"]
-        )
+        result = await persona_distribution_evals_service.prepare_evals(request.selected_run_ids)
         
         logger.info("Evals preparation completed successfully", evals_id=result["evals_id"])
         
@@ -162,7 +154,7 @@ async def get_latest_evals():
     logger.info("Fetching latest evals preparation")
     
     try:
-        result = await evals_prep_service.get_latest_evals()
+        result = await persona_distribution_evals_service.get_latest_evals()
         
         if not result:
             raise HTTPException(status_code=404, detail="No evals preparations found")

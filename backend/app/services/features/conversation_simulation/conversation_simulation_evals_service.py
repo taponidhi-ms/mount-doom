@@ -1,32 +1,36 @@
-"""Service for preparing CXA AI Evals datasets from persona distribution runs."""
+"""Service for preparing CXA AI Evals datasets from conversation simulation runs."""
 
 from datetime import datetime
 import structlog
+import json
 from typing import List, Dict, Any, Optional
 import uuid
 
 from app.services.db.cosmos_db_service import cosmos_db_service
-from app.models.db import EvalsPrepDocument
-from app.instruction_sets.persona_distribution import PERSONA_DISTRIBUTION_AGENT_INSTRUCTIONS
+from app.models.db import ConversationSimulationEvalsDocument
 
 logger = structlog.get_logger()
 
 
-class EvalsPrepService:
-    """Service for preparing evaluation datasets from persona distribution generations."""
-
-    def _generate_evals_config(self, evals_id: str) -> Dict[str, Any]:
+class ConversationSimulationEvalsService:
+    """Service for preparing evaluation datasets from conversation simulations."""
+    
+    def _generate_evals_config(self, evals_id: str, agent_name: str = "ttulsi_c2_customer_service_agent") -> Dict[str, Any]:
         """
         Generate the CXA evals configuration matching the required template.
         
+        Args:
+            evals_id: The ID of the evaluation run
+            agent_name: Name of the agent being evaluated
+            
         Returns:
             Dict containing the evaluation configuration
         """
-        logger.info("Generating CXA evals configuration")
+        logger.info("Generating CXA evals configuration for conversation simulation", agent_name=agent_name)
         
         config = {
             "team_name": "Omnichannel",
-            "agent_name": "ttulsi_persona_generator_agent",
+            "agent_name": agent_name,
             "source": {
                 "source_folder_path": evals_id,
                 "source_file_type": "json"
@@ -37,7 +41,7 @@ class EvalsPrepService:
                     "dev"
                 ],
                 "turn_mode": "multi_turn",
-                "metric": "groundness",
+                "metric": "groundness", # Metric might differ but keeping groundness for now
                 "lower_bound_score": 1,
                 "upper_bound_score": 10,
                 "score_threshold": 7
@@ -93,49 +97,68 @@ class EvalsPrepService:
         logger.info("Evals configuration generated")
         return config
 
-    def _create_conversation_from_run(self, run_document: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    def _create_simulation_conversation_from_run(self, run_document: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         """
-        Create a conversation object from a persona distribution run document.
+        Create a conversation object from a conversation simulation run document.
         
         Args:
-            run_document: Document from persona_distribution container
+            run_document: Document from conversation_simulation container
             
         Returns:
-            Conversation dictionary with system/user/assistant format
+            Conversation dictionary with system/user/assistant messages
         """
         try:
             conversation_id = run_document.get("id", "unknown")
-            prompt = run_document.get("prompt", "")
-            response = run_document.get("response", "")
+            conversation_properties = run_document.get("conversation_properties", {})
+            conversation_history = run_document.get("conversation_history", [])
+            c2_agent_details = run_document.get("c2_agent_details", {})
+            
+            # Message 1: Instructions from C2 Agent
+            instruction_set = c2_agent_details.get("instructions", "")
+            
+            # Message 2: Conversation Properties
+            if isinstance(conversation_properties, dict):
+                props_str = json.dumps(conversation_properties, ensure_ascii=False)
+            else:
+                props_str = str(conversation_properties)
+                
+            messages = [
+                {
+                    "role": "system",
+                    "content": f"Instructions: {instruction_set}"
+                },
+                {
+                    "role": "system",
+                    "content": f"ConversationProperties: {props_str}"
+                }
+            ]
+            
+            # Message 3+: Exchanged messages
+            # C1 is User, C2 is Assistant
+            for msg in conversation_history:
+                agent_name = msg.get("agent_name")
+                message_text = msg.get("message", "")
+                
+                role = "user" if agent_name == "C1Agent" else "assistant"
+                messages.append({
+                    "role": role,
+                    "content": message_text
+                })
             
             conversation = {
                 "Id": conversation_id,
-                "scenario_name": "persona_distribution_generation",
-                "conversation": [
-                    {
-                        "role": "system",
-                        "content": PERSONA_DISTRIBUTION_AGENT_INSTRUCTIONS
-                    },
-                    {
-                        "role": "user",
-                        "content": prompt
-                    },
-                    {
-                        "role": "assistant",
-                        "content": response
-                    }
-                ]
+                "scenario_name": "conversation_simulation_eval",
+                "conversation": messages
             }
             
-            logger.info("Created conversation from run",
+            logger.info("Created simulation conversation from run",
                        conversation_id=conversation_id,
-                       prompt_length=len(prompt),
-                       response_length=len(response))
+                       messages_count=len(messages))
             
             return conversation
             
         except Exception as e:
-            logger.error("Error creating conversation from run",
+            logger.error("Error creating simulation conversation from run",
                         run_id=run_document.get("id", "unknown"),
                         error=str(e),
                         exc_info=True)
@@ -143,21 +166,16 @@ class EvalsPrepService:
 
     async def prepare_evals(self, selected_run_ids: List[str]) -> Dict[str, Any]:
         """
-        Prepare CXA AI Evals dataset from selected persona distribution runs.
+        Prepare CXA AI Evals dataset from selected conversation simulation runs.
         
         Args:
-            selected_run_ids: List of document IDs from persona_distribution container
+            selected_run_ids: List of document IDs from conversation_simulation container
             
         Returns:
-            Dict containing:
-            - evals_id: Unique identifier for this evals preparation
-            - cxa_evals_config: Evaluation configuration
-            - cxa_evals_input_data: Combined conversations data
-            - source_run_ids: List of source run IDs
-            - timestamp: When evals were prepared
+            Dict containing evals preparation data
         """
         logger.info("="*60)
-        logger.info("Starting evals preparation", run_ids_count=len(selected_run_ids))
+        logger.info("Starting simulation evals preparation", run_ids_count=len(selected_run_ids))
         
         try:
             evals_id = str(uuid.uuid4())
@@ -165,7 +183,7 @@ class EvalsPrepService:
 
             # Fetch all selected runs from Cosmos DB
             container = await cosmos_db_service.ensure_container(
-                cosmos_db_service.PERSONA_DISTRIBUTION_CONTAINER
+                cosmos_db_service.CONVERSATION_SIMULATION_CONTAINER
             )
             
             all_conversations = []
@@ -180,102 +198,76 @@ class EvalsPrepService:
                     )
                     
                     # Create conversation from this run
-                    conversation = self._create_conversation_from_run(run_document)
+                    conversation = self._create_simulation_conversation_from_run(run_document)
                     if conversation:
                         all_conversations.append(conversation)
                         valid_run_ids.append(run_id)
-                        
-                        logger.info("Processed run successfully",
-                                   run_id=run_id,
-                                   conversation_id=conversation.get("Id"))
                     
                 except Exception as e:
                     logger.error("Failed to fetch or process run document",
                                run_id=run_id,
                                error=str(e),
                                exc_info=True)
-                    # Continue with other runs even if one fails
                     continue
             
             if not all_conversations:
-                raise ValueError("No conversations could be created from the selected runs")
+                logger.warning("No valid conversations could be generated from selected runs")
+
+            # Generate config with C2 agent name
+            cxa_evals_config = self._generate_evals_config(evals_id)
             
-            # Generate evals configuration
-            evals_config = self._generate_evals_config(evals_id)
-            
-            # Create evals input data with conversations structure
-            evals_input_data = {
+            cxa_evals_input_data = {
                 "conversations": all_conversations
             }
-            
-            logger.info("Evals preparation completed",
-                       evals_id=evals_id,
-                       total_conversations=len(all_conversations),
-                       source_runs=len(valid_run_ids))
             
             result = {
                 "evals_id": evals_id,
                 "timestamp": timestamp,
                 "source_run_ids": valid_run_ids,
-                "cxa_evals_config": evals_config,
-                "cxa_evals_input_data": evals_input_data
+                "cxa_evals_config": cxa_evals_config,
+                "cxa_evals_input_data": cxa_evals_input_data,
+                "conversations_count": len(all_conversations),
+                "message": f"Successfully prepared evals with {len(all_conversations)} conversations"
             }
             
-            logger.info("="*60)
-            return result
+            # Save to database
+            conversations_count = len(all_conversations)
+            logger.info("Saving simulation evals preparation to database",
+                       evals_id=evals_id,
+                       source_runs=len(valid_run_ids),
+                       conversations_count=conversations_count)
             
-        except Exception as e:
-            logger.error("Error preparing evals", error=str(e), exc_info=True)
-            raise
+            document = ConversationSimulationEvalsDocument(
+                id=evals_id,
+                source_run_ids=valid_run_ids,
+                cxa_evals_config=cxa_evals_config,
+                cxa_evals_input_data=cxa_evals_input_data
+            )
+            
+            await cosmos_db_service.save_document(
+                container_name=cosmos_db_service.CONVERSATION_SIMULATION_EVALS_CONTAINER,
+                document=document
+            )
+            
+            logger.info("Simulation evals preparation saved successfully", evals_id=evals_id)
+            
+            return result
 
-    async def save_to_database(
-        self,
-        evals_id: str,
-        source_run_ids: List[str],
-        cxa_evals_config: Dict[str, Any],
-        cxa_evals_input_data: Dict[str, Any]
-    ):
-        """
-        Save prepared evals to database.
-        
-        Args:
-            evals_id: Unique identifier for this evals preparation
-            source_run_ids: List of source persona distribution run IDs
-            cxa_evals_config: Evaluation configuration object
-            cxa_evals_input_data: Input data with conversations structure
-        """
-        conversations_count = len(cxa_evals_input_data.get("conversations", []))
-        logger.info("Saving evals preparation to database",
-                   evals_id=evals_id,
-                   source_runs=len(source_run_ids),
-                   conversations_count=conversations_count)
-        
-        document = EvalsPrepDocument(
-            id=evals_id,
-            source_run_ids=source_run_ids,
-            cxa_evals_config=cxa_evals_config,
-            cxa_evals_input_data=cxa_evals_input_data
-        )
-        
-        await cosmos_db_service.save_document(
-            container_name=cosmos_db_service.PERSONA_DISTRIBUTION_EVALS_CONTAINER,
-            document=document
-        )
-        
-        logger.info("Evals preparation saved successfully", evals_id=evals_id)
+        except Exception as e:
+            logger.error("Error preparing simulation evals", error=str(e), exc_info=True)
+            raise
 
     async def get_latest_evals(self) -> Optional[Dict[str, Any]]:
         """
-        Get the most recently prepared evals.
-        
+        Get the most recently prepared simulation evals.
         Returns:
             Dict containing the latest evals preparation or None if none exist
         """
-        logger.info("Fetching latest evals preparation")
+        logger.info("Fetching latest simulation evals preparation")
         
         try:
             result = await cosmos_db_service.browse_container(
-                container_name=cosmos_db_service.PERSONA_DISTRIBUTION_EVALS_CONTAINER,
+                container_name=cosmos_db_service.CONVERSATION_SIMULATION_EVALS_CONTAINER,
                 page=1,
                 page_size=1,
                 order_by="timestamp",
@@ -290,9 +282,9 @@ class EvalsPrepService:
                 return None
                 
         except Exception as e:
-            logger.error("Error fetching latest evals", error=str(e), exc_info=True)
+            logger.error("Error fetching latest simulation evals", error=str(e), exc_info=True)
             raise
 
 
 # Singleton instance
-evals_prep_service = EvalsPrepService()
+conversation_simulation_evals_service = ConversationSimulationEvalsService()

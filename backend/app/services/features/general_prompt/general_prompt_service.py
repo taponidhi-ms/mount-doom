@@ -9,6 +9,7 @@ from app.services.db.cosmos_db_service import cosmos_db_service
 from app.core.config import settings
 from app.models.schemas import GeneralPromptResult
 from app.models.db import GeneralPromptDocument
+from app.services.ai.agents.general_prompt_agent import create_general_prompt_agent
 
 logger = structlog.get_logger()
 
@@ -51,10 +52,7 @@ class GeneralPromptService:
 
             # Step 1: Create agent with instructions
             logger.info("Creating agent for general prompt")
-            agent = azure_ai_service.create_agent(
-                agent_name="GeneralPromptAgent",
-                instructions="You are a helpful assistant that answers general questions"
-            )
+            agent = create_general_prompt_agent()
             logger.info("Agent created/retrieved",
                        agent_name="GeneralPromptAgent",
                        agent_version=agent.agent_version_object.version)

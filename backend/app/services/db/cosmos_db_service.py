@@ -36,6 +36,7 @@ class CosmosDBService:
     PROMPT_VALIDATOR_CONTAINER = "prompt_validator"
     CONVERSATION_SIMULATION_CONTAINER = "conversation_simulation"
     PERSONA_DISTRIBUTION_EVALS_CONTAINER = "persona_distribution_evals"
+    CONVERSATION_SIMULATION_EVALS_CONTAINER = "conversation_simulation_evals"
     
     def __new__(cls):
         if cls._instance is None:

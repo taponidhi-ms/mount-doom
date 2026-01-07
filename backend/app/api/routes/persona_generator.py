@@ -6,7 +6,7 @@ from app.models.schemas import (
     BrowseResponse
 )
 from app.core.config import settings
-from app.services.features.persona_generator_service import persona_generator_service
+from app.services.features.persona_generator.persona_generator_service import persona_generator_service
 from app.services.db.cosmos_db_service import cosmos_db_service
 from datetime import datetime
 import time

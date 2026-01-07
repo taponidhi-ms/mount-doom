@@ -1,58 +1,74 @@
-"""Service for prompt validator use case."""
+"""Service for persona generator use case."""
 
 from datetime import datetime
 import structlog
-from typing import Optional
+from typing import Optional, Dict, Any
+import json
 
 from app.services.ai.azure_ai_service import azure_ai_service
 from app.services.db.cosmos_db_service import cosmos_db_service
-from app.models.schemas import PromptValidatorResult
-from app.models.db import PromptValidatorDocument, AgentDetails
-from app.instruction_sets.prompt_validator import PROMPT_VALIDATOR_AGENT_INSTRUCTIONS
+from app.models.schemas import PersonaGeneratorResult
+from app.models.db import PersonaGeneratorDocument, AgentDetails
+from app.services.ai.agents.persona_generator_agent import create_persona_generator_agent
 
 logger = structlog.get_logger()
 
 
-class PromptValidatorService:
-    """Service for validating simulation prompts using the Prompt Validator Agent."""
-
-    PROMPT_VALIDATOR_AGENT_NAME = "PromptValidatorAgent"
-    PROMPT_VALIDATOR_AGENT_INSTRUCTIONS = PROMPT_VALIDATOR_AGENT_INSTRUCTIONS
+class PersonaGeneratorService:
+    """Service for generating exact personas using the Persona Generator Agent."""
 
     def __init__(self):
         pass
 
-    async def validate_prompt(self, prompt: str) -> PromptValidatorResult:
+    def _parse_json_output(self, response_text: str) -> Optional[Dict[str, Any]]:
         """
-        Validate a simulation prompt.
+        Parse JSON from agent response.
         
         Args:
-            prompt: The simulation prompt to validate
+            response_text: The raw response text from the agent
             
         Returns:
-            PromptValidatorResult with:
-            - response_text: The validation result
+            Parsed JSON dict or None if parsing fails
+        """
+        try:
+            # Try to parse the response as JSON
+            parsed = json.loads(response_text)
+            logger.info("Successfully parsed JSON output", 
+                       keys=list(parsed.keys()) if isinstance(parsed, dict) else "not a dict")
+            return parsed
+        except json.JSONDecodeError as e:
+            logger.warning("Failed to parse JSON output", error=str(e), response_preview=response_text[:200])
+            return None
+
+    async def generate_personas(self, prompt: str) -> PersonaGeneratorResult:
+        """
+        Generate exact personas from the given prompt.
+        
+        Args:
+            prompt: The prompt describing what personas to generate
+            
+        Returns:
+            PersonaGeneratorResult with:
+            - response_text: The generated personas JSON
             - tokens_used: Number of tokens used
             - agent_details: Details about the agent
             - timestamp: When the request was made
             - conversation_id: Conversation ID
+            - parsed_output: Parsed JSON output (if successful)
         """
         try:
             logger.info("="*60)
-            logger.info("Starting prompt validation", prompt_length=len(prompt))
-            logger.debug("Prompt to validate", prompt=prompt[:200] + "..." if len(prompt) > 200 else prompt)
+            logger.info("Starting persona generation", prompt_length=len(prompt))
+            logger.debug("Prompt preview", prompt=prompt[:200] + "..." if len(prompt) > 200 else prompt)
 
             # Create agent with instructions
-            logger.info("Creating Prompt Validator Agent...")
-            agent = azure_ai_service.create_agent(
-                agent_name=self.PROMPT_VALIDATOR_AGENT_NAME,
-                instructions=self.PROMPT_VALIDATOR_AGENT_INSTRUCTIONS
-            )
-            logger.info("Prompt Validator Agent ready", agent_version=agent.agent_version_object.version)
+            logger.info("Creating Persona Generator Agent...")
+            agent = create_persona_generator_agent()
+            logger.info("Persona Generator Agent ready", agent_version=agent.agent_version_object.version)
 
             # Create conversation with initial message
             timestamp = datetime.utcnow()
-            logger.info("Creating conversation with validation request...")
+            logger.info("Creating conversation with user message...")
             conversation = azure_ai_service.openai_client.conversations.create(
                 items=[{"type": "message", "role": "user", "content": prompt}]
             )
@@ -60,25 +76,28 @@ class PromptValidatorService:
             logger.info("Conversation created", conversation_id=conversation_id)
 
             # Create response using the agent
-            logger.info("Requesting validation from Prompt Validator Agent...")
+            logger.info("Requesting response from Persona Generator Agent...")
             response = azure_ai_service.openai_client.responses.create(
                 conversation=conversation_id,
                 extra_body={"agent": {"name": agent.agent_version_object.name, "type": "agent_reference"}},
                 input=""
             )
-            logger.info("Validation response received", conversation_id=conversation_id)
+            logger.info("Response received", conversation_id=conversation_id)
 
             # Get response text
-            logger.debug("Extracting validation result...")
+            logger.debug("Extracting response text...")
             response_text = response.output_text
 
             if response_text is None:
-                logger.error("No validation result found")
+                logger.error("No response text found in response")
                 raise ValueError("No response found")
             
-            logger.info("Validation result extracted",
+            logger.info("Personas generated successfully", 
                        response_length=len(response_text),
                        response_preview=response_text[:150] + "..." if len(response_text) > 150 else response_text)
+
+            # Parse JSON output
+            parsed_output = self._parse_json_output(response_text)
 
             # Extract token usage
             logger.debug("Extracting token usage...")
@@ -90,22 +109,24 @@ class PromptValidatorService:
                 logger.debug("No token usage information available")
             
             logger.info("="*60)
-            logger.info("Prompt validation completed",
+            logger.info("Persona generation completed",
                        tokens_used=tokens_used,
                        agent_version=agent.agent_version_object.version,
-                       conversation_id=conversation_id)
+                       conversation_id=conversation_id,
+                       parsed_successfully=parsed_output is not None)
             logger.info("="*60)
 
-            return PromptValidatorResult(
+            return PersonaGeneratorResult(
                 response_text=response_text,
                 tokens_used=tokens_used,
                 agent_details=agent.agent_details,
                 timestamp=timestamp,
-                conversation_id=conversation_id
+                conversation_id=conversation_id,
+                parsed_output=parsed_output
             )
 
         except Exception as e:
-            logger.error("Error validating prompt", error=str(e), exc_info=True)
+            logger.error("Error generating personas", error=str(e), exc_info=True)
             raise
 
     async def save_to_database(
@@ -119,14 +140,15 @@ class PromptValidatorService:
         agent_instructions: str,
         model: str,
         agent_timestamp: datetime,
-        conversation_id: str
+        conversation_id: str,
+        parsed_output: Optional[Dict[str, Any]]
     ):
         """
-        Save prompt validation result to database.
+        Save persona generation result to database.
         
         Args:
             prompt: The input prompt
-            response: The validation result
+            response: The generated response
             tokens_used: Number of tokens used
             time_taken_ms: Time taken in milliseconds
             agent_name: Name of the agent
@@ -135,14 +157,15 @@ class PromptValidatorService:
             model: Model deployment name
             agent_timestamp: Timestamp when agent was created
             conversation_id: The conversation ID from Azure AI
+            parsed_output: Parsed JSON output (if successful)
         """
-        logger.info("Saving prompt validation to database",
+        logger.info("Saving persona generation to database",
                    agent=agent_name,
                    tokens=tokens_used,
                    time_ms=round(time_taken_ms, 2),
                    conversation_id=conversation_id)
         
-        # Create document with structure specific to prompt validator
+        # Create document with structure specific to persona generation
         # Use conversation_id as the document ID
         agent_details = AgentDetails(
             agent_name=agent_name,
@@ -152,10 +175,11 @@ class PromptValidatorService:
             created_at=agent_timestamp
         )
 
-        document = PromptValidatorDocument(
+        document = PersonaGeneratorDocument(
             id=conversation_id,
             prompt=prompt,
             response=response,
+            parsed_output=parsed_output,
             tokens_used=tokens_used,
             time_taken_ms=time_taken_ms,
             agent_details=agent_details
@@ -163,11 +187,11 @@ class PromptValidatorService:
         
         # Use generic save method from CosmosDBService
         await cosmos_db_service.save_document(
-            container_name=cosmos_db_service.PROMPT_VALIDATOR_CONTAINER,
+            container_name=cosmos_db_service.PERSONA_GENERATOR_CONTAINER,
             document=document
         )
-        logger.info("Prompt validation saved successfully", document_id=conversation_id)
+        logger.info("Persona generation saved successfully", document_id=conversation_id)
 
 
 # Singleton instance
-prompt_validator_service = PromptValidatorService()
+persona_generator_service = PersonaGeneratorService()

@@ -115,20 +115,19 @@
 
 ## Use Case 3: General Prompt
 
-**Purpose**: Get responses for any general prompt using LLM models directly (without agent).
+**Purpose**: Get responses for any general prompt using an agent.
 
 **Workflow**:
 1. User enters any general prompt
-2. Backend calls model directly using inference API (default: gpt-4)
-3. Model generates response
+2. Backend sends prompt to GeneralPromptAgent
+3. Agent generates response
 4. Response stored in Cosmos DB `general_prompt` container
 5. Frontend displays response with metrics
 
-**Models**:
-- Uses default model from settings (gpt-4)
-- Direct model access (not agent-based) for faster responses
-
-**Key Difference**: Uses model directly, not agent, for faster responses.
+**Agent**:
+- GeneralPromptAgent (fixed agent name)
+- Simple instructions: "You are a helpful assistant that answers general questions"
+- Model: gpt-4 (default from settings)
 
 **Browse API**:
 - GET `/api/v1/general-prompt/browse`
@@ -241,6 +240,15 @@ RepresentativeLastMessage: {text}
 - GET `/api/v1/conversation-simulation/browse`
 - Supports pagination and ordering
 - Returns list of past simulations
+
+**Evals Preparation**:
+- POST `/api/v1/conversation-simulation/evals/prepare` - Prepare CXA AI Evals from selected runs
+- GET `/api/v1/conversation-simulation/evals/latest` - Get latest prepared evals
+- Combines simulation runs into evals format
+- Target agent: C2Agent (evaluated as Assistant) against C1Agent (User messages)
+- Stores results in `conversation_simulation_evals` container
+- Frontend: "Prepare for Evals" tab
+- Output: zip download with config and data
 
 ---
 

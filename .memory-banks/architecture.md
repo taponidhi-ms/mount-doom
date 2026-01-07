@@ -15,13 +15,25 @@ backend/app/
 │   └── db.py             # Cosmos DB document schemas
 ├── instruction_sets/     # Agent instruction definitions as Python string constants
 ├── services/             # Business logic organized by use case
-│   ├── azure_ai_service.py              # Client initialization and agent creation
-│   ├── persona_distribution_service.py  # Persona distribution generation business logic
-│   ├── persona_generator_service.py     # Persona generator business logic
-│   ├── general_prompt_service.py        # General prompt business logic
-│   ├── prompt_validator_service.py      # Prompt validation business logic
-│   ├── conversation_simulation_service.py # Conversation simulation logic
-│   └── cosmos_db_service.py             # Cosmos DB operations
+│   ├── ai/
+│   │   ├── agents/      # Agent creation logic (singleton-like functions)
+│   │   │   ├── c1_agent.py
+│   │   │   ├── c2_agent.py
+│   │   │   ├── general_prompt_agent.py
+│   │   │   ├── persona_distribution_agent.py
+│   │   │   ├── persona_generator_agent.py
+│   │   │   └── prompt_validator_agent.py
+│   │   └── azure_ai_service.py # Client initialization
+│   ├── features/        # Feature-specific services
+│   │   ├── conversation_simulation_service.py
+│   │   ├── conversation_simulation_evals_service.py
+│   │   ├── general_prompt_service.py
+│   │   ├── persona_distribution_service.py
+│   │   ├── persona_distribution_evals_service.py
+│   │   ├── persona_generator_service.py
+│   │   └── prompt_validator_service.py
+│   └── db/              # Database services
+│       └── cosmos_db_service.py
 └── main.py               # FastAPI application
 ```
 
@@ -30,7 +42,7 @@ backend/app/
 - **Layered Architecture**: Clear separation between routes (API layer) and services (business logic layer)
 - **Dependency Injection**: Routes depend on services, not directly on Azure AI
 - **Single Responsibility**: Each service class has one reason to change
-- **Clean Architecture Layers**: Inward dependencies only (routes → services → azure_ai_service)
+- **Clean Architecture Layers**: Inward dependencies only
 
 ### Service Architecture
 
@@ -57,12 +69,13 @@ No manual token management required.
 
 #### Use Case Services
 Each service handles complete business logic for its use case:
-- **PersonaDistributionService**: Generates persona distributions using Persona Distribution Generator Agent
-- **PersonaGeneratorService**: Generates exact personas using Persona Generator Agent
-- **GeneralPromptService**: Handles direct model responses (no agent)
-- **PromptValidatorService**: Validates prompts using Prompt Validator Agent
-- **ConversationSimulationService**: Multi-agent conversation orchestration
-- **EvalsPrepService**: Prepares CXA AI Evals datasets from persona distribution runs
+- **PersonaDistributionService**: Generates persona distributions. Uses `create_persona_distribution_agent()`.
+- **PersonaGeneratorService**: Generates exact personas. Uses `create_persona_generator_agent()`.
+- **GeneralPromptService**: Handles general prompts. Uses `create_general_prompt_agent()`.
+- **PromptValidatorService**: Validates prompts. Uses `create_prompt_validator_agent()`.
+- **ConversationSimulationService**: Multi-agent conversation orchestration (C1/C2). Uses `create_c1_agent()` and `create_c2_agent()`.
+- **PersonaDistributionEvalsService**: Prepares CXA AI Evals datasets from persona distribution runs.
+- **ConversationSimulationEvalsService**: Prepares CXA AI Evals datasets from conversation simulation runs.
 
 Services contain:
 - Agent configuration (name, instructions, model deployment)
@@ -108,8 +121,8 @@ Does NOT contain:
 - `/api/v1/persona-distribution/*` - Delegates to PersonaDistributionService
   - POST `/generate` - Generate persona distribution
   - GET `/browse` - Browse past persona distribution generations with pagination
-  - POST `/prepare-evals` - Prepare CXA AI Evals from selected runs (delegates to EvalsPrepService)
-  - GET `/evals/latest` - Get the most recently prepared evals (delegates to EvalsPrepService)
+  - POST `/prepare-evals` - Prepare CXA AI Evals from selected runs (delegates to PersonaDistributionEvalsService)
+  - GET `/evals/latest` - Get the most recently prepared evals (delegates to PersonaDistributionEvalsService)
 - `/api/v1/persona-generator/*` - Delegates to PersonaGeneratorService
   - POST `/generate` - Generate exact personas
   - GET `/browse` - Browse past persona generations with pagination
@@ -122,6 +135,8 @@ Does NOT contain:
 - `/api/v1/conversation-simulation/*` - Delegates to ConversationSimulationService
   - POST `/simulate` - Simulate conversation
   - GET `/browse` - Browse past simulations with pagination
+  - POST `/evals/prepare` - Prepare evals (delegates to ConversationSimulationEvalsService)
+  - GET `/evals/latest` - Get latest simulation evals (delegates to ConversationSimulationEvalsService)
 - `/api/v1/models` - Get available models
 
 Routes only:

@@ -70,3 +70,17 @@ class EvalsPrepDocument(BaseDocument):
     source_run_ids: List[str]
     cxa_evals_config: Dict[str, Any]
     cxa_evals_input_data: Dict[str, Any]  # Contains "conversations" key with list of conversation objects
+
+
+class ConversationSimulationEvalsDocument(BaseDocument):
+    """Document for Conversation Simulation Evals preparation."""
+    source_run_ids: List[str]
+    cxa_evals_config: Dict[str, Any]
+    cxa_evals_input_data: Dict[str, Any]
+
+
+class PersonaDistributionEvalsDocument(BaseDocument):
+    """Document for Persona Distribution Evals preparation."""
+    source_run_ids: List[str]
+    cxa_evals_config: Dict[str, Any]
+    cxa_evals_input_data: Dict[str, Any]

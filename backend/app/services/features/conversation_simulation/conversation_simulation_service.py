@@ -11,20 +11,14 @@ from app.services.db.cosmos_db_service import cosmos_db_service
 from app.models.schemas import ConversationMessage, AgentDetails as SchemaAgentDetails, ConversationSimulationResult
 from app.models.db import ConversationSimulationDocument, AgentDetails
 from app.core.config import settings
-from app.instruction_sets.c1_agent import C1_AGENT_INSTRUCTIONS
-from app.instruction_sets.c2_agent import C2_AGENT_INSTRUCTIONS
+from app.services.ai.agents.c1_agent import create_c1_agent
+from app.services.ai.agents.c2_agent import create_c2_agent
 
 logger = structlog.get_logger()
 
 
 class ConversationSimulationService:
     """Service for simulating multi-agent conversations."""
-
-    C1_AGENT_NAME = "C1Agent"
-    C1_AGENT_INSTRUCTIONS = C1_AGENT_INSTRUCTIONS
-
-    C2_AGENT_NAME = "C2Agent"
-    C2_AGENT_INSTRUCTIONS = C2_AGENT_INSTRUCTIONS
 
     def __init__(self):
         pass
@@ -50,17 +44,11 @@ class ConversationSimulationService:
 
         # Create agents with instructions
         logger.info("Creating agents for simulation...")
-        c1_agent = azure_ai_service.create_agent(
-            agent_name=self.C1_AGENT_NAME,
-            instructions=self.C1_AGENT_INSTRUCTIONS
-        )
-        logger.debug("C1 Agent ready", agent_name=self.C1_AGENT_NAME, version=c1_agent.agent_version_object.version)
+        c1_agent = create_c1_agent()
+        logger.debug("C1 Agent ready", agent_name=c1_agent.agent_version_object.name, version=c1_agent.agent_version_object.version)
         
-        c2_agent = azure_ai_service.create_agent(
-            agent_name=self.C2_AGENT_NAME,
-            instructions=self.C2_AGENT_INSTRUCTIONS
-        )
-        logger.debug("C2 Agent ready", agent_name=self.C2_AGENT_NAME, version=c2_agent.agent_version_object.version)
+        c2_agent = create_c2_agent()
+        logger.debug("C2 Agent ready", agent_name=c2_agent.agent_version_object.name, version=c2_agent.agent_version_object.version)
         
         logger.info("All agents created successfully")
 

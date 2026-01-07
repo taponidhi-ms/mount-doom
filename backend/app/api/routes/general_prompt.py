@@ -5,7 +5,7 @@ from app.models.schemas import (
     BrowseResponse
 )
 from app.core.config import settings
-from app.services.features.general_prompt_service import general_prompt_service
+from app.services.features.general_prompt.general_prompt_service import general_prompt_service
 from app.services.db.cosmos_db_service import cosmos_db_service
 from datetime import datetime
 import time
