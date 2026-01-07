@@ -14,7 +14,7 @@
 
 **Agent**:
 - PersonaDistributionGeneratorAgent (fixed agent name)
-- Instructions defined in `app/instruction_sets/persona_distribution.py`
+- Instructions defined in `app/modules/persona_distribution/instructions.py`
 - Instruction set includes a small set of sample prompts/expected JSON shapes for grounding (examples are not meant to be echoed)
 - Automatic versioning based on instruction hash
 - Model: gpt-4 (default from settings)
@@ -73,7 +73,7 @@
 
 **Agent**:
 - PersonaGeneratorAgent (fixed agent name)
-- Instructions defined in `app/instruction_sets/persona_generator.py`
+- Instructions defined in `app/modules/persona_generator/instructions.py`
 - Instruction set includes sample prompts and minified JSON examples aligned with the "no newline characters" output rule
 - Automatic versioning based on instruction hash
 - Model: gpt-4 (default from settings)
@@ -149,7 +149,7 @@
 
 **Agent**:
 - PromptValidatorAgent (fixed agent name)
-- Instructions defined in `app/instruction_sets/prompt_validator.py`
+- Instructions defined in `app/modules/prompt_validator/instructions.py`
 - Instruction set includes sample "good / needs improvement / invalid" prompts to improve consistency of reviews
 - Automatic versioning based on instruction hash
 - Model: gpt-4 (default from settings)
@@ -193,7 +193,7 @@
 5. Frontend displays conversation history with metrics
 
 **Agents**:
-- Agents use fixed names and instructions defined in service classes
+- Agents use fixed names and instructions defined in `app/modules/conversation_simulation/instructions.py`
 - Automatic versioning for each agent based on their instruction hash
 - Model: gpt-4 (default from settings)
 - C1/C2 instruction sets include sample next-message prompt shapes to ground responses to the expected input format

@@ -9,12 +9,15 @@ The backend follows clean architecture principles with clear separation of conce
 ```
 backend/
 ├── app/
-│   ├── api/
-│   │   └── routes/          # API endpoints for each use case
 │   ├── core/                # Core configuration
-│   ├── instruction_sets/    # Agent instruction sets (fixed per agent)
-│   ├── models/              # Pydantic models and schemas
-│   ├── services/            # Business logic and external service integrations
+│   ├── infrastructure/      # Shared infrastructure services
+│   ├── models/              # Shared models
+│   ├── modules/             # Feature modules (Vertical Slices)
+│   │   ├── conversation_simulation/
+│   │   ├── general_prompt/
+│   │   ├── persona_distribution/
+│   │   ├── persona_generator/
+│   │   └── prompt_validator/
 │   └── main.py             # FastAPI application entry point
 ├── tests/                   # Test files
 ├── requirements.txt         # Python dependencies
@@ -38,8 +41,8 @@ This application uses a **fixed agent architecture** where each use case has pre
 - All agent details (name, version, instructions, model) are saved to Cosmos DB
 
 ### Instruction Sets
-All agent instructions are defined in the `app/instruction_sets/` module:
-- Each agent has its own file (e.g., `c1_agent.py`, `persona_agent.py`)
+All agent instructions are defined in the `app/modules/*/instructions.py` files:
+- Each module has its own instruction definitions (e.g., `modules/conversation_simulation/instructions.py`)
 - Instructions are constant strings that define agent behavior
 - Modifying instructions in these files automatically creates new agent versions
 

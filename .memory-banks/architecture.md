@@ -8,32 +8,48 @@ Mount Doom is a fullstack AI agent simulation platform with FastAPI backend and 
 ### Structure
 ```
 backend/app/
-├── api/routes/           # REST API endpoints (one per use case)
 ├── core/                 # Configuration and settings
-├── models/               # Pydantic schemas
-│   ├── schemas.py        # API request/response schemas
-│   └── db.py             # Cosmos DB document schemas
-├── instruction_sets/     # Agent instruction definitions as Python string constants
-├── services/             # Business logic organized by use case
+├── models/               # Shared/Common models
+│   └── shared.py         # Common API and DB schemas
+├── infrastructure/       # Infrastructure services
 │   ├── ai/
-│   │   ├── agents/      # Agent creation logic (singleton-like functions)
-│   │   │   ├── c1_agent.py
-│   │   │   ├── c2_agent.py
-│   │   │   ├── general_prompt_agent.py
-│   │   │   ├── persona_distribution_agent.py
-│   │   │   ├── persona_generator_agent.py
-│   │   │   └── prompt_validator_agent.py
 │   │   └── azure_ai_service.py # Client initialization
-│   ├── features/        # Feature-specific services
-│   │   ├── conversation_simulation_service.py
-│   │   ├── conversation_simulation_evals_service.py
-│   │   ├── general_prompt_service.py
-│   │   ├── persona_distribution_service.py
-│   │   ├── persona_distribution_evals_service.py
-│   │   ├── persona_generator_service.py
-│   │   └── prompt_validator_service.py
 │   └── db/              # Database services
 │       └── cosmos_db_service.py
+├── modules/             # Feature modules (Vertical Slices)
+│   ├── conversation_simulation/
+│   │   ├── conversation_simulation_service.py
+│   │   ├── conversation_simulation_evals_service.py
+│   │   ├── models.py    # Module-specific API and DB models
+│   │   ├── routes.py    # Module-specific API routes
+│   │   ├── agents.py    # Agent creation logic
+│   │   └── instructions.py # Agent instructions
+│   ├── general_prompt/
+│   │   ├── general_prompt_service.py
+│   │   ├── models.py
+│   │   ├── routes.py
+│   │   └── agents.py
+│   ├── persona_distribution/
+│   │   ├── persona_distribution_service.py
+│   │   ├── persona_distribution_evals_service.py
+│   │   ├── models.py
+│   │   ├── routes.py
+│   │   ├── agents.py
+│   │   └── instructions.py
+│   ├── persona_generator/
+│   │   ├── persona_generator_service.py
+│   │   ├── models.py
+│   │   ├── routes.py
+│   │   ├── agents.py
+│   │   └── instructions.py
+│   ├── prompt_validator/
+│   │   ├── prompt_validator_service.py
+│   │   ├── models.py
+│   │   ├── routes.py
+│   │   ├── agents.py
+│   │   └── instructions.py
+│   └── system/          # System-wide routes
+│       └── routes.py    # e.g., Available Models
 └── main.py               # FastAPI application
 ```
 
@@ -48,6 +64,7 @@ backend/app/
 
 #### AzureAIService
 **Responsibility**: Client initialization and agent/client factory
+
 
 **Lazy Initialization**: Clients are initialized on first access, not on module import.
 This prevents unnecessary connections during dev mode restarts.

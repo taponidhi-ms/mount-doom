@@ -65,7 +65,7 @@ Mount Doom is a fullstack AI agent simulation platform built with FastAPI (backe
 - Use Pydantic for validation
 - Use structlog for logging
 - Error handling with HTTPException
-- Agent instructions stored in python files in `backend/app/instruction_sets/`
+- Agent instructions stored in `backend/app/modules/[module]/instructions.py`
 
 ### Frontend (TypeScript)
 - Use TypeScript for all files
@@ -79,11 +79,17 @@ Mount Doom is a fullstack AI agent simulation platform built with FastAPI (backe
 ### Backend
 ```
 backend/app/
-├── api/routes/      # One route per use case
 ├── core/            # Configuration
-├── models/          # Pydantic schemas
-├── services/        # Business logic (Azure AI, Cosmos DB)
-├── instruction_sets/ # Agent instruction python files
+├── infrastructure/  # Infrastructure services (DB, AI)
+├── modules/         # Feature modules (Vertical Slices)
+│   ├── [feature]/   # e.g., conversation_simulation/
+│   │   ├── routes.py       # API Endpoints
+│   │   ├── models.py       # Schemas
+│   │   ├── service.py      # Business Logic
+│   │   ├── agents.py       # Agent Factory
+│   │   └── instructions.py # Agent Prompts
+│   └── ...
+├── models/          # Shared Pydantic schemas
 └── main.py         # FastAPI app
 ```
 
@@ -101,8 +107,9 @@ frontend/
 - Services are singletons
 - Use dependency injection
 - Separate Azure AI and Cosmos DB concerns
-- Agent instructions stored in python files
-- Use `create_agent()` with instructions from python module
+- Agent instructions stored in `modules/[module]/instructions.py`
+- Use `create_agent()` with instructions from module
+- Services located in `modules/[module]/[name]_service.py`
 
 ### Frontend API Pattern
 - Centralized API client in `lib/api-client.ts`
@@ -135,13 +142,16 @@ frontend/
 ## Common Tasks
 
 ### Adding New Use Case
-1. Create instruction file in `backend/app/instruction_sets/[agent_name].py`
-2. Create route in `backend/app/api/routes/`
-3. Add schema in `backend/app/models/schemas.py`
-4. Create service in `backend/app/services/features/` using `create_agent()`
-5. Add Cosmos DB method in `backend/app/services/cosmos_db_service.py`
-6. Create page in `frontend/app/[use-case]/page.tsx` with Ant Design components
-7. Add API methods in `frontend/lib/api-client.ts`
+1. Create module directory `backend/app/modules/[new_use_case]/`
+2. Create `instructions.py` with agent prompts
+3. Create `models.py` for API schemas
+4. Create `agents.py` with agent factory
+5. Create `[name]_service.py` for logic
+6. Create `routes.py` for API endpoints
+7. Register router in `backend/app/main.py`
+8. Add Cosmos DB method in `backend/app/infrastructure/db/cosmos_db_service.py`
+9. Create page in `frontend/app/[use-case]/page.tsx`
+10. Add API methods in `frontend/lib/api-client.ts`
 
 ### Metrics to Track
 - Tokens used (from Azure AI response)

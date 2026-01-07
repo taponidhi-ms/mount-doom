@@ -13,13 +13,12 @@ logger.info("=" * 80)
 
 # Import routes after logging is configured
 # This ensures services initialized during import use the proper logging config
-from app.api.routes import (
-    persona_distribution,
-    persona_generator,
-    general_prompt,
-    prompt_validator,
-    conversation_simulation
-)
+from app.modules.persona_distribution import routes as persona_distribution
+from app.modules.persona_generator import routes as persona_generator
+from app.modules.general_prompt import routes as general_prompt
+from app.modules.prompt_validator import routes as prompt_validator
+from app.modules.conversation_simulation import routes as conversation_simulation
+from app.modules.system import routes as system_routes
 
 # Create FastAPI application
 app = FastAPI(
@@ -50,6 +49,8 @@ app.include_router(prompt_validator.router, prefix="/api/v1")
 logger.debug("Registered route", router="prompt_validator", prefix="/api/v1")
 app.include_router(conversation_simulation.router, prefix="/api/v1")
 logger.debug("Registered route", router="conversation_simulation", prefix="/api/v1")
+app.include_router(system_routes.router, prefix="/api/v1")
+logger.debug("Registered route", router="system_routes", prefix="/api/v1")
 logger.info("All API routes registered successfully")
 
 

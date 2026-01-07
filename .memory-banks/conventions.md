@@ -15,18 +15,21 @@
 - Private methods: prefix with underscore (e.g., `_initialize_client`)
 
 ### File Organization
-- One route per use case (calls service)
-- **One service per use case** with business logic:
-  - `PersonaDistributionService`: Persona distribution generation workflow
-  - `GeneralPromptService`: Direct model response workflow
-  - `PromptValidatorService`: Prompt validation workflow
-  - `ConversationSimulationService`: Multi-agent conversation workflow
+- **Full Vertical Slices**: Each module in `app/modules/` contains all code for a feature:
+  - `routes.py`: API endpoints
+  - `models.py`: API schemas and Database models
+  - `*_service.py`: Business logic
+  - `agents.py`: Agent creation logic
+  - `instructions.py`: Agent instructions
+- **Shared Resources**:
+  - `app/models/shared.py`: Common models (BaseResponse, AgentDetails, etc.)
+  - `app/infrastructure/`: Shared infrastructure (DB, AI)
+- **Infrastructure Services** (in `app/infrastructure/`):
   - `AzureAIService`: Client initialization and agent factory only
   - `CosmosDBService`: Database persistence
 - Services are singletons
-- Models in schemas.py
 - Configuration in core/config.py
-- Agent configuration constants in instruction_sets/
+- Agent configuration is defined in modules/instructions.py
 
 ### Configuration (.env)
 - Backend settings are loaded from `backend/.env` via `app/core/config.py` using an absolute path, so starting the server from the repo root (or other folders) still picks up the correct environment.
