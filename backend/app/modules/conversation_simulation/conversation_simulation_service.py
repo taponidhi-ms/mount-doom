@@ -11,13 +11,16 @@ from app.infrastructure.db.cosmos_db_service import cosmos_db_service
 from app.models.shared import AgentDetails
 from .models import ConversationMessage, ConversationSimulationResult, ConversationSimulationDocument
 from app.core.config import settings
-from .agents import create_c1_agent, create_c2_agent
+from .agents import create_c1_agent, create_c2_agent, C1_AGENT_NAME, C2_AGENT_NAME
 
 logger = structlog.get_logger()
 
 
 class ConversationSimulationService:
     """Service for simulating multi-agent conversations."""
+
+    C1_AGENT_NAME = C1_AGENT_NAME
+    C2_AGENT_NAME = C2_AGENT_NAME
 
     def __init__(self):
         pass
@@ -50,13 +53,6 @@ class ConversationSimulationService:
         logger.debug("C2 Agent ready", agent_name=c2_agent.agent_version_object.name, version=c2_agent.agent_version_object.version)
         
         logger.info("All agents created successfully")
-
-        customer_context_json = json.dumps(
-          conversation_properties,
-          ensure_ascii=False,
-          separators=(",", ":")
-        )
-        customer_context_yaml = customer_context_json.replace("'", "''")
 
         # Workflow YAML
         workflow_yaml = f"""
@@ -109,7 +105,7 @@ trigger:
       agent:
         name: {c2_agent.agent_version_object.name}
       input:
-        messages: "=UserMessage('CustomerContext: {customer_context_yaml} ' + 'RepresentativeLastMessage: ' + Last(Local.LatestMessage).Text)"
+        messages: "=Local.LatestMessage"
       output:
         messages: Local.LatestMessage
 

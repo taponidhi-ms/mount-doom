@@ -84,6 +84,13 @@ Does NOT contain:
 **Token Management**: Uses DefaultAzureCredential which automatically handles token refresh.
 No manual token management required.
 
+### Azure AI References
+For more details on Azure AI Agent Service and Workflow:
+- [Sample Workflow Multi-Agent](https://raw.githubusercontent.com/Azure/azure-sdk-for-python/refs/tags/azure-ai-projects_2.0.0b2/sdk/ai/azure-ai-projects/samples/agents/sample_workflow_multi_agent.py)
+- [Workflow Concepts](https://raw.githubusercontent.com/MicrosoftDocs/azure-ai-docs/refs/heads/main/articles/ai-foundry/default/agents/concepts/workflow.md)
+- [Azure AI Projects SDK README](https://github.com/Azure/azure-sdk-for-python/blob/main/sdk/ai/azure-ai-projects/README.md)
+- [Azure AI Documentation](https://github.com/MicrosoftDocs/azure-ai-docs/tree/main/articles/ai-foundry/default/agents)
+
 #### Use Case Services
 Each service handles complete business logic for its use case:
 - **PersonaDistributionService**: Generates persona distributions. Uses `create_persona_distribution_agent()`.
