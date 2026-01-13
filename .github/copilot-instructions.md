@@ -226,3 +226,13 @@ All API responses should include:
 - **All responses**: Stored in Cosmos DB automatically
 - **UI Pattern**: Each use case has dedicated page with similar layout
 - **Result Display**: Shared component for showing responses and metrics
+
+## Notes Directory Policy
+
+The repository includes a root-level `notes/` directory intended for personal notes and ad-hoc artifacts. To protect privacy and avoid contaminating project context:
+
+1. Do not read, parse, or reference files in `notes/` for memory bank ingestion or any Copilot/AI-assisted workflows.
+2. Do not import or depend on `notes/` contents from application code or tests.
+3. Treat `notes/` as non-source documentation that is tracked by Git but excluded from architectural, convention, or use-case documentation.
+
+This policy ensures that only `.memory-banks/` governs project context while allowing collaborators to keep tracked personal notes.

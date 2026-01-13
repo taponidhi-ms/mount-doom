@@ -1,8 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { Button, Card, Input, Tabs, Table, Space, Typography, message, Alert, Collapse, Tag, Upload, Progress } from 'antd'
-import { UploadOutlined, ReloadOutlined } from '@ant-design/icons'
+import { Button, Card, Input, Tabs, Table, Space, Typography, message, Alert, Collapse, Tag, Progress } from 'antd'
+import { ReloadOutlined } from '@ant-design/icons'
 import PageLayout from '@/components/PageLayout'
 import { apiClient, ConversationSimulationResponse, BrowseResponse, ConversationMessage } from '@/lib/api-client'
 
@@ -38,47 +38,50 @@ export default function ConversationSimulationPage() {
   const [batchLoading, setBatchLoading] = useState(false)
   const [batchProgress, setBatchProgress] = useState(0)
   const [currentBatchIndex, setCurrentBatchIndex] = useState(-1)
+  const [batchJsonInput, setBatchJsonInput] = useState('')
 
-  const handleFileUpload = (file: File) => {
-    const reader = new FileReader()
-    reader.onload = (e) => {
-      try {
-        const json = JSON.parse(e.target?.result as string)
-        let personas = []
-        
-        if (Array.isArray(json)) {
-          personas = json
-        } else if (json.CustomerPersonas && Array.isArray(json.CustomerPersonas)) {
-          personas = json.CustomerPersonas
-        } else {
-          message.error('Invalid JSON format. Expected array or object with CustomerPersonas array.')
-          return
-        }
+  const loadBatchItemsFromText = () => {
+    if (!batchJsonInput.trim()) {
+      message.warning('Paste personas JSON to load batch items.')
+      return
+    }
 
-        const items: BatchItem[] = personas.map((p: any, index: number) => ({
+    try {
+      const json = JSON.parse(batchJsonInput)
+      let personas = []
+
+      if (Array.isArray(json)) {
+        personas = json
+      } else if (json.CustomerPersonas && Array.isArray(json.CustomerPersonas)) {
+        personas = json.CustomerPersonas
+      } else {
+        message.error('Invalid JSON format. Expected array or object with CustomerPersonas array.')
+        return
+      }
+
+      const items: BatchItem[] = personas
+        .map((p: any, index: number) => ({
           key: `batch-${index}-${Date.now()}`,
           customerIntent: p.CustomerIntent || p.customerIntent || '',
           customerSentiment: p.CustomerSentiment || p.customerSentiment || '',
           conversationSubject: p.ConversationSubject || p.conversationSubject || '',
           status: 'pending' as const
-        })).filter((item: BatchItem) => item.customerIntent && item.customerSentiment && item.conversationSubject)
+        }))
+        .filter((item: BatchItem) => item.customerIntent && item.customerSentiment && item.conversationSubject)
 
-        if (items.length === 0) {
-          message.warning('No valid personas found in file.')
-          return
-        }
-
-        setBatchItems(items)
-        setBatchProgress(0)
-        setCurrentBatchIndex(-1)
-        message.success(`Loaded ${items.length} personas.`)
-      } catch (err) {
-        message.error('Failed to parse JSON file.')
-        console.error(err)
+      if (items.length === 0) {
+        message.warning('No valid personas found in JSON.')
+        return
       }
+
+      setBatchItems(items)
+      setBatchProgress(0)
+      setCurrentBatchIndex(-1)
+      message.success(`Loaded ${items.length} personas.`)
+    } catch (err) {
+      message.error('Failed to parse JSON text.')
+      console.error(err)
     }
-    reader.readAsText(file)
-    return false // Prevent upload
   }
 
   const runBatchSimulation = async () => {
@@ -255,6 +258,16 @@ export default function ConversationSimulationPage() {
       width: 180,
     },
     {
+      title: 'Conversation ID',
+      dataIndex: 'conversation_id',
+      key: 'conversation_id',
+      width: 220,
+      render: (_: string, record: any) => {
+        const convId = record.conversation_id || record.id;
+        return convId ? <Text copyable>{convId}</Text> : 'N/A';
+      }
+    },
+    {
       title: 'Intent',
       dataIndex: 'conversation_properties',
       key: 'intent',
@@ -344,6 +357,7 @@ export default function ConversationSimulationPage() {
         if (record.status === 'completed' && record.result) {
           return (
             <Space direction="vertical" size={0}>
+              <Text type="secondary" style={{ fontSize: 12 }} copyable>{record.result.conversation_id}</Text>
               <Text type="secondary" style={{ fontSize: 12 }}>{record.result.conversation_history.length} msgs</Text>
             </Space>
           );
@@ -464,6 +478,10 @@ export default function ConversationSimulationPage() {
                     </Tag>
                   </div>
                   <div>
+                    <Text type="secondary">Conversation ID: </Text>
+                    <Text copyable>{result.conversation_id}</Text>
+                  </div>
+                  <div>
                     <Text type="secondary">Total Messages: </Text>
                     <Text strong>{result.conversation_history.length}</Text>
                   </div>
@@ -493,23 +511,34 @@ export default function ConversationSimulationPage() {
           <Card title="Batch Processing">
             <Space direction="vertical" size="middle" style={{ width: '100%' }}>
               <Alert
-                message="Upload Personas"
-                description="Upload a JSON file containing a list of personas (CustomerIntent, CustomerSentiment, ConversationSubject). The simulation will run for each persona sequentially."
+                message="Paste Personas JSON"
+                description="Paste a JSON array of personas or an object with a CustomerPersonas array (CustomerIntent, CustomerSentiment, ConversationSubject). The simulation will run for each persona sequentially."
                 type="info"
                 showIcon
               />
-              
-              <Space>
-                <Upload 
-                  beforeUpload={handleFileUpload} 
-                  showUploadList={false}
-                  accept=".json"
+
+              <TextArea
+                rows={8}
+                value={batchJsonInput}
+                onChange={(e) => setBatchJsonInput(e.target.value)}
+                placeholder='[
+  {
+    "CustomerIntent": "Technical Support",
+    "CustomerSentiment": "Frustrated",
+    "ConversationSubject": "Internet connection keeps dropping"
+  }
+]'
+                disabled={batchLoading}
+              />
+
+              <Space wrap>
+                <Button 
+                  size="large" 
+                  onClick={loadBatchItemsFromText}
+                  disabled={batchLoading}
                 >
-                  <Button icon={<UploadOutlined />} size="large" disabled={batchLoading}>
-                    Upload JSON File
-                  </Button>
-                </Upload>
-                
+                  Load Personas
+                </Button>
                 <Button 
                   type="primary" 
                   size="large" 
@@ -546,6 +575,7 @@ export default function ConversationSimulationPage() {
                             <Tag color={record.result.conversation_status === 'Completed' ? 'green' : 'orange'}>
                               {record.result.conversation_status}
                             </Tag>
+                            <Text copyable>{record.result.conversation_id}</Text>
                             <Text>Time: {Math.round(record.result.total_time_taken_ms)}ms</Text>
                           </Space>
                           <div style={{ marginTop: 8 }}>

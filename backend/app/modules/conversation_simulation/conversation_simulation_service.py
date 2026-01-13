@@ -27,7 +27,6 @@ class ConversationSimulationService:
 
     async def simulate_conversation(
             self,
-            simulation_prompt: str,
             conversation_properties: dict,
             max_turns: int
     ) -> ConversationSimulationResult:
@@ -35,6 +34,17 @@ class ConversationSimulationService:
         Simulate a multi-agent conversation using Azure AI Agent Workflow.
         """
         start_time = datetime.utcnow()
+
+        # Build a simulation prompt from the provided conversation properties so the workflow
+        # has explicit context instead of an empty input.
+        simulation_prompt = (
+            "Conversation properties:\n"
+            f"- CustomerIntent: {conversation_properties.get('CustomerIntent', '')}\n"
+            f"- CustomerSentiment: {conversation_properties.get('CustomerSentiment', '')}\n"
+            f"- ConversationSubject: {conversation_properties.get('ConversationSubject', '')}\n"
+            f"- Raw JSON: {json.dumps(conversation_properties)}"
+        )
+
         logger.info("="*60)
         logger.info("Starting conversation simulation", 
                    max_turns=max_turns,

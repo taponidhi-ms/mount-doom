@@ -54,7 +54,6 @@ async def simulate_conversation(request: ConversationSimulationRequest):
 
         # Use conversation simulation service
         simulation_result = await conversation_simulation_service.simulate_conversation(
-            simulation_prompt="",  # Not used anymore
             conversation_properties=conv_props_dict,
             max_turns=MAX_TURNS
         )
