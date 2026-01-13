@@ -188,15 +188,72 @@ Standard components used across pages:
 ### Page Structure Pattern
 All use case pages follow this structure:
 1. **Header**: Title and description (via PageLayout component)
-2. **Tabs**: Generate/Validate/Simulate tab and History tab
+2. **Tabs**: Generate/Validate/Simulate tab, Batch Processing tab (if applicable), and History tab
 3. **Generate/Validate/Simulate Tab**:
    - Configuration form (Ant Design Card)
    - Submit button with loading state
    - Result display (if available)
-4. **History Tab**:
+4. **Batch Processing Tab** (Optional - added to pages supporting batch):
+   - JSON input for batch items (prompts or configurations)
+   - Configurable delay between items (Select component with 5-60 second options)
+   - Load and Start buttons
+   - Progress display (current item count + Progress bar)
+   - Table showing loaded items with status (pending/running/completed/failed)
+   - Expandable rows showing detailed results
+5. **History Tab**:
    - Ant Design Table with past results
    - Pagination controls (built into Table)
    - Loading and error states
+
+### Batch Processing Pattern (Conversation Simulation & Persona Distribution)
+When adding batch support to a page:
+
+**State Management**:
+```typescript
+const [batchItems, setBatchItems] = useState<BatchItem[]>([])
+const [batchLoading, setBatchLoading] = useState(false)
+const [batchProgress, setBatchProgress] = useState(0)
+const [currentBatchIndex, setCurrentBatchIndex] = useState(-1)
+const [batchJsonInput, setBatchJsonInput] = useState('')
+const [stopBatchRequested, setStopBatchRequested] = useState(false)
+const [batchDelay, setBatchDelay] = useState(5)
+```
+
+**BatchItem Interface**:
+- For conversation simulation: `{ key, customerIntent, customerSentiment, conversationSubject, status, result?, error? }`
+- For persona distribution: `{ key, prompt, status, result?, error? }`
+
+**Core Functions**:
+1. `loadBatchItemsFromText()` - Parse JSON (array or object with items array)
+2. `runBatchDistributions()` / `runBatchSimulation()` - Main loop with delays and stop handling
+3. `handleStopBatch()` - Set stop flag to gracefully exit
+
+**UI Components**:
+- TextArea for JSON input
+- Select component for delay selection (5-60 seconds, 5-second increments)
+- Buttons: "Load Items", "Start Batch", "Stop Batch" (shows during processing)
+- Progress bar with current item indicator
+- Table with columns: Item description, Status (tag), Result
+- Expandable rows showing detailed response data
+
+**Common Pattern**:
+```tsx
+const loadBatchItemsFromText = () => {
+  // Parse JSON (array or { prompts/personas/configurations: [...] })
+  // Validate items (filter empty ones)
+  // Create BatchItem[] with unique keys and 'pending' status
+  // Set to state and message.success()
+}
+
+const runBatchDistributions = async () => {
+  // Loop through items
+  // Set status to 'running'
+  // Call API method with item data
+  // Set status to 'completed'/'failed'
+  // Add delay between items (except last)
+  // Check stopBatchRequested flag for graceful exit
+}
+```
 
 ## API Design
 

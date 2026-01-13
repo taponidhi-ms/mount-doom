@@ -1,13 +1,21 @@
 'use client'
 
 import { useState } from 'react'
-import { Button, Card, Input, Tabs, Table, Space, Typography, message, Spin, Alert } from 'antd'
-import { LoadingOutlined, ReloadOutlined, DownloadOutlined } from '@ant-design/icons'
+import { Button, Card, Input, Tabs, Table, Space, Typography, message, Alert, Progress, Select, Tag } from 'antd'
+import { ReloadOutlined, DownloadOutlined } from '@ant-design/icons'
 import PageLayout from '@/components/PageLayout'
 import { apiClient, PersonaDistributionResponse, BrowseResponse, EvalsDataResponse } from '@/lib/api-client'
 
 const { TextArea } = Input
-const { Title, Paragraph, Text } = Typography
+const { Paragraph, Text } = Typography
+
+interface BatchItem {
+  key: string;
+  prompt: string;
+  status: 'pending' | 'running' | 'completed' | 'failed';
+  result?: PersonaDistributionResponse;
+  error?: string;
+}
 
 export default function PersonaDistributionPage() {
   const [prompt, setPrompt] = useState('')
@@ -22,6 +30,15 @@ export default function PersonaDistributionPage() {
   const [selectedHistoryRowKeys, setSelectedHistoryRowKeys] = useState<React.Key[]>([])
   const [deleteLoading, setDeleteLoading] = useState(false)
 
+  // Batch state
+  const [batchItems, setBatchItems] = useState<BatchItem[]>([])
+  const [batchLoading, setBatchLoading] = useState(false)
+  const [batchProgress, setBatchProgress] = useState(0)
+  const [currentBatchIndex, setCurrentBatchIndex] = useState(-1)
+  const [batchJsonInput, setBatchJsonInput] = useState('')
+  const [stopBatchRequested, setStopBatchRequested] = useState(false)
+  const [batchDelay, setBatchDelay] = useState(5)
+
   // Evals state
   const [evalsLoading, setEvalsLoading] = useState(false)
   const [evalsData, setEvalsData] = useState<BrowseResponse | null>(null)
@@ -30,6 +47,113 @@ export default function PersonaDistributionPage() {
   const [preparingEvals, setPreparingEvals] = useState(false)
   const [preparedEvals, setPreparedEvals] = useState<EvalsDataResponse | null>(null)
   const [downloadingEvalsZip, setDownloadingEvalsZip] = useState(false)
+
+  const loadBatchItemsFromText = () => {
+    if (!batchJsonInput.trim()) {
+      message.warning('Paste prompts JSON to load batch items.')
+      return
+    }
+
+    try {
+      const json = JSON.parse(batchJsonInput)
+
+      if (!Array.isArray(json)) {
+        message.error('Invalid JSON format. Expected an array of objects with "prompt" field.')
+        return
+      }
+
+      const items: BatchItem[] = json
+        .map((item: unknown, index: number) => {
+          if (typeof item !== 'object' || item === null || !('prompt' in item)) {
+            return null
+          }
+          const promptText = (item as { prompt?: unknown }).prompt
+          if (typeof promptText !== 'string') {
+            return null
+          }
+          return {
+            key: `batch-${index}-${Date.now()}`,
+            prompt: promptText,
+            status: 'pending' as const
+          }
+        })
+        .filter((item: BatchItem | null) => item !== null && item.prompt.trim()) as BatchItem[]
+
+      if (items.length === 0) {
+        message.error('No valid objects with "prompt" field found in JSON.')
+        return
+      }
+
+      setBatchItems(items)
+      setBatchProgress(0)
+      setCurrentBatchIndex(-1)
+      message.success(`Loaded ${items.length} prompts.`)
+    } catch (err) {
+      message.error('Failed to parse JSON text. Expected format: [{ "prompt": "..." }, { "prompt": "..." }]')
+      console.error(err)
+    }
+  }
+
+  const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
+
+  const runBatchDistributions = async () => {
+    if (batchItems.length === 0) return
+    
+    setBatchLoading(true)
+    setBatchProgress(0)
+    setStopBatchRequested(false)
+    
+    const newItems = [...batchItems]
+    
+    for (let i = 0; i < newItems.length; i++) {
+      // Check if stop was requested
+      if (stopBatchRequested) {
+        message.info('Batch processing stopped by user.')
+        break
+      }
+
+      setCurrentBatchIndex(i)
+      newItems[i].status = 'running'
+      setBatchItems([...newItems])
+      
+      try {
+        const response = await apiClient.generatePersonaDistribution(newItems[i].prompt)
+        
+        if (response.data) {
+          newItems[i].status = 'completed'
+          newItems[i].result = response.data
+        } else {
+          newItems[i].status = 'failed'
+          newItems[i].error = response.error || 'Unknown error'
+        }
+      } catch {
+        newItems[i].status = 'failed'
+        newItems[i].error = 'Exception occurred'
+      }
+      
+      setBatchItems([...newItems])
+      setBatchProgress(Math.round(((i + 1) / newItems.length) * 100))
+      
+      // Add delay between simulations (except after the last one)
+      if (i < newItems.length - 1 && !stopBatchRequested) {
+        await sleep(batchDelay * 1000)
+      }
+    }
+    
+    setBatchLoading(false)
+    setCurrentBatchIndex(-1)
+    setStopBatchRequested(false)
+    message.success('Batch processing completed!')
+    
+    // Refresh history if we're on that tab or to keep it updated
+    if (historyData) {
+      loadHistory(1)
+    }
+  }
+
+  const handleStopBatch = () => {
+    setStopBatchRequested(true)
+  }
 
   const loadHistory = async (page: number = 1, pageSize: number = 10) => {
     setHistoryLoading(true)
@@ -211,6 +335,47 @@ export default function PersonaDistributionPage() {
     },
   ]
 
+  const batchColumns = [
+    {
+      title: 'Prompt',
+      dataIndex: 'prompt',
+      key: 'prompt',
+      ellipsis: true,
+    },
+    {
+      title: 'Status',
+      dataIndex: 'status',
+      key: 'status',
+      width: 120,
+      render: (status: string) => {
+        let color = 'default';
+        if (status === 'running') color = 'processing';
+        if (status === 'completed') color = 'success';
+        if (status === 'failed') color = 'error';
+        return <Tag color={color}>{status.toUpperCase()}</Tag>;
+      },
+    },
+    {
+      title: 'Result',
+      key: 'result',
+      width: 150,
+      render: (_: unknown, record: BatchItem) => {
+        if (record.status === 'completed' && record.result) {
+          return (
+            <Space direction="vertical" size={0}>
+              <Text type="secondary" style={{ fontSize: 12 }}>{record.result.tokens_used || 'N/A'} tokens</Text>
+              <Text type="secondary" style={{ fontSize: 12 }}>{Math.round(record.result.time_taken_ms)} ms</Text>
+            </Space>
+          );
+        }
+        if (record.status === 'failed') {
+          return <Text type="danger" style={{ fontSize: 12 }}>{record.error}</Text>;
+        }
+        return '-';
+      }
+    }
+  ];
+
   const tabItems = [
     {
       key: 'generate',
@@ -325,6 +490,153 @@ export default function PersonaDistributionPage() {
           )}
         </Space>
       ),
+    },
+    {
+      key: 'batch',
+      label: 'Batch Processing',
+      children: (
+        <Space direction="vertical" size="large" style={{ width: '100%' }}>
+          <Card title="Batch Processing">
+            <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+              <Alert
+                message="Paste Prompts JSON"
+                description="Paste a JSON array of objects, where each object must have a 'prompt' field. The persona distribution will be generated for each prompt sequentially."
+                type="info"
+                showIcon
+              />
+
+              <TextArea
+                rows={8}
+                value={batchJsonInput}
+                onChange={(e) => setBatchJsonInput(e.target.value)}
+                placeholder='[
+  {"prompt": "Generate 10 calls for technical support with frustrated customers"},
+  {"prompt": "Create a distribution of 50 billing inquiry calls"}
+]'
+                disabled={batchLoading}
+              />
+
+              <div>
+                <Text strong>Delay Between Generations (seconds)</Text>
+                <Select
+                  value={batchDelay}
+                  onChange={(value) => setBatchDelay(value)}
+                  disabled={batchLoading}
+                  style={{ width: 200, marginLeft: 12 }}
+                  options={[
+                    { value: 5, label: '5 seconds' },
+                    { value: 10, label: '10 seconds' },
+                    { value: 15, label: '15 seconds' },
+                    { value: 20, label: '20 seconds' },
+                    { value: 25, label: '25 seconds' },
+                    { value: 30, label: '30 seconds' },
+                    { value: 35, label: '35 seconds' },
+                    { value: 40, label: '40 seconds' },
+                    { value: 45, label: '45 seconds' },
+                    { value: 50, label: '50 seconds' },
+                    { value: 55, label: '55 seconds' },
+                    { value: 60, label: '60 seconds' },
+                  ]}
+                />
+              </div>
+
+              <Space wrap>
+                <Button 
+                  size="large" 
+                  onClick={loadBatchItemsFromText}
+                  disabled={batchLoading}
+                >
+                  Load Prompts
+                </Button>
+                <Button 
+                  type="primary" 
+                  size="large" 
+                  onClick={runBatchDistributions}
+                  disabled={batchItems.length === 0 || batchLoading}
+                  loading={batchLoading}
+                >
+                  {batchLoading ? 'Processing Batch...' : 'Start Batch Processing'}
+                </Button>
+                {batchLoading && (
+                  <Button 
+                    danger 
+                    size="large"
+                    onClick={handleStopBatch}
+                  >
+                    Stop Batch
+                  </Button>
+                )}
+              </Space>
+
+              {batchLoading && (
+                <div style={{ marginTop: 16 }}>
+                  <Text>Processing prompt {currentBatchIndex + 1} of {batchItems.length}</Text>
+                  <Progress percent={batchProgress} status="active" />
+                </div>
+              )}
+            </Space>
+          </Card>
+
+          {batchItems.length > 0 && (
+            <Card title={`Loaded Prompts (${batchItems.length})`}>
+              <Table
+                dataSource={batchItems}
+                columns={batchColumns}
+                pagination={{ pageSize: 10 }}
+                expandable={{
+                  expandedRowRender: (record) => (
+                    <div style={{ padding: 16 }}>
+                      {record.result ? (
+                        <Space direction="vertical" size="small" style={{ width: '100%' }}>
+                          <Text strong>Generation Result:</Text>
+                          <Space size="large">
+                            <Text>Tokens: {record.result.tokens_used || 'N/A'}</Text>
+                            <Text>Time: {Math.round(record.result.time_taken_ms)}ms</Text>
+                          </Space>
+                          <div style={{ marginTop: 8 }}>
+                            <Text strong>Response:</Text>
+                            <Paragraph style={{ 
+                              whiteSpace: 'pre-wrap', 
+                              background: '#f5f5f5', 
+                              padding: 12, 
+                              borderRadius: 4,
+                              marginTop: 8,
+                              maxHeight: '300px',
+                              overflow: 'auto'
+                            }}>
+                              {record.result.response_text}
+                            </Paragraph>
+                          </div>
+                          {record.result.parsed_output && (
+                            <div>
+                              <Text strong>Parsed Output:</Text>
+                              <Paragraph>
+                                <pre style={{ 
+                                  background: '#e6f7ff', 
+                                  padding: '12px', 
+                                  borderRadius: '4px',
+                                  whiteSpace: 'pre-wrap',
+                                  wordWrap: 'break-word',
+                                  maxHeight: '300px',
+                                  overflow: 'auto'
+                                }}>
+                                  {JSON.stringify(record.result.parsed_output, null, 2)}
+                                </pre>
+                              </Paragraph>
+                            </div>
+                          )}
+                        </Space>
+                      ) : (
+                        <Text type="secondary">No result available yet.</Text>
+                      )}
+                    </div>
+                  ),
+                }}
+              />
+            </Card>
+          )}
+        </Space>
+      )
     },
     {
       key: 'history',
