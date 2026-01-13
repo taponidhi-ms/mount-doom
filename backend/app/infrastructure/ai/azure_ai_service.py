@@ -1,5 +1,5 @@
 from azure.ai.projects.models import PromptAgentDefinition, AgentVersionObject
-from azure.identity import DefaultAzureCredential
+from azure.identity import DefaultAzureCredential, InteractiveBrowserCredential, AzureCliCredential
 from azure.ai.projects import AIProjectClient
 from openai import OpenAI
 
@@ -56,14 +56,52 @@ class AzureAIService:
             logger.info("Initializing Azure AI Project Client...", 
                        endpoint=settings.azure_ai_project_connection_string[:50] + "...")
             
-            # DefaultAzureCredential handles token refresh automatically
-            # It will try multiple authentication methods in order:
-            # 1. Environment variables
-            # 2. Managed Identity
-            # 3. Azure CLI (az login)
-            # 4. Azure PowerShell
-            # 5. Interactive browser
-            credential = DefaultAzureCredential()
+            # Try credentials in order:
+            # 1. DefaultAzureCredential (env vars, managed identity, CLI, PowerShell, etc.)
+            # 2. Azure CLI credential (explicitly try 'az login')
+            # 3. Interactive browser as last resort
+            credential = None
+            last_error = None
+            
+            # Try DefaultAzureCredential first
+            try:
+                logger.debug("Attempting DefaultAzureCredential...")
+                credential = DefaultAzureCredential()
+                # Test the credential by getting a token
+                credential.get_token("https://cognitiveservices.azure.com/.default")
+                logger.info("Using DefaultAzureCredential")
+            except Exception as e:
+                last_error = e
+                logger.debug("DefaultAzureCredential failed, trying AzureCliCredential...", error=str(e))
+                
+                # Try Azure CLI credential
+                try:
+                    credential = AzureCliCredential()
+                    credential.get_token("https://cognitiveservices.azure.com/.default")
+                    logger.info("Using AzureCliCredential (az login)")
+                except Exception as cli_error:
+                    logger.debug("AzureCliCredential failed, trying InteractiveBrowserCredential...", error=str(cli_error))
+                    last_error = cli_error
+                    
+                    # Try interactive browser as last resort
+                    try:
+                        credential = InteractiveBrowserCredential()
+                        credential.get_token("https://cognitiveservices.azure.com/.default")
+                        logger.info("Using InteractiveBrowserCredential (browser login)")
+                    except Exception as browser_error:
+                        last_error = browser_error
+                        logger.error("All credential methods failed", error=str(browser_error), exc_info=True)
+            
+            if credential is None:
+                error_msg = (
+                    "Failed to authenticate with Azure. Please use one of these methods:\n"
+                    "1. Run 'az login' and authenticate in the browser\n"
+                    "2. Run 'azd auth login' and authenticate in the browser\n"
+                    "3. Set environment variables: AZURE_TENANT_ID, AZURE_CLIENT_ID, AZURE_CLIENT_SECRET\n"
+                    f"Last error: {str(last_error)}"
+                )
+                logger.error("Authentication setup required", detail=error_msg)
+                raise RuntimeError(error_msg)
             
             self._client = AIProjectClient(
                 endpoint=settings.azure_ai_project_connection_string,
@@ -72,7 +110,7 @@ class AzureAIService:
             logger.debug("AIProjectClient created, getting OpenAI client...")
             self._openai_client = self._client.get_openai_client()
             logger.info("Azure AI Project Client initialized successfully")
-            logger.info("Token refresh will be handled automatically by DefaultAzureCredential")
+            logger.info("Token refresh will be handled automatically by the Azure SDK")
         except Exception as e:
             logger.error("Failed to initialize Azure AI Project Client", error=str(e), exc_info=True)
             raise

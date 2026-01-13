@@ -213,6 +213,47 @@ async def get_latest_evals():
         logger.error("Error fetching latest evals", error=str(e), exc_info=True)
         raise HTTPException(status_code=500, detail=f"Error fetching latest evals: {str(e)}")
 
+@router.post("/delete")
+async def delete_conversation_simulations(conversation_ids: list[str]):
+    """
+    Delete conversation simulation records by their IDs.
+    Accepts a list of conversation IDs to delete.
+    """
+    logger.info("Received delete request", count=len(conversation_ids))
+
+    if not conversation_ids:
+        raise HTTPException(status_code=400, detail="No conversation IDs provided")
+
+    try:
+        container = await cosmos_db_service.ensure_container(
+            cosmos_db_service.CONVERSATION_SIMULATION_CONTAINER
+        )
+        
+        deleted_count = 0
+        errors = []
+        
+        for conv_id in conversation_ids:
+            try:
+                container.delete_item(item=conv_id, partition_key=conv_id)
+                deleted_count += 1
+                logger.debug("Deleted conversation", conversation_id=conv_id)
+            except Exception as e:
+                error_msg = f"Failed to delete {conv_id}: {str(e)}"
+                errors.append(error_msg)
+                logger.warning(error_msg)
+        
+        logger.info("Delete operation completed", deleted=deleted_count, failed=len(errors))
+        
+        return {
+            "deleted_count": deleted_count,
+            "failed_count": len(errors),
+            "errors": errors
+        }
+    
+    except Exception as e:
+        logger.error("Error deleting conversation simulations", error=str(e), exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Error deleting conversation simulations: {str(e)}")
+
 @router.get("/evals/{evals_id}/download")
 async def download_evals_zip(evals_id: str):
     """Download a prepared evals bundle as a zip file."""

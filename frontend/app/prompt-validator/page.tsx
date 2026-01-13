@@ -19,6 +19,8 @@ export default function PromptValidatorPage() {
   const [historyLoading, setHistoryLoading] = useState(false)
   const [historyData, setHistoryData] = useState<BrowseResponse | null>(null)
   const [historyError, setHistoryError] = useState('')
+  const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([])
+  const [deleteLoading, setDeleteLoading] = useState(false)
 
   const loadHistory = async (page: number = 1, pageSize: number = 10) => {
     setHistoryLoading(true)
@@ -28,9 +30,41 @@ export default function PromptValidatorPage() {
     
     if (response.data) {
       setHistoryData(response.data)
+      setSelectedRowKeys([])
     } else if (response.error) {
       setHistoryError(response.error)
       message.error('Failed to load history')
+    }
+  }
+
+  const handleDeleteSelected = async () => {
+    if (selectedRowKeys.length === 0) {
+      message.warning('Please select items to delete')
+      return
+    }
+
+    const confirmDelete = window.confirm(
+      `Are you sure you want to delete ${selectedRowKeys.length} item(s)? This action cannot be undone.`
+    )
+    
+    if (!confirmDelete) return
+
+    setDeleteLoading(true)
+    const ids = selectedRowKeys.map(key => String(key))
+    
+    const response = await apiClient.deletePromptValidations(ids)
+    setDeleteLoading(false)
+
+    if (response.data) {
+      const { deleted_count, failed_count } = response.data
+      message.success(`Deleted ${deleted_count} item(s)`)
+      if (failed_count > 0) {
+        message.warning(`Failed to delete ${failed_count} item(s)`)
+      }
+      setSelectedRowKeys([])
+      loadHistory(1)
+    } else if (response.error) {
+      message.error(response.error)
     }
   }
 
@@ -208,13 +242,24 @@ export default function PromptValidatorPage() {
         <Card 
           title="History"
           extra={
-            <Button 
-              icon={<ReloadOutlined />} 
-              onClick={() => loadHistory(historyData?.page || 1, historyData?.page_size || 10)}
-              loading={historyLoading}
-            >
-              Reload
-            </Button>
+            <Space>
+              {selectedRowKeys.length > 0 && (
+                <Button 
+                  danger 
+                  onClick={handleDeleteSelected}
+                  loading={deleteLoading}
+                >
+                  Delete Selected ({selectedRowKeys.length})
+                </Button>
+              )}
+              <Button 
+                icon={<ReloadOutlined />} 
+                onClick={() => loadHistory(historyData?.page || 1, historyData?.page_size || 10)}
+                loading={historyLoading}
+              >
+                Reload
+              </Button>
+            </Space>
           }
         >
           {historyError && (
@@ -225,7 +270,11 @@ export default function PromptValidatorPage() {
             dataSource={historyData?.items || []}
             columns={columns}
             loading={historyLoading}
-            rowKey={(record) => record.id || record.timestamp}
+            rowKey="id"
+            rowSelection={{
+              selectedRowKeys,
+              onChange: (keys) => setSelectedRowKeys(keys),
+            }}
             pagination={{
               current: historyData?.page || 1,
               pageSize: historyData?.page_size || 10,

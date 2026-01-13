@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Button, Card, Input, Tabs, Table, Space, Typography, message, Alert, Collapse, Tag, Progress } from 'antd'
+import { Button, Card, Input, Tabs, Table, Space, Typography, message, Alert, Collapse, Tag, Progress, Select } from 'antd'
 import { ReloadOutlined } from '@ant-design/icons'
 import PageLayout from '@/components/PageLayout'
 import { apiClient, ConversationSimulationResponse, BrowseResponse, ConversationMessage } from '@/lib/api-client'
@@ -32,6 +32,8 @@ export default function ConversationSimulationPage() {
   const [historyLoading, setHistoryLoading] = useState(false)
   const [historyData, setHistoryData] = useState<BrowseResponse | null>(null)
   const [historyError, setHistoryError] = useState('')
+  const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([])
+  const [deleteLoading, setDeleteLoading] = useState(false)
 
   // Batch Simulation State
   const [batchItems, setBatchItems] = useState<BatchItem[]>([])
@@ -39,6 +41,8 @@ export default function ConversationSimulationPage() {
   const [batchProgress, setBatchProgress] = useState(0)
   const [currentBatchIndex, setCurrentBatchIndex] = useState(-1)
   const [batchJsonInput, setBatchJsonInput] = useState('')
+  const [stopBatchRequested, setStopBatchRequested] = useState(false)
+  const [batchDelay, setBatchDelay] = useState(5)
 
   const loadBatchItemsFromText = () => {
     if (!batchJsonInput.trim()) {
@@ -84,15 +88,24 @@ export default function ConversationSimulationPage() {
     }
   }
 
+  const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
+
   const runBatchSimulation = async () => {
     if (batchItems.length === 0) return
     
     setBatchLoading(true)
     setBatchProgress(0)
+    setStopBatchRequested(false)
     
     const newItems = [...batchItems]
     
     for (let i = 0; i < newItems.length; i++) {
+      // Check if stop was requested
+      if (stopBatchRequested) {
+        message.info('Batch simulation stopped by user.')
+        break
+      }
+
       setCurrentBatchIndex(i)
       newItems[i].status = 'running'
       setBatchItems([...newItems])
@@ -118,16 +131,26 @@ export default function ConversationSimulationPage() {
       
       setBatchItems([...newItems])
       setBatchProgress(Math.round(((i + 1) / newItems.length) * 100))
+      
+      // Add delay between simulations (except after the last one)
+      if (i < newItems.length - 1 && !stopBatchRequested) {
+        await sleep(batchDelay * 1000)
+      }
     }
     
     setBatchLoading(false)
     setCurrentBatchIndex(-1)
+    setStopBatchRequested(false)
     message.success('Batch simulation completed!')
     
     // Refresh history if we're on that tab or to keep it updated
     if (historyData) {
       loadHistory(1)
     }
+  }
+
+  const handleStopBatch = () => {
+    setStopBatchRequested(true)
   }
 
   const loadHistory = async (page: number = 1, pageSize: number = 10) => {
@@ -138,9 +161,43 @@ export default function ConversationSimulationPage() {
     
     if (response.data) {
       setHistoryData(response.data)
+      setSelectedRowKeys([])
     } else if (response.error) {
       setHistoryError(response.error)
       message.error('Failed to load history')
+    }
+  }
+
+  const handleDeleteSelected = async () => {
+    if (selectedRowKeys.length === 0) {
+      message.warning('Please select items to delete')
+      return
+    }
+
+    const confirmDelete = window.confirm(
+      `Are you sure you want to delete ${selectedRowKeys.length} conversation(s)? This action cannot be undone.`
+    )
+    
+    if (!confirmDelete) return
+
+    setDeleteLoading(true)
+    const conversationIds = selectedRowKeys.map(key => String(key))
+    
+    const response = await apiClient.deleteConversationSimulations(conversationIds)
+    setDeleteLoading(false)
+
+    if (response.data) {
+      const { deleted_count, failed_count } = response.data
+      message.success(`Deleted ${deleted_count} conversation(s)`)
+      
+      if (failed_count > 0) {
+        message.warning(`Failed to delete ${failed_count} item(s)`)
+      }
+      
+      setSelectedRowKeys([])
+      loadHistory(1)
+    } else if (response.error) {
+      message.error(response.error)
     }
   }
 
@@ -531,6 +588,30 @@ export default function ConversationSimulationPage() {
                 disabled={batchLoading}
               />
 
+              <div>
+                <Text strong>Delay Between Simulations (seconds)</Text>
+                <Select
+                  value={batchDelay}
+                  onChange={(value) => setBatchDelay(value)}
+                  disabled={batchLoading}
+                  style={{ width: 200, marginLeft: 12 }}
+                  options={[
+                    { value: 5, label: '5 seconds' },
+                    { value: 10, label: '10 seconds' },
+                    { value: 15, label: '15 seconds' },
+                    { value: 20, label: '20 seconds' },
+                    { value: 25, label: '25 seconds' },
+                    { value: 30, label: '30 seconds' },
+                    { value: 35, label: '35 seconds' },
+                    { value: 40, label: '40 seconds' },
+                    { value: 45, label: '45 seconds' },
+                    { value: 50, label: '50 seconds' },
+                    { value: 55, label: '55 seconds' },
+                    { value: 60, label: '60 seconds' },
+                  ]}
+                />
+              </div>
+
               <Space wrap>
                 <Button 
                   size="large" 
@@ -548,6 +629,15 @@ export default function ConversationSimulationPage() {
                 >
                   {batchLoading ? 'Running Batch...' : 'Start Batch Simulation'}
                 </Button>
+                {batchLoading && (
+                  <Button 
+                    danger 
+                    size="large"
+                    onClick={handleStopBatch}
+                  >
+                    Stop Batch
+                  </Button>
+                )}
               </Space>
 
               {batchLoading && (
@@ -601,13 +691,24 @@ export default function ConversationSimulationPage() {
         <Card 
           title="Simulation History"
           extra={
-            <Button 
-              icon={<ReloadOutlined />} 
-              onClick={() => loadHistory(historyData?.page || 1, historyData?.page_size || 10)}
-              loading={historyLoading}
-            >
-              Reload
-            </Button>
+            <Space>
+              {selectedRowKeys.length > 0 && (
+                <Button 
+                  danger 
+                  onClick={handleDeleteSelected}
+                  loading={deleteLoading}
+                >
+                  Delete Selected ({selectedRowKeys.length})
+                </Button>
+              )}
+              <Button 
+                icon={<ReloadOutlined />} 
+                onClick={() => loadHistory(historyData?.page || 1, historyData?.page_size || 10)}
+                loading={historyLoading}
+              >
+                Reload
+              </Button>
+            </Space>
           }
         >
           {historyError && (
@@ -618,7 +719,11 @@ export default function ConversationSimulationPage() {
             dataSource={historyData?.items || []}
             columns={columns}
             loading={historyLoading}
-            rowKey={(record) => record.id || record.start_time}
+            rowKey={(record) => record.conversation_id || record.id || record.start_time}
+            rowSelection={{
+              selectedRowKeys,
+              onChange: (keys) => setSelectedRowKeys(keys),
+            }}
             pagination={{
               current: historyData?.page || 1,
               pageSize: historyData?.page_size || 10,

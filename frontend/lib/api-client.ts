@@ -229,6 +229,13 @@ class ApiClient {
     );
   }
 
+  async deletePersonaDistributions(ids: string[]): Promise<ApiResponse<{ deleted_count: number; failed_count: number; errors: string[] }>> {
+    return this.request('/api/v1/persona-distribution/delete', {
+      method: 'POST',
+      body: JSON.stringify(ids),
+    });
+  }
+
   async prepareEvals(
     selectedRunIds: string[]
   ): Promise<ApiResponse<PrepareEvalsResponse>> {
@@ -267,6 +274,13 @@ class ApiClient {
     );
   }
 
+  async deletePersonaGenerations(ids: string[]): Promise<ApiResponse<{ deleted_count: number; failed_count: number; errors: string[] }>> {
+    return this.request('/api/v1/persona-generator/delete', {
+      method: 'POST',
+      body: JSON.stringify(ids),
+    });
+  }
+
   // General Prompt APIs
   async generateGeneralResponse(
     prompt: string
@@ -288,6 +302,13 @@ class ApiClient {
     );
   }
 
+  async deleteGeneralPrompts(ids: string[]): Promise<ApiResponse<{ deleted_count: number; failed_count: number; errors: string[] }>> {
+    return this.request('/api/v1/general-prompt/delete', {
+      method: 'POST',
+      body: JSON.stringify(ids),
+    });
+  }
+
   // Prompt Validator APIs
   async validatePrompt(
     prompt: string
@@ -307,6 +328,13 @@ class ApiClient {
     return this.request<BrowseResponse>(
       `/api/v1/prompt-validator/browse?page=${page}&page_size=${pageSize}&order_by=${orderBy}&order_direction=${orderDirection}`
     );
+  }
+
+  async deletePromptValidations(ids: string[]): Promise<ApiResponse<{ deleted_count: number; failed_count: number; errors: string[] }>> {
+    return this.request('/api/v1/prompt-validator/delete', {
+      method: 'POST',
+      body: JSON.stringify(ids),
+    });
   }
 
   // Conversation Simulation APIs
@@ -333,6 +361,18 @@ class ApiClient {
   ): Promise<ApiResponse<BrowseResponse>> {
     return this.request<BrowseResponse>(
       `/api/v1/conversation-simulation/browse?page=${page}&page_size=${pageSize}&order_by=${orderBy}&order_direction=${orderDirection}`
+    );
+  }
+
+  async deleteConversationSimulations(
+    conversationIds: string[]
+  ): Promise<ApiResponse<{ deleted_count: number; failed_count: number; errors: string[] }>> {
+    return this.request<{ deleted_count: number; failed_count: number; errors: string[] }>(
+      '/api/v1/conversation-simulation/delete',
+      {
+        method: 'POST',
+        body: JSON.stringify(conversationIds),
+      }
     );
   }
 }

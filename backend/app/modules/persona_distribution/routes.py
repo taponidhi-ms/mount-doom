@@ -108,7 +108,35 @@ async def browse_persona_distributions(
     except Exception as e:
         logger.error("Error browsing persona distributions", error=str(e), exc_info=True)
         raise HTTPException(status_code=500, detail=f"Error browsing persona distributions: {str(e)}")
+@router.post("/delete")
+async def delete_persona_distributions(ids: list[str]):
+    """Delete persona distribution records by their IDs."""
+    logger.info("Received delete request", count=len(ids))
+    if not ids:
+        raise HTTPException(status_code=400, detail="No IDs provided")
 
+    try:
+        container = await cosmos_db_service.ensure_container(
+            cosmos_db_service.PERSONA_DISTRIBUTION_CONTAINER
+        )
+        
+        deleted_count = 0
+        errors = []
+        
+        for item_id in ids:
+            try:
+                container.delete_item(item=item_id, partition_key=item_id)
+                deleted_count += 1
+            except Exception as e:
+                errors.append(f"Failed to delete {item_id}: {str(e)}")
+                logger.warning(f"Failed to delete {item_id}", error=str(e))
+        
+        logger.info("Delete operation completed", deleted=deleted_count, failed=len(errors))
+        return {"deleted_count": deleted_count, "failed_count": len(errors), "errors": errors}
+    
+    except Exception as e:
+        logger.error("Error deleting persona distributions", error=str(e), exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Error deleting: {str(e)}")
 @router.post("/prepare-evals", response_model=PrepareEvalsResponse)
 async def prepare_evals(request: PrepareEvalsRequest):
     """

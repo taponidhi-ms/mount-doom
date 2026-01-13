@@ -19,6 +19,8 @@ export default function PersonaDistributionPage() {
   const [historyLoading, setHistoryLoading] = useState(false)
   const [historyData, setHistoryData] = useState<BrowseResponse | null>(null)
   const [historyError, setHistoryError] = useState('')
+  const [selectedHistoryRowKeys, setSelectedHistoryRowKeys] = useState<React.Key[]>([])
+  const [deleteLoading, setDeleteLoading] = useState(false)
 
   // Evals state
   const [evalsLoading, setEvalsLoading] = useState(false)
@@ -37,9 +39,41 @@ export default function PersonaDistributionPage() {
     
     if (response.data) {
       setHistoryData(response.data)
+      setSelectedHistoryRowKeys([])
     } else if (response.error) {
       setHistoryError(response.error)
       message.error('Failed to load history')
+    }
+  }
+
+  const handleDeleteSelected = async () => {
+    if (selectedHistoryRowKeys.length === 0) {
+      message.warning('Please select items to delete')
+      return
+    }
+
+    const confirmDelete = window.confirm(
+      `Are you sure you want to delete ${selectedHistoryRowKeys.length} item(s)? This action cannot be undone.`
+    )
+    
+    if (!confirmDelete) return
+
+    setDeleteLoading(true)
+    const ids = selectedHistoryRowKeys.map(key => String(key))
+    
+    const response = await apiClient.deletePersonaDistributions(ids)
+    setDeleteLoading(false)
+
+    if (response.data) {
+      const { deleted_count, failed_count } = response.data
+      message.success(`Deleted ${deleted_count} item(s)`)
+      if (failed_count > 0) {
+        message.warning(`Failed to delete ${failed_count} item(s)`)
+      }
+      setSelectedHistoryRowKeys([])
+      loadHistory(1)
+    } else if (response.error) {
+      message.error(response.error)
     }
   }
 
@@ -299,13 +333,24 @@ export default function PersonaDistributionPage() {
         <Card 
           title="History"
           extra={
-            <Button 
-              icon={<ReloadOutlined />} 
-              onClick={() => loadHistory(historyData?.page || 1, historyData?.page_size || 10)}
-              loading={historyLoading}
-            >
-              Reload
-            </Button>
+            <Space>
+              {selectedHistoryRowKeys.length > 0 && (
+                <Button 
+                  danger 
+                  onClick={handleDeleteSelected}
+                  loading={deleteLoading}
+                >
+                  Delete Selected ({selectedHistoryRowKeys.length})
+                </Button>
+              )}
+              <Button 
+                icon={<ReloadOutlined />} 
+                onClick={() => loadHistory(historyData?.page || 1, historyData?.page_size || 10)}
+                loading={historyLoading}
+              >
+                Reload
+              </Button>
+            </Space>
           }
         >
           {historyError && (
@@ -316,7 +361,11 @@ export default function PersonaDistributionPage() {
             dataSource={historyData?.items || []}
             columns={columns}
             loading={historyLoading}
-            rowKey={(record) => record.id || record.timestamp}
+            rowKey="id"
+            rowSelection={{
+              selectedRowKeys: selectedHistoryRowKeys,
+              onChange: (keys) => setSelectedHistoryRowKeys(keys),
+            }}
             pagination={{
               current: historyData?.page || 1,
               pageSize: historyData?.page_size || 10,
