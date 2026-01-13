@@ -89,6 +89,15 @@ export interface PromptValidatorRequest {
 
 export interface PromptValidatorResponse extends BaseResponse {}
 
+// Transcript Parser
+export interface TranscriptParserRequest {
+  transcript: string;
+}
+
+export interface TranscriptParserResponse extends BaseResponse {
+  parsed_output?: any;
+}
+
 // Conversation Simulation
 export interface ConversationSimulationRequest {
   customer_intent: string;
@@ -304,6 +313,34 @@ class ApiClient {
 
   async deletePromptValidations(ids: string[]): Promise<ApiResponse<{ deleted_count: number; failed_count: number; errors: string[] }>> {
     return this.request('/api/v1/prompt-validator/delete', {
+      method: 'POST',
+      body: JSON.stringify(ids),
+    });
+  }
+
+  // Transcript Parser APIs
+  async parseTranscript(
+    transcript: string
+  ): Promise<ApiResponse<TranscriptParserResponse>> {
+    return this.request<TranscriptParserResponse>('/api/v1/transcript-parser/parse', {
+      method: 'POST',
+      body: JSON.stringify({ transcript }),
+    });
+  }
+
+  async browseTranscripts(
+    page: number = 1,
+    pageSize: number = 10,
+    orderBy: string = 'timestamp',
+    orderDirection: 'ASC' | 'DESC' = 'DESC'
+  ): Promise<ApiResponse<BrowseResponse>> {
+    return this.request<BrowseResponse>(
+      `/api/v1/transcript-parser/browse?page=${page}&page_size=${pageSize}&order_by=${orderBy}&order_direction=${orderDirection}`
+    );
+  }
+
+  async deleteTranscripts(ids: string[]): Promise<ApiResponse<{ deleted_count: number; failed_count: number; errors: string[] }>> {
+    return this.request('/api/v1/transcript-parser/delete', {
       method: 'POST',
       body: JSON.stringify(ids),
     });

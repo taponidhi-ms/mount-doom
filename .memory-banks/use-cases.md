@@ -136,7 +136,7 @@
 
 ---
 
-## Use Case 3: Prompt Validator
+## Use Case 4: Prompt Validator
 
 **Purpose**: Validate simulation prompts to ensure quality and effectiveness.
 
@@ -171,7 +171,62 @@
 
 ---
 
-## Use Case 5: Conversation Simulation
+## Use Case 5: Transcript Parser
+
+**Purpose**: Parse customer-representative transcripts to extract intent, subject, and sentiment.
+
+**Workflow**:
+1. User pastes or enters a transcript from a customer-representative conversation
+2. Backend sends transcript to TranscriptParserAgent via Azure AI Projects
+3. TranscriptParserAgent analyzes the conversation and extracts:
+   - Intent: What the customer wants
+   - Subject: Main topic or issue
+   - Sentiment: Emotional tone (calm, curious, angry, unkind, etc.)
+4. Backend parses JSON output and stores both raw and parsed versions
+5. Response stored in Cosmos DB `transcript_parser` container with complete agent details
+6. Frontend displays parsed result with extracted metadata
+
+**Agent**:
+- TranscriptParserAgent (fixed agent name)
+- Instructions defined in `app/modules/transcript_parser/instructions.py`
+- Instruction set focuses on analyzing customer-representative conversations
+- Automatic versioning based on instruction hash
+- Model: gpt-4 (default from settings)
+
+**Output Format**:
+```json
+{
+  "intent": "<string>",
+  "subject": "<string>",
+  "sentiment": "<string>"
+}
+```
+
+**Metrics Tracked**:
+- Tokens used
+- Time taken
+- Start/end timestamps
+- Agent details (name, version, instructions, model)
+- Parsed JSON output (if parsing successful)
+
+**Database Schema**:
+- Document ID: conversation_id from Azure AI
+- Fields: transcript, response, parsed_output, tokens_used, time_taken_ms, agent_details, timestamp
+
+**Browse API**:
+- GET `/api/v1/transcript-parser/browse`
+- Supports pagination and ordering
+- Returns list of past transcript parsing records
+
+**Sample Transcripts**:
+- Phone upgrade inquiries
+- Device troubleshooting calls
+- Return/refund requests
+- Account management conversations
+
+---
+
+## Use Case 6: Conversation Simulation
 
 **Purpose**: Simulate multi-turn conversations between customer service representative and customer.
 

@@ -35,6 +35,7 @@ class CosmosDBService:
     GENERAL_PROMPT_CONTAINER = "general_prompt"
     PROMPT_VALIDATOR_CONTAINER = "prompt_validator"
     CONVERSATION_SIMULATION_CONTAINER = "conversation_simulation"
+    TRANSCRIPT_PARSER_CONTAINER = "transcript_parser"
     PERSONA_DISTRIBUTION_EVALS_CONTAINER = "persona_distribution_evals"
     CONVERSATION_SIMULATION_EVALS_CONTAINER = "conversation_simulation_evals"
     

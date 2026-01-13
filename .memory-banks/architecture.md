@@ -19,7 +19,6 @@ backend/app/
 ├── modules/             # Feature modules (Vertical Slices)
 │   ├── conversation_simulation/
 │   │   ├── conversation_simulation_service.py
-│   │   ├── conversation_simulation_evals_service.py
 │   │   ├── models.py    # Module-specific API and DB models
 │   │   ├── routes.py    # Module-specific API routes
 │   │   ├── agents.py    # Agent creation logic
@@ -31,7 +30,6 @@ backend/app/
 │   │   └── agents.py
 │   ├── persona_distribution/
 │   │   ├── persona_distribution_service.py
-│   │   ├── persona_distribution_evals_service.py
 │   │   ├── models.py
 │   │   ├── routes.py
 │   │   ├── agents.py
@@ -44,6 +42,12 @@ backend/app/
 │   │   └── instructions.py
 │   ├── prompt_validator/
 │   │   ├── prompt_validator_service.py
+│   │   ├── models.py
+│   │   ├── routes.py
+│   │   ├── agents.py
+│   │   └── instructions.py
+│   ├── transcript_parser/
+│   │   ├── transcript_parser_service.py
 │   │   ├── models.py
 │   │   ├── routes.py
 │   │   ├── agents.py
@@ -97,6 +101,7 @@ Each service handles complete business logic for its use case:
 - **PersonaGeneratorService**: Generates exact personas. Uses `create_persona_generator_agent()`.
 - **GeneralPromptService**: Handles general prompts. Uses `create_general_prompt_agent()`.
 - **PromptValidatorService**: Validates prompts. Uses `create_prompt_validator_agent()`.
+- **TranscriptParserService**: Parses customer-representative transcripts. Uses `create_transcript_parser_agent()`.
 - **ConversationSimulationService**: Multi-agent conversation orchestration (C1/C2). Uses `create_c1_agent()` and `create_c2_agent()`.
 - **PersonaDistributionEvalsService**: Prepares CXA AI Evals datasets from persona distribution runs.
 - **ConversationSimulationEvalsService**: Prepares CXA AI Evals datasets from conversation simulation runs.

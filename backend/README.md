@@ -17,7 +17,9 @@ backend/
 │   │   ├── general_prompt/
 │   │   ├── persona_distribution/
 │   │   ├── persona_generator/
-│   │   └── prompt_validator/
+│   │   ├── prompt_validator/
+│   │   ├── transcript_parser/
+│   │   └── system/
 │   └── main.py             # FastAPI application entry point
 ├── tests/                   # Test files
 ├── requirements.txt         # Python dependencies
@@ -50,10 +52,12 @@ All agent instructions are defined in the `app/modules/*/instructions.py` files:
 
 ### Use Cases
 
-1. **Persona Generation** - Generate personas using PersonaAgent with your choice of model
-2. **General Prompt** - Get responses for any general prompt using LLM models directly (no agent)
-3. **Prompt Validator** - Validate simulation prompts using PromptValidatorAgent
-4. **Conversation Simulation** - Multi-turn conversation between C1Agent (service rep) and C2Agent (customer)
+1. **Persona Distribution** - Generate persona distributions from simulation prompts
+2. **Persona Generation** - Generate exact customer personas from natural language descriptions
+3. **General Prompt** - Get responses for any general prompt using LLM models directly (no agent)
+4. **Prompt Validator** - Validate simulation prompts using PromptValidatorAgent
+5. **Transcript Parser** - Parse customer-representative transcripts to extract intent, subject, and sentiment
+6. **Conversation Simulation** - Multi-turn conversation between C1Agent (service rep) and C2Agent (customer)
 
 ### Key Capabilities
 

@@ -4,9 +4,11 @@ Next.js frontend for the Mount Doom AI Agent Simulation platform. Built with Typ
 
 ## Features
 
-- **Persona Generation** - Interactive interface for generating personas from simulation prompts
+- **Persona Distribution Generator** - Generate persona distributions from simulation prompts
+- **Persona Generator** - Generate exact customer personas with metadata
 - **General Prompt** - Direct interaction with LLM models for general-purpose responses
 - **Prompt Validator** - Validation interface for simulation prompts
+- **Transcript Parser** - Parse transcripts to extract intent, subject, and sentiment
 - **Conversation Simulation** - Complex multi-agent conversation simulation with real-time tracking
 
 ## Tech Stack
@@ -67,16 +69,17 @@ npm start
 ```
 frontend/
 ├── app/                              # Next.js App Router pages
-│   ├── persona-generation/          # Persona generation page
+│   ├── persona-distribution/        # Persona distribution page
+│   ├── persona-generator/           # Persona generator page
 │   ├── general-prompt/              # General prompt page
 │   ├── prompt-validator/            # Prompt validator page
+│   ├── transcript-parser/           # Transcript parser page
 │   ├── conversation-simulation/     # Conversation simulation page
 │   ├── layout.tsx                   # Root layout
 │   ├── page.tsx                     # Home page
 │   └── globals.css                  # Global styles
 ├── components/                       # React components
-│   ├── ui/                          # shadcn/ui components
-│   └── result-display.tsx           # Shared result display component
+│   └── PageLayout.tsx               # Shared page layout component
 ├── lib/                             # Utility libraries
 │   ├── api-client.ts                # API client for backend communication
 │   └── utils.ts                     # Utility functions
