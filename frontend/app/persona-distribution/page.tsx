@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { Button, Card, Input, Tabs, Table, Space, Typography, message, Alert, Progress, Select, Tag } from 'antd'
 import { ReloadOutlined, DownloadOutlined } from '@ant-design/icons'
 import PageLayout from '@/components/PageLayout'
-import { apiClient, PersonaDistributionResponse, BrowseResponse, EvalsDataResponse } from '@/lib/api-client'
+import { apiClient, PersonaDistributionResponse, BrowseResponse } from '@/lib/api-client'
 
 const { TextArea } = Input
 const { Paragraph, Text } = Typography
@@ -38,15 +38,6 @@ export default function PersonaDistributionPage() {
   const [batchJsonInput, setBatchJsonInput] = useState('')
   const [stopBatchRequested, setStopBatchRequested] = useState(false)
   const [batchDelay, setBatchDelay] = useState(5)
-
-  // Evals state
-  const [evalsLoading, setEvalsLoading] = useState(false)
-  const [evalsData, setEvalsData] = useState<BrowseResponse | null>(null)
-  const [evalsError, setEvalsError] = useState('')
-  const [selectedRunIds, setSelectedRunIds] = useState<string[]>([])
-  const [preparingEvals, setPreparingEvals] = useState(false)
-  const [preparedEvals, setPreparedEvals] = useState<EvalsDataResponse | null>(null)
-  const [downloadingEvalsZip, setDownloadingEvalsZip] = useState(false)
 
   const loadBatchItemsFromText = () => {
     if (!batchJsonInput.trim()) {
@@ -201,67 +192,27 @@ export default function PersonaDistributionPage() {
     }
   }
 
-  const loadEvalsHistory = async (page: number = 1, pageSize: number = 10) => {
-    setEvalsLoading(true)
-    setEvalsError('')
-    const response = await apiClient.browsePersonaDistributions(page, pageSize)
-    setEvalsLoading(false)
-    
-    if (response.data) {
-      setEvalsData(response.data)
-    } else if (response.error) {
-      setEvalsError(response.error)
-      message.error('Failed to load runs for evals')
-    }
-  }
-
-  const handlePrepareEvals = async () => {
-    if (selectedRunIds.length === 0) {
-      message.warning('Please select at least one run to prepare evals')
+  const handleDownloadConversations = async () => {
+    if (selectedHistoryRowKeys.length === 0) {
+      message.warning('Please select conversations to download')
       return
     }
 
-    setPreparingEvals(true)
-    setPreparedEvals(null)
-
-    const response = await apiClient.prepareEvals(selectedRunIds)
-    setPreparingEvals(false)
-
-    if (response.data) {
-      message.success(response.data.message)
-      
-      // Fetch the prepared evals data
-      const evalsResponse = await apiClient.getLatestEvals()
-      if (evalsResponse.data) {
-        setPreparedEvals(evalsResponse.data)
-      }
-    } else if (response.error) {
-      message.error('Failed to prepare evals: ' + response.error)
-    }
-  }
-
-  const downloadEvalsZip = async () => {
-    if (!preparedEvals?.evals_id) {
-      message.error('No evals ID available to download')
-      return
-    }
-
-    setDownloadingEvalsZip(true)
-    const response = await apiClient.downloadEvalsZip(preparedEvals.evals_id)
-    setDownloadingEvalsZip(false)
+    const ids = selectedHistoryRowKeys.map(key => String(key))
+    const response = await apiClient.downloadPersonaDistributions(ids)
 
     if (response.data) {
       const url = URL.createObjectURL(response.data)
       const link = document.createElement('a')
       link.href = url
-      link.download = `${preparedEvals.evals_id}.zip`
+      link.download = `persona_distributions_${new Date().toISOString().replace(/[:.]/g, '-')}.json`
       document.body.appendChild(link)
       link.click()
       document.body.removeChild(link)
       URL.revokeObjectURL(url)
       message.success('Download started')
     } else if (response.error) {
-      message.error('Failed to download zip: ' + response.error)
+      message.error('Failed to download: ' + response.error)
     }
   }
 
@@ -647,13 +598,22 @@ export default function PersonaDistributionPage() {
           extra={
             <Space>
               {selectedHistoryRowKeys.length > 0 && (
-                <Button 
-                  danger 
-                  onClick={handleDeleteSelected}
-                  loading={deleteLoading}
-                >
-                  Delete Selected ({selectedHistoryRowKeys.length})
-                </Button>
+                <>
+                  <Button 
+                    type="primary"
+                    icon={<DownloadOutlined />}
+                    onClick={handleDownloadConversations}
+                  >
+                    Download Conversations ({selectedHistoryRowKeys.length})
+                  </Button>
+                  <Button 
+                    danger 
+                    onClick={handleDeleteSelected}
+                    loading={deleteLoading}
+                  >
+                    Delete Selected ({selectedHistoryRowKeys.length})
+                  </Button>
+                </>
               )}
               <Button 
                 icon={<ReloadOutlined />} 
@@ -732,148 +692,6 @@ export default function PersonaDistributionPage() {
         </Card>
       ),
     },
-    {
-      key: 'evals',
-      label: 'Prepare for Evals',
-      children: (
-        <Space direction="vertical" size="large" style={{ width: '100%' }}>
-          <Card 
-            title="Select Runs for Evals Preparation"
-            extra={
-              <Button 
-                icon={<ReloadOutlined />} 
-                onClick={() => loadEvalsHistory(evalsData?.page || 1, evalsData?.page_size || 10)}
-                loading={evalsLoading}
-              >
-                Reload
-              </Button>
-            }
-          >
-            {evalsError && (
-              <Alert message="Error" description={evalsError} type="error" showIcon style={{ marginBottom: 16 }} />
-            )}
-            
-            <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-              <Alert
-                message="About Evals Preparation"
-                description="Select multiple persona distribution runs below to combine them into a CXA AI Evals dataset. The system will generate evaluation config and input data files that you can download for use in the CXA AI Evals framework."
-                type="info"
-                showIcon
-                style={{ marginBottom: 16 }}
-              />
-              
-              <Table
-                dataSource={evalsData?.items || []}
-                columns={columns}
-                loading={evalsLoading}
-                rowKey={(record) => record.id || record.timestamp}
-                rowSelection={{
-                  selectedRowKeys: selectedRunIds,
-                  onChange: (selectedKeys) => setSelectedRunIds(selectedKeys as string[]),
-                  getCheckboxProps: (record) => ({
-                    name: record.id,
-                  }),
-                }}
-                pagination={{
-                  current: evalsData?.page || 1,
-                  pageSize: evalsData?.page_size || 10,
-                  total: evalsData?.total_count || 0,
-                  showSizeChanger: true,
-                  showTotal: (total) => `Total ${total} items`,
-                  onChange: (page, pageSize) => loadEvalsHistory(page, pageSize),
-                }}
-              />
-              
-              <Button
-                type="primary"
-                size="large"
-                onClick={handlePrepareEvals}
-                loading={preparingEvals}
-                disabled={selectedRunIds.length === 0}
-                block
-                style={{ marginTop: 16 }}
-              >
-                {preparingEvals ? 'Preparing Evals...' : `Prepare Evals from ${selectedRunIds.length} Selected Run(s)`}
-              </Button>
-            </Space>
-          </Card>
-
-          {preparedEvals && (
-            <Card title="Prepared Evals Data" style={{ marginTop: 16 }}>
-              <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-                <Alert
-                  message="Evals Prepared Successfully!"
-                  description={`Successfully prepared evals from ${preparedEvals.source_run_ids.length} runs with ${preparedEvals.cxa_evals_input_data.conversations?.length || 0} conversations. Download the zip below to use in CXA AI Evals framework.`}
-                  type="success"
-                  showIcon
-                />
-                
-                <Space size="middle" wrap style={{ width: '100%', justifyContent: 'center' }}>
-                  <Button
-                    type="primary"
-                    icon={<DownloadOutlined />}
-                    size="large"
-                    onClick={downloadEvalsZip}
-                    loading={downloadingEvalsZip}
-                  >
-                    Download ZIP
-                  </Button>
-                </Space>
-
-                <div style={{ marginTop: 16 }}>
-                  <Text strong>Evals ID:</Text> <Text code>{preparedEvals.evals_id}</Text>
-                </div>
-                
-                <div>
-                  <Text strong>Timestamp:</Text> <Text>{new Date(preparedEvals.timestamp).toLocaleString()}</Text>
-                </div>
-                
-                <div>
-                  <Text strong>Source Run IDs:</Text>
-                  <ul style={{ marginTop: 8 }}>
-                    {preparedEvals.source_run_ids.map(id => (
-                      <li key={id}><Text code>{id}</Text></li>
-                    ))}
-                  </ul>
-                </div>
-
-                <div>
-                  <Text strong>Config Preview:</Text>
-                  <pre style={{ 
-                    background: '#f5f5f5', 
-                    padding: '12px', 
-                    borderRadius: '4px',
-                    maxHeight: '300px',
-                    overflow: 'auto',
-                    marginTop: 8
-                  }}>
-                    {JSON.stringify(preparedEvals.cxa_evals_config, null, 2)}
-                  </pre>
-                </div>
-
-                <div>
-                  <Text strong>Input Data Preview (first 3 conversations):</Text>
-                  <pre style={{ 
-                    background: '#e6f7ff', 
-                    padding: '12px', 
-                    borderRadius: '4px',
-                    maxHeight: '300px',
-                    overflow: 'auto',
-                    marginTop: 8
-                  }}>
-                    {JSON.stringify(
-                      { conversations: preparedEvals.cxa_evals_input_data.conversations?.slice(0, 3) || [] },
-                      null,
-                      2
-                    )}
-                  </pre>
-                </div>
-              </Space>
-            </Card>
-          )}
-        </Space>
-      ),
-    },
   ]
 
   return (
@@ -888,9 +706,6 @@ export default function PersonaDistributionPage() {
         onChange={(key) => {
           if (key === 'history' && !historyData) {
             loadHistory(1)
-          }
-          if (key === 'evals' && !evalsData) {
-            loadEvalsHistory(1)
           }
         }}
       />

@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { Button, Card, Input, Tabs, Table, Space, Typography, message, Alert, Collapse, Tag, Progress, Select } from 'antd'
-import { ReloadOutlined } from '@ant-design/icons'
+import { ReloadOutlined, DownloadOutlined } from '@ant-design/icons'
 import PageLayout from '@/components/PageLayout'
 import { apiClient, ConversationSimulationResponse, BrowseResponse, ConversationMessage } from '@/lib/api-client'
 
@@ -198,6 +198,30 @@ export default function ConversationSimulationPage() {
       loadHistory(1)
     } else if (response.error) {
       message.error(response.error)
+    }
+  }
+
+  const handleDownloadConversations = async () => {
+    if (selectedRowKeys.length === 0) {
+      message.warning('Please select conversations to download')
+      return
+    }
+
+    const conversationIds = selectedRowKeys.map(key => String(key))
+    const response = await apiClient.downloadConversationSimulations(conversationIds)
+
+    if (response.data) {
+      const url = URL.createObjectURL(response.data)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `conversation_simulations_${new Date().toISOString().replace(/[:.]/g, '-')}.json`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      URL.revokeObjectURL(url)
+      message.success('Download started')
+    } else if (response.error) {
+      message.error('Failed to download: ' + response.error)
     }
   }
 
@@ -693,13 +717,22 @@ export default function ConversationSimulationPage() {
           extra={
             <Space>
               {selectedRowKeys.length > 0 && (
-                <Button 
-                  danger 
-                  onClick={handleDeleteSelected}
-                  loading={deleteLoading}
-                >
-                  Delete Selected ({selectedRowKeys.length})
-                </Button>
+                <>
+                  <Button 
+                    type="primary"
+                    icon={<DownloadOutlined />}
+                    onClick={handleDownloadConversations}
+                  >
+                    Download Conversations ({selectedRowKeys.length})
+                  </Button>
+                  <Button 
+                    danger 
+                    onClick={handleDeleteSelected}
+                    loading={deleteLoading}
+                  >
+                    Delete Selected ({selectedRowKeys.length})
+                  </Button>
+                </>
               )}
               <Button 
                 icon={<ReloadOutlined />} 
