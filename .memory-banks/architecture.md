@@ -205,6 +205,7 @@ Pages:
 - `/persona-distribution` - Generate and view persona distributions
 - `/general-prompt` - Generate and view general prompts
 - `/prompt-validator` - Validate and view prompt validations
+- `/transcript-parser` - Parse customer–representative transcripts and view parsed results
 - `/conversation-simulation` - Simulate and view conversations
   - Special feature: Simple form with customer intent, sentiment, and subject
 

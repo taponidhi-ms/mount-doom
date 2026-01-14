@@ -9,6 +9,7 @@ import {
   MessageOutlined, 
   CheckCircleOutlined, 
   CommentOutlined,
+  FileSearchOutlined,
   MenuFoldOutlined,
   MenuUnfoldOutlined
 } from '@ant-design/icons'
@@ -60,6 +61,11 @@ export default function PageLayout({
       key: '/general-prompt',
       icon: <MessageOutlined />,
       label: 'General Prompt',
+    },
+    {
+      key: '/transcript-parser',
+      icon: <FileSearchOutlined />,
+      label: 'Transcript Parser',
     },
     {
       key: '/prompt-validator',

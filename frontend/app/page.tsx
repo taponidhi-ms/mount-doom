@@ -8,6 +8,7 @@ import {
   MessageOutlined, 
   CheckCircleOutlined, 
   CommentOutlined,
+  FileSearchOutlined,
   ArrowRightOutlined
 } from '@ant-design/icons'
 import PageLayout from '@/components/PageLayout'
@@ -37,6 +38,12 @@ export default function Home() {
       href: '/general-prompt',
       icon: <MessageOutlined style={{ fontSize: '24px', color: colorPrimary }} />,
       description: 'Get responses for any general prompt using LLM models directly. Flexible AI assistance for various tasks.',
+    },
+    {
+      title: 'Transcript Parser',
+      href: '/transcript-parser',
+      icon: <FileSearchOutlined style={{ fontSize: '24px', color: colorPrimary }} />,
+      description: 'Parse customer–representative transcripts to extract intent, subject, and sentiment.',
     },
     {
       title: 'Prompt Validator',
