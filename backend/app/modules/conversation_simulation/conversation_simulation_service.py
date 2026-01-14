@@ -81,7 +81,18 @@ trigger:
       variable: Local.TurnCount
       value: 0
 
-    # Start Loop - C1 Turn
+    # Start Loop - C2 Turn
+    - kind: InvokeAzureAgent
+      id: c2_agent_turn
+      conversationId: "=System.ConversationId"
+      agent:
+        name: {c2_agent.agent_version_object.name}
+      input:
+        messages: "=Local.LatestMessage"
+      output:
+        messages: Local.LatestMessage
+
+    # C1 Agent Turn
     - kind: InvokeAzureAgent
       id: c1_agent_turn
       conversationId: "=System.ConversationId"
@@ -108,17 +119,6 @@ trigger:
               id: end_workflow_c1_end_call
       elseActions: []
 
-    # C2 Agent Turn
-    - kind: InvokeAzureAgent
-      id: c2_agent_turn
-      conversationId: "=System.ConversationId"
-      agent:
-        name: {c2_agent.agent_version_object.name}
-      input:
-        messages: "=Local.LatestMessage"
-      output:
-        messages: Local.LatestMessage
-
     # Increment Turn Count
     - kind: SetVariable
       id: increment_turn
@@ -137,7 +137,7 @@ trigger:
       elseActions:
         - kind: GotoAction
           id: loop_back
-          actionId: c1_agent_turn
+          actionId: c2_agent_turn
 """
 
         # Create Workflow Agent
