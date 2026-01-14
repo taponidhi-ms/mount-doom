@@ -4,16 +4,24 @@ This folder is for running CXA AI Evals locally using the CLI executable.
 
 ## Directory layout
 
-Put each eval run’s files under a use-case/agent folder and eval id folder.
-
-Example:
+Each agent has its own folder with `config/`, `input/`, and `output/` subdirectories:
 
 ```
 LocalEvalsRunner/
-  persona_generator_agent/
-    <eval_id>/
+  conversation_simulation_agent/
+    config/
       cxa_evals_config.json
-      cxa_evals_input_data.json
+    input/
+      <input_data_files>.json
+    output/
+      <eval_results>.json (git-ignored)
+  persona_generator_agent/
+    config/
+      cxa_evals_config.json
+    input/
+      <input_data_files>.json
+    output/
+      <eval_results>.json (git-ignored)
 ```
 
 ## How to run evals
@@ -28,17 +36,26 @@ Place it directly inside `LocalEvalsRunner/` (next to this README).
 
 ### 2) Prepare eval data
 
-For the eval you want to run, create a folder under `LocalEvalsRunner/` (see layout above) and put these files in that folder:
+For the eval you want to run, ensure the agent folder exists with proper structure:
 
-- `cxa_evals_config.json`
-- `cxa_evals_input_data.json`
+- Place `cxa_evals_config.json` in the agent's `config/` folder
+- Place input data JSON files in the agent's `input/` folder
+- The `output/` folder will be created automatically (and is git-ignored)
 
 ### 3) Execute
 
-Run from inside the `LocalEvalsRunner/` directory:
+Run from inside the `LocalEvalsRunner/` directory.
+
+**For Persona Generator Agent:**
 
 ```powershell
-.\Microsoft.CXA.AIEvals.Cli.exe .\cxa_evals_config.json
+.\Microsoft.CXA.AIEvals.Cli.exe .\persona_generator_agent\config\cxa_evals_config.json
+```
+
+**For Conversation Simulation Agent:**
+
+```powershell
+.\Microsoft.CXA.AIEvals.Cli.exe .\conversation_simulation_agent\config\cxa_evals_config.json
 ```
 
 ## Notes

@@ -2,7 +2,7 @@
   "team_name": "Omnichannel",
   "agent_name": "SimulationAgent",
   "source": {
-    "source_folder_path": "persona_generator_agent\\input\\persona_distributions_2026-01-13T12-43-41-517Z.json",
+    "source_folder_path": "conversation_simulation_agent\\input\\conversation_simulations_2026-01-13T12-45-04-196Z.json",
     "source_file_type": "json"
   },
   "eval_config": {
@@ -17,18 +17,24 @@
     "metric": "custom",
     "custom_rules": [
       {
-        "scenario_name": "persona_distribution_generation",
+        "scenario_name": "conversation_simulation",
         "rules": [
           {
-            "rule_name": "persona_relevance",
-            "rule_category": "Relevance",
-            "rule_description": "Generated personas must be relevant to the scenario described by the user.",
+            "rule_name": "persona_adherence",
+            "rule_category": "Conversationality",
+            "rule_description": "The customer(assistant) should maintain consistency with their assigned persona throughout the conversation.",
             "scoring_hint": ""
           },
           {
-            "rule_name": "persona_distribution",
-            "rule_category": "Accuracy",
-            "rule_description": "The generated personas should reflect a diverse and accurate distribution based on the user's specifications.",
+            "rule_name": "goal_pursuit",
+            "rule_category": "Usefulness",
+            "rule_description": "The customer(assistant) should actively work towards achieving their goal. The customer(assistant)'s messages should reflect their intent to accomplish this goal.",
+            "scoring_hint": ""
+          },
+          {
+            "rule_name": "topic_relevance",
+            "rule_category": "Relevance",
+            "rule_description": "The customer(assistant) should stay on topic and ask questions that are relevant to their goal. The customer(assistant) should not ask random, unrelated questions that have no connection to the conversation context or their stated problem.",
             "scoring_hint": ""
           }
         ]
@@ -67,7 +73,7 @@
   },
   "sink": {
     "type": "LocalFileWriter",
-    "output_folder_path": "persona_generator_agent\\output"
+    "output_folder_path": "conversation_simulation_agent\\output"
   },
   "reporting": {
     "enabled": false,
