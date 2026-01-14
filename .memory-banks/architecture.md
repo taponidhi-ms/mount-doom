@@ -29,6 +29,12 @@ backend/app/
 │   │   ├── routes.py    # Module-specific API routes
 │   │   ├── agents.py    # Agent creation logic
 │   │   └── instructions.py # Agent instructions
+│   ├── conversation_simulation_v2/
+│   │   ├── conversation_simulation_service.py
+│   │   ├── models.py
+│   │   ├── routes.py
+│   │   ├── agents.py
+│   │   └── instructions.py
 │   ├── general_prompt/
 │   │   ├── general_prompt_service.py
 │   │   ├── models.py

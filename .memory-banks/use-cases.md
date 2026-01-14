@@ -311,6 +311,48 @@ RepresentativeLastMessage: {text}
 
 ---
 
+## Use Case 7: Conversation Simulation V2
+
+**Purpose**: Simulate multi-turn conversations v2 with distinct C1/C2 logic using Python control flow (Manual Logic).
+
+**Participants**:
+- **C1MessageGeneratorAgent**: Customer Service Representative (new agent name)
+- **C2MessageGeneratorAgent**: Customer (new agent name)
+
+**Workflow**:
+1. User provides customer configuration (Manual entry of Intent, Sentiment, Subject).
+2. Max turns is hardcoded to 10 in backend (v2 constraint).
+3. Simulation starts:
+   - System initiates conversation with "Hello" from customer perspective to trigger C1.
+   - Loop:
+     - **C1 Turn**: C1MessageGeneratorAgent generates response to conversation history.
+     - **C1 Termination Check**: If C1 says "end this call now" or "transfer...", loop ends.
+     - **C2 Turn**: 
+       - Backend constructs JSON transcript of conversation + properties.
+       - C2MessageGeneratorAgent generates response using this transcript as input.
+       - C2 response is added to the conversation history.
+     - Repeat until 10 turns.
+4. Full conversation stored in Cosmos DB `conversation_simulation_v2` container.
+5. Frontend displays conversation history.
+
+**Agents**:
+- Instructions defined in `app/modules/conversation_simulation_v2/instructions.py`
+- **C1 Instructions**: Standard CSR instructions, unaware of hidden conversation properties.
+- **C2 Instructions**: Customer instructions, explicitly aware of properties via JSON input. Includes instruction to "Use the Properties section..." and respond naturally.
+
+**Differences from V1**:
+- Uses `C1MessageGeneratorAgent` and `C2MessageGeneratorAgent` instead of generic C1/C2.
+- C1 is unaware of conversation properties (properties removed from C1 context).
+- C2 receives context via "Ongoing transcript" JSON input string instead of implicit context.
+- Orchestration is done via explicit Python loop + individual Agent API calls, rather than Azure AI Workflow YAML.
+- Data stored in `conversation_simulation_v2` container.
+
+**Browse API**:
+- GET `/api/v1/conversation-simulation-v2/browse`
+- Delete/Download endpoints also available.
+
+---
+
 ## Common Features Across All Use Cases
 
 ### Request Features

@@ -77,11 +77,16 @@ export default function PageLayout({
       icon: <CommentOutlined />,
       label: 'Conversation Simulation',
     },
+    {
+      key: '/conversation-simulation-v2',
+      icon: <CommentOutlined />,
+      label: 'Conversation Simulation V2',
+    },
   ];
 
   return (
     <Layout style={{ minHeight: '100vh' }}>
-      <Sider collapsible collapsed={collapsed} onCollapse={(value) => setCollapsed(value)}>
+      <Sider width={300} collapsible collapsed={collapsed} onCollapse={(value) => setCollapsed(value)}>
         <div style={{ height: 32, margin: 16, background: 'rgba(255, 255, 255, 0.2)', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 'bold', overflow: 'hidden', whiteSpace: 'nowrap' }}>
           {collapsed ? 'MD' : 'Mount Doom'}
         </div>

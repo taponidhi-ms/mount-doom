@@ -57,6 +57,12 @@ export default function Home() {
       icon: <CommentOutlined style={{ fontSize: '24px', color: colorPrimary }} />,
       description: 'Simulate multi-turn conversations between customer service representatives and customers with intelligent orchestration.',
     },
+    {
+      title: 'Conversation Simulation V2',
+      href: '/conversation-simulation-v2',
+      icon: <CommentOutlined style={{ fontSize: '24px', color: colorPrimary }} />,
+      description: 'Simulate multi-turn conversations V2 with Manual Python Logic and separate C1/C2 Agent controls.',
+    },
   ]
 
   return (

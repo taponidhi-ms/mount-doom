@@ -18,6 +18,7 @@ from app.modules.persona_generator import routes as persona_generator
 from app.modules.general_prompt import routes as general_prompt
 from app.modules.prompt_validator import routes as prompt_validator
 from app.modules.conversation_simulation import routes as conversation_simulation
+from app.modules.conversation_simulation_v2 import routes as conversation_simulation_v2
 from app.modules.transcript_parser import routes as transcript_parser
 from app.modules.system import routes as system_routes
 
@@ -50,6 +51,8 @@ app.include_router(prompt_validator.router, prefix="/api/v1")
 logger.debug("Registered route", router="prompt_validator", prefix="/api/v1")
 app.include_router(conversation_simulation.router, prefix="/api/v1")
 logger.debug("Registered route", router="conversation_simulation", prefix="/api/v1")
+app.include_router(conversation_simulation_v2.router, prefix="/api/v1")
+logger.debug("Registered route", router="conversation_simulation_v2", prefix="/api/v1")
 app.include_router(transcript_parser.router, prefix="/api/v1")
 logger.debug("Registered route", router="transcript_parser", prefix="/api/v1")
 app.include_router(system_routes.router, prefix="/api/v1")
