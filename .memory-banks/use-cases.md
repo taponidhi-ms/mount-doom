@@ -2,6 +2,10 @@
 
 ## Use Case 1: Persona Distribution Generator
 
+### Updated Agent Behavior Guidelines
+- All agents involved in use cases must follow the newly defined behavior guidelines to ensure appropriate handling of prompts.
+
+
 **Purpose**: Generate persona distributions from simulation prompts using specialized AI agents. Outputs structured JSON with conversation counts, intents, sentiments, and proportions.
 
 **Workflow**:

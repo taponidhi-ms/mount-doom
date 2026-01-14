@@ -2,6 +2,10 @@
 
 ## Backend Conventions (Python/FastAPI)
 
+### Updated Agent Behavior Guidelines
+- Ensure all agents adhere to the new behavior guidelines regarding input processing and response restrictions.
+
+
 ### Code Style
 - Follow PEP 8 style guide
 - Use type hints for all function parameters and returns

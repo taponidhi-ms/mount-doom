@@ -1,6 +1,12 @@
 # Mount Doom - Project Architecture
 
 ## Overview
+
+### Updated Agent Behavior Guidelines
+- C2Agent: Added behavior guidelines to restrict responses to simulation prompts only.
+- Persona Distribution Generator Agent: Added behavior guidelines to restrict responses to simulation prompts only.
+- Prompt Validator Agent: Added behavior guidelines to restrict responses to validation prompts only.
+
 Mount Doom is a fullstack AI agent simulation platform with FastAPI backend and Next.js frontend.
 
 ## Backend Architecture (Clean Architecture)
