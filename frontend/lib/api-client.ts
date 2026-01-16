@@ -4,9 +4,29 @@
  * This module provides a typed interface for interacting with the backend API.
  */
 
+import type {
+  ApiResponse,
+  BrowseResponse,
+  DeleteResponse,
+  ConversationMessage,
+  MultiAgentHistoryItem,
+} from './types'
+
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
-// Types
+// Re-export types from the types module for backward compatibility
+export type {
+  SingleAgentResponse,
+  SingleAgentHistoryItem,
+  BrowseResponse,
+  DeleteResponse,
+  ApiResponse,
+  ConversationMessage,
+  MultiAgentResponse,
+  MultiAgentHistoryItem,
+} from './types'
+
+// Legacy types for backward compatibility
 export interface AgentDetails {
   agent_name: string;
   agent_version?: string;
@@ -34,17 +54,6 @@ export interface AvailableModelsResponse {
   models: ModelInfo[];
 }
 
-// Browse/Pagination Types
-export interface BrowseResponse<T = any> {
-  items: T[];
-  total_count: number;
-  page: number;
-  page_size: number;
-  total_pages: number;
-  has_next: boolean;
-  has_previous: boolean;
-}
-
 // Persona Distribution
 export interface PersonaDistributionRequest {
   prompt: string;
@@ -53,7 +62,7 @@ export interface PersonaDistributionRequest {
 }
 
 export interface PersonaDistributionResponse extends BaseResponse {
-  parsed_output?: any;
+  parsed_output?: Record<string, unknown>;
 }
 
 // Persona Generator
@@ -62,7 +71,7 @@ export interface PersonaGeneratorRequest {
 }
 
 export interface PersonaGeneratorResponse extends BaseResponse {
-  parsed_output?: any;
+  parsed_output?: Record<string, unknown>;
 }
 
 // Transcript Parser
@@ -71,7 +80,7 @@ export interface TranscriptParserRequest {
 }
 
 export interface TranscriptParserResponse extends BaseResponse {
-  parsed_output?: any;
+  parsed_output?: Record<string, unknown>;
 }
 
 // Conversation Simulation
@@ -82,14 +91,10 @@ export interface ConversationSimulationRequest {
   stream?: boolean;
 }
 
-export interface ConversationMessage {
-  agent_name: string;
-  message: string;
-  timestamp: string;
-}
+// Use ConversationMessage from ./types (re-exported above)
 
 export interface ConversationSimulationResponse {
-  conversation_history: ConversationMessage[];
+  conversation_history: import('./types').ConversationMessage[];
   conversation_status: string;
   total_time_taken_ms: number;
   start_time: string;
@@ -106,8 +111,8 @@ export interface C2MessageGenerationRequest {
 
 export interface C2MessageGenerationResponse extends BaseResponse {}
 
-// API Response wrapper
-interface ApiResponse<T> {
+// API Response wrapper (internal)
+interface InternalApiResponse<T> {
   data?: T;
   error?: string;
 }
@@ -123,7 +128,7 @@ class ApiClient {
   private async request<T>(
     endpoint: string,
     options?: RequestInit
-  ): Promise<ApiResponse<T>> {
+  ): Promise<InternalApiResponse<T>> {
     try {
       const response = await fetch(`${this.baseUrl}${endpoint}`, {
         ...options,
@@ -152,7 +157,7 @@ class ApiClient {
   private async requestBlob(
     endpoint: string,
     options?: RequestInit
-  ): Promise<ApiResponse<Blob>> {
+  ): Promise<InternalApiResponse<Blob>> {
     try {
       const response = await fetch(`${this.baseUrl}${endpoint}`, {
         ...options,
@@ -294,8 +299,8 @@ class ApiClient {
     pageSize: number = 10,
     orderBy: string = 'timestamp',
     orderDirection: 'ASC' | 'DESC' = 'DESC'
-  ): Promise<ApiResponse<BrowseResponse>> {
-    return this.request<BrowseResponse>(
+  ): Promise<ApiResponse<BrowseResponse<MultiAgentHistoryItem>>> {
+    return this.request<BrowseResponse<MultiAgentHistoryItem>>(
       `/api/v1/conversation-simulation/browse?page=${page}&page_size=${pageSize}&order_by=${orderBy}&order_direction=${orderDirection}`
     );
   }

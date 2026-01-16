@@ -149,6 +149,89 @@ logger.info("="*60)
 - Server components by default
 - Proper error boundaries
 
+### Template-Based Pages Pattern
+Pages now use reusable templates configured via config objects:
+
+#### SingleAgentTemplate Usage
+For single-agent use cases (Persona Distribution, Persona Generator, Transcript Parser, C2 Message Generation):
+
+```typescript
+'use client'
+
+import PageLayout from '@/components/PageLayout'
+import SingleAgentTemplate from '@/components/SingleAgentTemplate'
+import { apiClient } from '@/lib/api-client'
+import type { SingleAgentConfig } from '@/lib/types'
+
+const config: SingleAgentConfig = {
+  title: 'Page Title',
+  description: 'Description',
+  pageKey: 'page-key',
+  inputLabel: 'Input Label',
+  inputPlaceholder: 'Placeholder',
+  inputFieldName: 'prompt', // or 'transcript'
+  sampleInputs: [
+    { label: 'Sample 1', value: 'Sample prompt 1' },
+  ],
+  generateFn: (input) => apiClient.generateXxx(input),
+  browseFn: (page, pageSize, orderBy, orderDirection) => 
+    apiClient.browseXxx(page, pageSize, orderBy, orderDirection),
+  deleteFn: (ids) => apiClient.deleteXxx(ids),
+  downloadFn: (ids) => apiClient.downloadXxx(ids),
+}
+
+export default function XxxPage() {
+  return (
+    <PageLayout>
+      <SingleAgentTemplate config={config} />
+    </PageLayout>
+  )
+}
+```
+
+#### MultiAgentTemplate Usage
+For multi-agent use cases (Conversation Simulation):
+
+```typescript
+'use client'
+
+import PageLayout from '@/components/PageLayout'
+import MultiAgentTemplate from '@/components/MultiAgentTemplate'
+import { apiClient } from '@/lib/api-client'
+import type { MultiAgentConfig } from '@/lib/types'
+
+const config: MultiAgentConfig = {
+  title: 'Page Title',
+  description: 'Description',
+  pageKey: 'page-key',
+  inputFields: [
+    { name: 'field1', label: 'Field 1', placeholder: 'Enter...', required: true },
+  ],
+  sampleConfigs: [
+    { field1: 'value1', field2: 'value2' },
+  ],
+  simulateFn: (inputs) => apiClient.simulateXxx(...),
+  browseFn: (page, pageSize, orderBy, orderDirection) => 
+    apiClient.browseXxx(page, pageSize, orderBy, orderDirection),
+  deleteFn: (ids) => apiClient.deleteXxx(ids),
+  downloadFn: (ids) => apiClient.downloadXxx(ids),
+}
+
+export default function XxxPage() {
+  return (
+    <PageLayout>
+      <MultiAgentTemplate config={config} />
+    </PageLayout>
+  )
+}
+```
+
+### Timezone Handling
+- Always use `useTimezone()` hook to access `formatTimestamp()` and `formatTime()` functions
+- Never use raw `toLocaleString()` or `toISOString()` for user-facing timestamps
+- Timezone state is global and persisted to localStorage
+- Default timezone is IST (Asia/Kolkata)
+
 ### Naming Conventions
 - Components: PascalCase (e.g., `ResultDisplay`)
 - Files: kebab-case (e.g., `api-client.ts`)
@@ -192,12 +275,12 @@ Standard components used across pages:
 ### Page Structure Pattern
 All use case pages follow this structure:
 1. **Header**: Title and description (via PageLayout component)
-2. **Tabs**: Generate/Validate/Simulate tab, Batch Processing tab (if applicable), and History tab
+2. **Tabs**: Generate/Validate/Simulate tab, Batch Processing tab, and History tab
 3. **Generate/Validate/Simulate Tab**:
    - Configuration form (Ant Design Card)
    - Submit button with loading state
    - Result display (if available)
-4. **Batch Processing Tab** (Optional - added to pages supporting batch):
+4. **Batch Processing Tab**:
    - JSON input for batch items (prompts or configurations)
    - Configurable delay between items (Select component with 5-60 second options)
    - Load and Start buttons

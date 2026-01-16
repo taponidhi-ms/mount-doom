@@ -1,799 +1,227 @@
 'use client'
 
-import { useState } from 'react'
-import { Button, Card, Input, Tabs, Table, Space, Typography, message, Alert, Collapse, Tag, Progress, Select } from 'antd'
-import { ReloadOutlined, DownloadOutlined } from '@ant-design/icons'
+import { Tag, Space, Card, Typography } from 'antd'
 import PageLayout from '@/components/PageLayout'
-import { apiClient, ConversationSimulationResponse, BrowseResponse, ConversationMessage } from '@/lib/api-client'
+import MultiAgentTemplate from '@/components/MultiAgentTemplate'
+import { apiClient } from '@/lib/api-client'
+import type { MultiAgentConfig, ConversationMessage, MultiAgentHistoryItem, MultiAgentHistoryColumnConfig } from '@/lib/types'
+import { useTimezone } from '@/lib/timezone-context'
 
-const { TextArea } = Input
-const { Paragraph, Text, Title } = Typography
-const { Panel } = Collapse
+const { Text } = Typography
 
-interface BatchItem {
-  key: string;
-  customerIntent: string;
-  customerSentiment: string;
-  conversationSubject: string;
-  status: 'pending' | 'running' | 'completed' | 'failed';
-  result?: ConversationSimulationResponse;
-  error?: string;
-}
-
-export default function ConversationSimulationPage() {
-  const [customerIntent, setCustomerIntent] = useState('')
-  const [customerSentiment, setCustomerSentiment] = useState('')
-  const [conversationSubject, setConversationSubject] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [result, setResult] = useState<ConversationSimulationResponse | null>(null)
-  const [error, setError] = useState('')
-  
-  // History state
-  const [historyLoading, setHistoryLoading] = useState(false)
-  const [historyData, setHistoryData] = useState<BrowseResponse | null>(null)
-  const [historyError, setHistoryError] = useState('')
-  const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([])
-  const [deleteLoading, setDeleteLoading] = useState(false)
-
-  // Batch Simulation State
-  const [batchItems, setBatchItems] = useState<BatchItem[]>([])
-  const [batchLoading, setBatchLoading] = useState(false)
-  const [batchProgress, setBatchProgress] = useState(0)
-  const [currentBatchIndex, setCurrentBatchIndex] = useState(-1)
-  const [batchJsonInput, setBatchJsonInput] = useState('')
-  const [stopBatchRequested, setStopBatchRequested] = useState(false)
-  const [batchDelay, setBatchDelay] = useState(5)
-
-  const loadBatchItemsFromText = () => {
-    if (!batchJsonInput.trim()) {
-      message.warning('Paste personas JSON to load batch items.')
-      return
-    }
-
-    try {
-      const json = JSON.parse(batchJsonInput)
-      let personas = []
-
-      if (Array.isArray(json)) {
-        personas = json
-      } else if (json.CustomerPersonas && Array.isArray(json.CustomerPersonas)) {
-        personas = json.CustomerPersonas
-      } else {
-        message.error('Invalid JSON format. Expected array or object with CustomerPersonas array.')
-        return
-      }
-
-      const items: BatchItem[] = personas
-        .map((p: any, index: number) => ({
-          key: `batch-${index}-${Date.now()}`,
-          customerIntent: p.CustomerIntent || p.customerIntent || '',
-          customerSentiment: p.CustomerSentiment || p.customerSentiment || '',
-          conversationSubject: p.ConversationSubject || p.conversationSubject || '',
-          status: 'pending' as const
-        }))
-        .filter((item: BatchItem) => item.customerIntent && item.customerSentiment && item.conversationSubject)
-
-      if (items.length === 0) {
-        message.warning('No valid personas found in JSON.')
-        return
-      }
-
-      setBatchItems(items)
-      setBatchProgress(0)
-      setCurrentBatchIndex(-1)
-      message.success(`Loaded ${items.length} personas.`)
-    } catch (err) {
-      message.error('Failed to parse JSON text.')
-      console.error(err)
-    }
-  }
-
-  const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
-
-  const runBatchSimulation = async () => {
-    if (batchItems.length === 0) return
-    
-    setBatchLoading(true)
-    setBatchProgress(0)
-    setStopBatchRequested(false)
-    
-    const newItems = [...batchItems]
-    
-    for (let i = 0; i < newItems.length; i++) {
-      // Check if stop was requested
-      if (stopBatchRequested) {
-        message.info('Batch simulation stopped by user.')
-        break
-      }
-
-      setCurrentBatchIndex(i)
-      newItems[i].status = 'running'
-      setBatchItems([...newItems])
-      
-      try {
-        const response = await apiClient.simulateConversation(
-          newItems[i].customerIntent,
-          newItems[i].customerSentiment,
-          newItems[i].conversationSubject
-        )
-        
-        if (response.data) {
-          newItems[i].status = 'completed'
-          newItems[i].result = response.data
-        } else {
-          newItems[i].status = 'failed'
-          newItems[i].error = response.error || 'Unknown error'
-        }
-      } catch (err) {
-        newItems[i].status = 'failed'
-        newItems[i].error = 'Exception occurred'
-      }
-      
-      setBatchItems([...newItems])
-      setBatchProgress(Math.round(((i + 1) / newItems.length) * 100))
-      
-      // Add delay between simulations (except after the last one)
-      if (i < newItems.length - 1 && !stopBatchRequested) {
-        await sleep(batchDelay * 1000)
-      }
-    }
-    
-    setBatchLoading(false)
-    setCurrentBatchIndex(-1)
-    setStopBatchRequested(false)
-    message.success('Batch simulation completed!')
-    
-    // Refresh history if we're on that tab or to keep it updated
-    if (historyData) {
-      loadHistory(1)
-    }
-  }
-
-  const handleStopBatch = () => {
-    setStopBatchRequested(true)
-  }
-
-  const loadHistory = async (page: number = 1, pageSize: number = 10) => {
-    setHistoryLoading(true)
-    setHistoryError('')
-    const response = await apiClient.browseConversationSimulations(page, pageSize)
-    setHistoryLoading(false)
-    
-    if (response.data) {
-      setHistoryData(response.data)
-      setSelectedRowKeys([])
-    } else if (response.error) {
-      setHistoryError(response.error)
-      message.error('Failed to load history')
-    }
-  }
-
-  const handleDeleteSelected = async () => {
-    if (selectedRowKeys.length === 0) {
-      message.warning('Please select items to delete')
-      return
-    }
-
-    const confirmDelete = window.confirm(
-      `Are you sure you want to delete ${selectedRowKeys.length} conversation(s)? This action cannot be undone.`
-    )
-    
-    if (!confirmDelete) return
-
-    setDeleteLoading(true)
-    const conversationIds = selectedRowKeys.map(key => String(key))
-    
-    const response = await apiClient.deleteConversationSimulations(conversationIds)
-    setDeleteLoading(false)
-
-    if (response.data) {
-      const { deleted_count, failed_count } = response.data
-      message.success(`Deleted ${deleted_count} conversation(s)`)
-      
-      if (failed_count > 0) {
-        message.warning(`Failed to delete ${failed_count} item(s)`)
-      }
-      
-      setSelectedRowKeys([])
-      loadHistory(1)
-    } else if (response.error) {
-      message.error(response.error)
-    }
-  }
-
-  const handleDownloadConversations = async () => {
-    if (selectedRowKeys.length === 0) {
-      message.warning('Please select conversations to download')
-      return
-    }
-
-    const conversationIds = selectedRowKeys.map(key => String(key))
-    const response = await apiClient.downloadConversationSimulations(conversationIds)
-
-    if (response.data) {
-      const url = URL.createObjectURL(response.data)
-      const link = document.createElement('a')
-      link.href = url
-      link.download = `conversation_simulations_${new Date().toISOString().replace(/[:.]/g, '-')}.json`
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
-      URL.revokeObjectURL(url)
-      message.success('Download started')
-    } else if (response.error) {
-      message.error('Failed to download: ' + response.error)
-    }
-  }
-
-  const sampleConfigs = [
-    {
-      intent: "Technical Support",
-      sentiment: "Frustrated",
-      subject: "Internet connection keeps dropping every 10 minutes"
-    },
-    {
-      intent: "Billing Inquiry",
-      sentiment: "Confused",
-      subject: "Unexpected charge of $50 on the monthly statement"
-    },
-    {
-      intent: "Product Return",
-      sentiment: "Neutral",
-      subject: "Returning a pair of shoes that are the wrong size"
-    }
-  ]
-
-  const handleSubmit = async () => {
-    // Validate fields and provide specific feedback
-    const missing = []
-    if (!customerIntent.trim()) missing.push('Customer Intent')
-    if (!customerSentiment.trim()) missing.push('Customer Sentiment')
-    if (!conversationSubject.trim()) missing.push('Conversation Subject')
-    
-    if (missing.length > 0) {
-      message.warning(`Please fill in: ${missing.join(', ')}`)
-      return
-    }
-
-    setLoading(true)
-    setError('')
-    setResult(null)
-
-    const response = await apiClient.simulateConversation(
-      customerIntent,
-      customerSentiment,
-      conversationSubject
-    )
-    setLoading(false)
-
-    if (response.data) {
-      setResult(response.data)
-      message.success('Conversation simulated successfully!')
-      if (historyData) {
-        loadHistory(1)
-      }
-    } else if (response.error) {
-      setError(response.error)
-      message.error('Failed to simulate conversation')
-    }
-  }
-
-  const renderConversationHistory = (history: ConversationMessage[]) => {
-    return (
-      <Space direction="vertical" size="small" style={{ width: '100%' }}>
-        {history.map((msg, index) => {
-          const isSystem = msg.agent_name === 'System';
-          // Check for V2 agent name as well
-          const isC1 = msg.agent_name === 'C1Agent' || msg.agent_name === 'C1MessageGeneratorAgent';
-          
-          // Determine background color
-          let bgColor = '#ffffff';
-          if (isC1) bgColor = '#e6f7ff'; // Blue for C1
-          else if (!isSystem) bgColor = '#f6ffed'; // Green for C2
-          
-          // Determine tag color
-          let tagColor = 'default';
-          if (isC1) tagColor = 'blue';
-          else if (!isSystem) tagColor = 'green';
-
-          return (
-            <Card 
-              key={index} 
-              size="small"
-              style={{ 
-                background: bgColor,
-                border: isSystem ? 'none' : undefined,
-                boxShadow: isSystem ? 'none' : undefined
-              }}
-              bodyStyle={isSystem ? { padding: '4px 0', fontStyle: 'italic', color: '#888', textAlign: 'center' } : undefined}
-            >
-              {isSystem ? (
-                <Text type="secondary" italic style={{ fontSize: 12 }}>
-                  {msg.message}
-                </Text>
-              ) : (
-                <Space direction="vertical" size="small" style={{ width: '100%' }}>
-                  <div>
-                    <Tag color={tagColor}>
-                      {msg.agent_name}
-                    </Tag>
-                    <Text type="secondary" style={{ fontSize: 12 }}>
-                      {new Date(msg.timestamp).toLocaleTimeString()}
-                    </Text>
-                  </div>
-                  <Text>{msg.message}</Text>
-                </Space>
-              )}
-            </Card>
-          );
-        })}
-      </Space>
-    )
-  }
-
-  const columns = [
-    {
-      title: 'Timestamp',
-      dataIndex: 'timestamp',
-      key: 'timestamp',
-      render: (text: string) => new Date(text).toLocaleString(),
-      width: 180,
-    },
-    {
-      title: 'Conversation ID',
-      dataIndex: 'conversation_id',
-      key: 'conversation_id',
-      width: 220,
-      render: (_: string, record: any) => {
-        const convId = record.conversation_id || record.id;
-        return convId ? <Text copyable>{convId}</Text> : 'N/A';
-      }
-    },
-    {
-      title: 'Intent',
-      dataIndex: 'conversation_properties',
-      key: 'intent',
-      width: 150,
-      ellipsis: true,
-      render: (props: any) => props?.CustomerIntent || 'N/A',
-    },
-    {
-      title: 'Sentiment',
-      dataIndex: 'conversation_properties',
-      key: 'sentiment',
-      width: 120,
-      render: (props: any) => props?.CustomerSentiment || 'N/A',
-    },
-    {
-      title: 'Subject',
-      dataIndex: 'conversation_properties',
-      key: 'subject',
-      ellipsis: true,
-      render: (props: any) => props?.ConversationSubject || 'N/A',
-    },
-    {
-      title: 'Status',
-      dataIndex: 'conversation_status',
-      key: 'status',
-      width: 120,
-      render: (status: string) => (
-        <Tag color={status === 'Completed' ? 'green' : 'orange'}>
-          {status}
-        </Tag>
-      ),
-    },
-    {
-      title: 'Messages',
-      dataIndex: 'conversation_history',
-      key: 'messages',
-      width: 100,
-      render: (history: any[]) => history?.length || 0,
-    },
-    {
-      title: 'Tokens',
-      dataIndex: 'total_tokens_used',
-      key: 'tokens',
-      width: 100,
-      render: (value: number) => value || 'N/A',
-    },
-  ]
-
-  const batchColumns = [
-    {
-      title: 'Intent',
-      dataIndex: 'customerIntent',
-      key: 'intent',
-      width: 150,
-      ellipsis: true,
-    },
-    {
-      title: 'Sentiment',
-      dataIndex: 'customerSentiment',
-      key: 'sentiment',
-      width: 120,
-    },
-    {
-      title: 'Subject',
-      dataIndex: 'conversationSubject',
-      key: 'subject',
-      ellipsis: true,
-    },
-    {
-      title: 'Status',
-      dataIndex: 'status',
-      key: 'status',
-      width: 120,
-      render: (status: string) => {
-        let color = 'default';
-        if (status === 'running') color = 'processing';
-        if (status === 'completed') color = 'success';
-        if (status === 'failed') color = 'error';
-        return <Tag color={color}>{status.toUpperCase()}</Tag>;
-      },
-    },
-    {
-      title: 'Result',
-      key: 'result',
-      width: 150,
-      render: (_: any, record: BatchItem) => {
-        if (record.status === 'completed' && record.result) {
-          return (
-            <Space direction="vertical" size={0}>
-              <Text type="secondary" style={{ fontSize: 12 }} copyable>{record.result.conversation_id}</Text>
-              <Text type="secondary" style={{ fontSize: 12 }}>{record.result.conversation_history.length} msgs</Text>
-            </Space>
-          );
-        }
-        if (record.status === 'failed') {
-          return <Text type="danger" style={{ fontSize: 12 }}>{record.error}</Text>;
-        }
-        return '-';
-      }
-    }
-  ];
-
-  const tabItems = [
-    {
-      key: 'simulate',
-      label: 'Simulate',
-      children: (
-        <Space direction="vertical" size="large" style={{ width: '100%' }}>
-          <Card title="Conversation Configuration (V2)">
-            <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-              <div>
-                <Text strong>Customer Intent</Text>
-                <Input
-                  value={customerIntent}
-                  onChange={(e) => setCustomerIntent(e.target.value)}
-                  placeholder="e.g., Technical Support, Billing Inquiry, Product Return"
-                  style={{ marginTop: 8 }}
-                  disabled={loading}
-                  size="large"
-                />
-              </div>
-
-              <div>
-                <Text strong>Customer Sentiment</Text>
-                <Input
-                  value={customerSentiment}
-                  onChange={(e) => setCustomerSentiment(e.target.value)}
-                  placeholder="e.g., Frustrated, Happy, Confused, Angry"
-                  style={{ marginTop: 8 }}
-                  disabled={loading}
-                  size="large"
-                />
-              </div>
-
-              <div>
-                <Text strong>Conversation Subject</Text>
-                <Input
-                  value={conversationSubject}
-                  onChange={(e) => setConversationSubject(e.target.value)}
-                  placeholder="e.g., Product Defect, Service Cancellation, Account Issue"
-                  style={{ marginTop: 8 }}
-                  disabled={loading}
-                  size="large"
-                />
-              </div>
-              
-              <Alert 
-                message="Note" 
-                description="Conversations will run up to 20 turns using the new V2 Python logic."
-                type="info" 
-                showIcon 
-              />
-
-              <Button 
-                type="primary" 
-                size="large"
-                onClick={handleSubmit}
-                loading={loading}
-                disabled={!customerIntent.trim() || !customerSentiment.trim() || !conversationSubject.trim()}
-                block
-              >
-                {loading ? 'Simulating...' : 'Start Simulation'}
-              </Button>
-
-              <div style={{ marginTop: 16 }}>
-                <Text strong>Sample Configurations</Text>
-                <Space direction="vertical" style={{ width: '100%', marginTop: 8 }}>
-                  {sampleConfigs.map((sample, index) => (
-                    <Card key={index} size="small" style={{ background: '#f9f9f9' }}>
-                      <Space align="start" style={{ width: '100%', justifyContent: 'space-between' }}>
-                        <Space direction="vertical" size={0}>
-                          <Text style={{ fontSize: 13 }}><Text strong>Intent:</Text> {sample.intent}</Text>
-                          <Text style={{ fontSize: 13 }}><Text strong>Sentiment:</Text> {sample.sentiment}</Text>
-                          <Text style={{ fontSize: 13 }}><Text strong>Subject:</Text> {sample.subject}</Text>
-                        </Space>
-                        <Button 
-                          size="small" 
-                          type="link" 
-                          onClick={() => {
-                            setCustomerIntent(sample.intent)
-                            setCustomerSentiment(sample.sentiment)
-                            setConversationSubject(sample.subject)
-                          }}
-                          style={{ padding: 0, marginLeft: 8 }}
-                        >
-                          Try it
-                        </Button>
-                      </Space>
-                    </Card>
-                  ))}
-                </Space>
-              </div>
-
-              {error && (
-                <Alert message="Error" description={error} type="error" showIcon />
-              )}
-            </Space>
-          </Card>
-
-          {result && (
-            <Card title="Simulation Results (V2)">
-              <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-                <Space size="large" wrap>
-                  <div>
-                    <Text type="secondary">Status: </Text>
-                    <Tag color={result.conversation_status === 'Completed' ? 'green' : 'orange'}>
-                      {result.conversation_status}
-                    </Tag>
-                  </div>
-                  <div>
-                    <Text type="secondary">Conversation ID: </Text>
-                    <Text copyable>{result.conversation_id}</Text>
-                  </div>
-                  <div>
-                    <Text type="secondary">Total Messages: </Text>
-                    <Text strong>{result.conversation_history.length}</Text>
-                  </div>
-                  <div>
-                    <Text type="secondary">Time Taken: </Text>
-                    <Text strong>{Math.round(result.total_time_taken_ms)} ms</Text>
-                  </div>
-                </Space>
-
-                <div>
-                  <Text strong style={{ fontSize: 16 }}>Conversation History</Text>
-                  <div style={{ marginTop: 16 }}>
-                    {renderConversationHistory(result.conversation_history)}
-                  </div>
-                </div>
-              </Space>
-            </Card>
-          )}
-        </Space>
-      ),
-    },
-    {
-      key: 'batch',
-      label: 'Batch Simulation',
-      children: (
-        <Space direction="vertical" size="large" style={{ width: '100%' }}>
-          <Card title="Batch Processing (V2)">
-            <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-              <Alert
-                message="Paste Personas JSON"
-                description="Paste a JSON array of personas or an object with a CustomerPersonas array (CustomerIntent, CustomerSentiment, ConversationSubject). The simulation will run for each persona sequentially."
-                type="info"
-                showIcon
-              />
-
-              <TextArea
-                rows={8}
-                value={batchJsonInput}
-                onChange={(e) => setBatchJsonInput(e.target.value)}
-                placeholder='[
+// Custom history columns for conversation simulation
+const getHistoryColumns = (formatTimestamp: (ts: string) => string): MultiAgentHistoryColumnConfig[] => [
   {
-    "CustomerIntent": "Technical Support",
-    "CustomerSentiment": "Frustrated",
-    "ConversationSubject": "Internet connection keeps dropping"
-  }
-]'
-                disabled={batchLoading}
-              />
+    title: 'Timestamp',
+    dataIndex: 'timestamp',
+    key: 'timestamp',
+    render: (text: unknown) => formatTimestamp(text as string),
+    width: 180,
+  },
+  {
+    title: 'Conversation ID',
+    dataIndex: 'conversation_id',
+    key: 'conversation_id',
+    width: 220,
+    render: (_: unknown, record: MultiAgentHistoryItem) => {
+      const convId = record.conversation_id || record.id
+      return convId ? <Text copyable>{convId}</Text> : 'N/A'
+    },
+  },
+  {
+    title: 'Intent',
+    dataIndex: 'conversation_properties',
+    key: 'intent',
+    width: 150,
+    ellipsis: true,
+    render: (props: unknown) => ((props as Record<string, unknown>)?.CustomerIntent as string) || 'N/A',
+  },
+  {
+    title: 'Sentiment',
+    dataIndex: 'conversation_properties',
+    key: 'sentiment',
+    width: 120,
+    render: (props: unknown) => ((props as Record<string, unknown>)?.CustomerSentiment as string) || 'N/A',
+  },
+  {
+    title: 'Subject',
+    dataIndex: 'conversation_properties',
+    key: 'subject',
+    ellipsis: true,
+    render: (props: unknown) => ((props as Record<string, unknown>)?.ConversationSubject as string) || 'N/A',
+  },
+  {
+    title: 'Status',
+    dataIndex: 'conversation_status',
+    key: 'status',
+    width: 120,
+    render: (status: unknown) => (
+      <Tag color={(status as string) === 'Completed' ? 'green' : 'orange'}>{status as string}</Tag>
+    ),
+  },
+  {
+    title: 'Messages',
+    dataIndex: 'conversation_history',
+    key: 'messages',
+    width: 100,
+    render: (history: unknown) => (history as ConversationMessage[])?.length || 0,
+  },
+  {
+    title: 'Tokens',
+    dataIndex: 'total_tokens_used',
+    key: 'tokens',
+    width: 100,
+    render: (value: unknown) => (value as number) || 'N/A',
+  },
+]
 
-              <div>
-                <Text strong>Delay Between Simulations (seconds)</Text>
-                <Select
-                  value={batchDelay}
-                  onChange={(value) => setBatchDelay(value)}
-                  disabled={batchLoading}
-                  style={{ width: 200, marginLeft: 12 }}
-                  options={[
-                    { value: 5, label: '5 seconds' },
-                    { value: 10, label: '10 seconds' },
-                    { value: 15, label: '15 seconds' },
-                    { value: 20, label: '20 seconds' },
-                    { value: 25, label: '25 seconds' },
-                    { value: 30, label: '30 seconds' },
-                    { value: 35, label: '35 seconds' },
-                    { value: 40, label: '40 seconds' },
-                    { value: 45, label: '45 seconds' },
-                    { value: 50, label: '50 seconds' },
-                    { value: 55, label: '55 seconds' },
-                    { value: 60, label: '60 seconds' },
-                  ]}
-                />
-              </div>
+function ConversationSimulationContent() {
+  const { formatTimestamp, formatTime } = useTimezone()
 
-              <Space wrap>
-                <Button 
-                  size="large" 
-                  onClick={loadBatchItemsFromText}
-                  disabled={batchLoading}
-                >
-                  Load Personas
-                </Button>
-                <Button 
-                  type="primary" 
-                  size="large" 
-                  onClick={runBatchSimulation}
-                  disabled={batchItems.length === 0 || batchLoading}
-                  loading={batchLoading}
-                >
-                  {batchLoading ? 'Running Batch...' : 'Start Batch Simulation'}
-                </Button>
-                {batchLoading && (
-                  <Button 
-                    danger 
-                    size="large"
-                    onClick={handleStopBatch}
-                  >
-                    Stop Batch
-                  </Button>
-                )}
-              </Space>
+  const config: MultiAgentConfig = {
+    title: 'Conversation Simulation',
+    description: 'Simulate multi-turn conversations between C1 (customer service representative) and C2 (customer) agents. Configure customer intent, sentiment, and subject to generate realistic conversation flows.',
+    pageKey: 'conversation-simulation',
+    
+    inputFields: [
+      {
+        name: 'customerIntent',
+        label: 'Customer Intent',
+        placeholder: 'e.g., Technical Support, Billing Inquiry, Product Return',
+        required: true,
+      },
+      {
+        name: 'customerSentiment',
+        label: 'Customer Sentiment',
+        placeholder: 'e.g., Frustrated, Happy, Confused, Angry',
+        required: true,
+      },
+      {
+        name: 'conversationSubject',
+        label: 'Conversation Subject',
+        placeholder: 'e.g., Product Defect, Service Cancellation, Account Issue',
+        required: true,
+      },
+    ],
+    
+    sampleConfigs: [
+      {
+        customerIntent: 'Technical Support',
+        customerSentiment: 'Frustrated',
+        conversationSubject: 'Internet connection keeps dropping every 10 minutes',
+      },
+      {
+        customerIntent: 'Billing Inquiry',
+        customerSentiment: 'Confused',
+        conversationSubject: 'Unexpected charge of $50 on the monthly statement',
+      },
+      {
+        customerIntent: 'Product Return',
+        customerSentiment: 'Neutral',
+        conversationSubject: 'Returning a pair of shoes that are the wrong size',
+      },
+    ],
+    
+    simulateFn: async (inputs) => {
+      const response = await apiClient.simulateConversation(
+        inputs.customerIntent,
+        inputs.customerSentiment,
+        inputs.conversationSubject
+      )
+      if (response.data) {
+        return {
+          data: {
+            conversation_history: response.data.conversation_history,
+            conversation_status: response.data.conversation_status,
+            total_time_taken_ms: response.data.total_time_taken_ms,
+            start_time: response.data.start_time,
+            end_time: response.data.end_time,
+            conversation_id: response.data.conversation_id,
+            c1_agent_details: response.data.c1_agent_details,
+            c2_agent_details: response.data.c2_agent_details,
+          },
+        }
+      }
+      return { error: response.error }
+    },
+    
+    browseFn: async (page, pageSize, orderBy, orderDirection) => {
+      return apiClient.browseConversationSimulations(page, pageSize, orderBy, orderDirection)
+    },
+    
+    deleteFn: async (ids) => {
+      return apiClient.deleteConversationSimulations(ids)
+    },
+    
+    downloadFn: async (ids) => {
+      return apiClient.downloadConversationSimulations(ids)
+    },
+    
+    historyColumns: getHistoryColumns(formatTimestamp),
+    
+    renderConversation: (history: ConversationMessage[]) => {
+      return (
+        <Space direction="vertical" size="small" style={{ width: '100%' }}>
+          {history.map((msg, index) => {
+            const isSystem = msg.agent_name === 'System'
+            const isC1 = msg.agent_name === 'C1Agent' || msg.agent_name === 'C1MessageGeneratorAgent'
 
-              {batchLoading && (
-                <div style={{ marginTop: 16 }}>
-                  <Text>Processing item {currentBatchIndex + 1} of {batchItems.length}</Text>
-                  <Progress percent={batchProgress} status="active" />
-                </div>
-              )}
-            </Space>
-          </Card>
+            let bgColor = '#ffffff'
+            if (isC1) bgColor = '#e6f7ff'
+            else if (!isSystem) bgColor = '#f6ffed'
 
-          {batchItems.length > 0 && (
-            <Card title={`Loaded Personas (${batchItems.length})`}>
-              <Table
-                dataSource={batchItems}
-                columns={batchColumns}
-                pagination={{ pageSize: 10 }}
-                expandable={{
-                  expandedRowRender: (record) => (
-                    <div style={{ padding: 16 }}>
-                      {record.result ? (
-                        <Space direction="vertical" size="small" style={{ width: '100%' }}>
-                          <Text strong>Conversation Result:</Text>
-                          <Space size="large">
-                            <Tag color={record.result.conversation_status === 'Completed' ? 'green' : 'orange'}>
-                              {record.result.conversation_status}
-                            </Tag>
-                            <Text copyable>{record.result.conversation_id}</Text>
-                            <Text>Time: {Math.round(record.result.total_time_taken_ms)}ms</Text>
-                          </Space>
-                          <div style={{ marginTop: 8 }}>
-                            {renderConversationHistory(record.result.conversation_history)}
-                          </div>
-                        </Space>
-                      ) : (
-                        <Text type="secondary">No result available yet.</Text>
-                      )}
-                    </div>
-                  ),
+            let tagColor = 'default'
+            if (isC1) tagColor = 'blue'
+            else if (!isSystem) tagColor = 'green'
+
+            return (
+              <Card
+                key={index}
+                size="small"
+                style={{
+                  background: bgColor,
+                  border: isSystem ? 'none' : undefined,
+                  boxShadow: isSystem ? 'none' : undefined,
                 }}
-              />
-            </Card>
-          )}
+                styles={{
+                  body: isSystem
+                    ? { padding: '4px 0', fontStyle: 'italic', color: '#888', textAlign: 'center' }
+                    : undefined,
+                }}
+              >
+                {isSystem ? (
+                  <Text type="secondary" italic style={{ fontSize: 12 }}>
+                    {msg.message}
+                  </Text>
+                ) : (
+                  <Space direction="vertical" size="small" style={{ width: '100%' }}>
+                    <div>
+                      <Tag color={tagColor}>{msg.agent_name}</Tag>
+                      <Text type="secondary" style={{ fontSize: 12 }}>
+                        {formatTime(msg.timestamp)}
+                      </Text>
+                    </div>
+                    <Text>{msg.message}</Text>
+                  </Space>
+                )}
+              </Card>
+            )
+          })}
         </Space>
       )
     },
-    {
-      key: 'history',
-      label: 'History',
-      children: (
-        <Card 
-          title="Simulation History (V2)"
-          extra={
-            <Space>
-              {selectedRowKeys.length > 0 && (
-                <>
-                  <Button 
-                    type="primary"
-                    icon={<DownloadOutlined />}
-                    onClick={handleDownloadConversations}
-                  >
-                    Download Conversations ({selectedRowKeys.length})
-                  </Button>
-                  <Button 
-                    danger 
-                    onClick={handleDeleteSelected}
-                    loading={deleteLoading}
-                  >
-                    Delete Selected ({selectedRowKeys.length})
-                  </Button>
-                </>
-              )}
-              <Button 
-                icon={<ReloadOutlined />} 
-                onClick={() => loadHistory(historyData?.page || 1, historyData?.page_size || 10)}
-                loading={historyLoading}
-              >
-                Reload
-              </Button>
-            </Space>
-          }
-        >
-          {historyError && (
-            <Alert message="Error" description={historyError} type="error" showIcon style={{ marginBottom: 16 }} />
-          )}
-          
-          <Table
-            dataSource={historyData?.items || []}
-            columns={columns}
-            loading={historyLoading}
-            rowKey={(record) => record.conversation_id || record.id || record.start_time}
-            rowSelection={{
-              selectedRowKeys,
-              onChange: (keys) => setSelectedRowKeys(keys),
-            }}
-            pagination={{
-              current: historyData?.page || 1,
-              pageSize: historyData?.page_size || 10,
-              total: historyData?.total_count || 0,
-              showSizeChanger: true,
-              showTotal: (total) => `Total ${total} items`,
-              onChange: (page, pageSize) => loadHistory(page, pageSize),
-            }}
-            expandable={{
-              expandedRowRender: (record) => (
-                <div style={{ padding: 16 }}>
-                  {record.conversation_history && renderConversationHistory(record.conversation_history)}
-                </div>
-              ),
-            }}
-          />
-        </Card>
-      ),
-    },
-  ]
+  }
 
+  return <MultiAgentTemplate config={config} />
+}
+
+export default function ConversationSimulationPage() {
   return (
-    <PageLayout
+    <PageLayout 
       title="Conversation Simulation"
-      description="Simulate multi-turn conversations with distinct C1/C2 logic."
-      showBackButton
+      description="Simulate multi-turn conversations between C1 (customer service representative) and C2 (customer) agents."
     >
-      <Tabs 
-        defaultActiveKey="simulate" 
-        items={tabItems}
-        onChange={(key) => {
-          if (key === 'history' && !historyData) {
-            loadHistory(1)
-          }
-        }}
-      />
+      <ConversationSimulationContent />
     </PageLayout>
   )
 }

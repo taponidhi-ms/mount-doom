@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { AntdRegistry } from '@ant-design/nextjs-registry';
+import { TimezoneProvider } from '@/lib/timezone-context';
 
 export const metadata: Metadata = {
   title: "Mount Doom - AI Agent Simulation",
@@ -14,7 +15,11 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="antialiased">
-        <AntdRegistry>{children}</AntdRegistry>
+        <AntdRegistry>
+          <TimezoneProvider>
+            {children}
+          </TimezoneProvider>
+        </AntdRegistry>
       </body>
     </html>
   );

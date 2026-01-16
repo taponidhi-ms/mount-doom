@@ -15,13 +15,18 @@ Mount Doom is a fullstack AI agent simulation platform with FastAPI backend and 
 backend/app/
 ├── core/                 # Configuration and settings
 ├── models/               # Shared/Common models
-│   └── shared.py         # Common API and DB schemas
+│   ├── shared.py         # Common API and DB schemas
+│   └── single_agent.py   # Shared schemas for single-agent operations
 ├── infrastructure/       # Infrastructure services
 │   ├── ai/
 │   │   └── azure_ai_service.py # Client initialization
 │   └── db/              # Database services
 │       └── cosmos_db_service.py
 ├── modules/             # Feature modules (Vertical Slices)
+│   ├── shared/          # Shared base classes for modules
+│   │   ├── __init__.py
+│   │   ├── base_single_agent_service.py  # Base class for single-agent services
+│   │   └── base_routes.py                # Factory for standard CRUD routes
 │   ├── c2_message_generation/
 │   │   ├── c2_message_generation_service.py
 │   │   ├── models.py
@@ -54,6 +59,27 @@ backend/app/
 │   │   └── instructions.py
 └── main.py               # FastAPI application
 ```
+
+### Shared Module (modules/shared/)
+Base classes to reduce code duplication across single-agent modules:
+
+#### BaseSingleAgentService
+Abstract base class for single-agent services providing:
+- Common `generate()` method for AI agent invocation
+- Common `save_to_database()` method for persistence
+- Abstract methods for module-specific configuration:
+  - `get_agent_creator()` - Returns the agent factory function
+  - `get_container_name()` - Returns Cosmos DB container name
+  - `get_use_case_name()` - Returns use case identifier
+
+#### base_routes.py
+Factory function `create_single_agent_routes()` that generates standard CRUD endpoints:
+- POST `/generate` - Generate response from agent
+- GET `/browse` - Browse history with pagination
+- POST `/delete` - Delete selected records
+- POST `/download` - Download selected records as JSON
+
+Services can extend BaseSingleAgentService for consistency while maintaining module-specific customizations.
 
 ### Key Principles
 - **Separation of Concerns**: Each service handles one use case's business logic
@@ -168,33 +194,89 @@ Routes only:
 ### Structure
 ```
 frontend/
-├── app/             # Next.js App Router pages
+├── app/                        # Next.js App Router pages
+│   ├── c2-message-generation/
+│   ├── conversation-simulation/
 │   ├── persona-distribution/
-│   ├── transcript-parser/
-│   └── conversation-simulation/
-├── components/      # React components
-│   └── PageLayout.tsx  # Reusable page layout component
-└── lib/            # Utilities and API client
+│   ├── persona-generator/
+│   └── transcript-parser/
+├── components/                 # React components
+│   ├── PageLayout.tsx          # Reusable page layout with navigation
+│   ├── SingleAgentTemplate.tsx # Template for single-agent pages
+│   └── MultiAgentTemplate.tsx  # Template for multi-agent pages
+└── lib/                        # Utilities and API client
+    ├── api-client.ts           # Backend API client
+    ├── types.ts                # Shared TypeScript types
+    └── timezone-context.tsx    # Global timezone context (UTC/IST)
 ```
 
 ### Key Principles
+- **Template-based UI**: Single-agent and multi-agent pages use reusable templates
+- **Global timezone support**: User can toggle between UTC and IST (default: IST)
 - Component reusability
 - Type safety with TypeScript
 - Responsive design with Ant Design
 - Accessible UI with Ant Design components
-- Tab-based interface for generate and history views
+- Tab-based interface for generate, batch, and history views
+
+### Navigation Structure
+The navigation sidebar organizes pages into:
+- **Simulation Agents**
+  - **Single Agent** - Pages using SingleAgentTemplate (4 pages)
+  - **Multi Agent** - Pages using MultiAgentTemplate (1 page)
+
+### Templates
+
+#### SingleAgentTemplate
+Reusable template for single-agent use cases with three tabs:
+- **Generate Tab**: Form for creating single requests with sample inputs
+- **Batch Tab**: Process multiple inputs with configurable delay
+- **History Tab**: Paginated view of past results with filter, sort, download, multi-select, delete
+
+Configuration via `SingleAgentConfig`:
+- `title`, `description`, `pageKey`
+- `inputLabel`, `inputPlaceholder`, `inputFieldName`
+- `sampleInputs` - Example prompts/inputs
+- API functions: `generateFn`, `browseFn`, `deleteFn`, `downloadFn`
+- Optional: `historyColumns`, `renderParsedOutput`
+
+Pages using SingleAgentTemplate:
+- Persona Distribution
+- Persona Generator
+- Transcript Parser
+- C2 Message Generation
+
+#### MultiAgentTemplate
+Reusable template for multi-agent use cases with three tabs:
+- **Simulate Tab**: Form with configurable input fields and sample configurations
+- **Batch Tab**: Process multiple configurations in batch
+- **History Tab**: Paginated view with expandable rows showing conversation history
+
+Configuration via `MultiAgentConfig`:
+- `title`, `description`, `pageKey`
+- `inputFields` - Dynamic input field configuration
+- `sampleConfigs` - Example configurations
+- API functions: `simulateFn`, `browseFn`, `deleteFn`, `downloadFn`
+- Optional: `historyColumns`, `renderConversation`
+
+Pages using MultiAgentTemplate:
+- Conversation Simulation
+
+### Timezone Context
+Global timezone management via React Context:
+- Provider: `TimezoneProvider` wraps the app in layout.tsx
+- Hook: `useTimezone()` returns `{ timezone, setTimezone, formatTimestamp, formatTime }`
+- Supported timezones: UTC, IST (Asia/Kolkata)
+- Default: IST
+- Persisted to localStorage
 
 ### Pages
-Each use case has a dedicated page with two tabs:
-- **Generate/Validate/Simulate Tab**: Form for creating new requests
-- **History Tab**: Paginated view of past results
-
-Pages:
-- `/c2-message-generation` - Generate and view C2 (customer) messages
-- `/persona-distribution` - Generate and view persona distributions
-- `/transcript-parser` - Parse customer–representative transcripts and view parsed results
-- `/conversation-simulation` - Simulate and view conversations
-  - Special feature: Simple form with customer intent, sentiment, and subject
+Each use case has a dedicated page that configures and renders the appropriate template:
+- `/c2-message-generation` - SingleAgentTemplate with C2 message generation config
+- `/persona-distribution` - SingleAgentTemplate with persona distribution config
+- `/persona-generator` - SingleAgentTemplate with persona generator config
+- `/transcript-parser` - SingleAgentTemplate with transcript parser config
+- `/conversation-simulation` - MultiAgentTemplate with conversation simulation config
 
 ## Data Flow
 
