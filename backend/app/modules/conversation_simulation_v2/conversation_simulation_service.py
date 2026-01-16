@@ -10,7 +10,9 @@ from app.infrastructure.ai.azure_ai_service import azure_ai_service
 from app.infrastructure.db.cosmos_db_service import cosmos_db_service
 from app.models.shared import AgentDetails
 from .models import ConversationMessage, ConversationSimulationResult, ConversationSimulationV2Document
-from .agents import create_c1_agent, create_c2_agent, C1_AGENT_NAME, C2_AGENT_NAME
+from .agents import create_c1_agent, C1_MESSAGE_GENERATOR_AGENT_NAME
+from app.modules.c2_message_generation.c2_message_generation_service import c2_message_generation_service
+from app.modules.c2_message_generation.agents import C2_MESSAGE_GENERATOR_AGENT_NAME, create_c2_message_generator_agent
 
 logger = structlog.get_logger()
 
@@ -39,11 +41,11 @@ class ConversationSimulationService:
                    conversation_subject=conversation_properties.get('ConversationSubject'))
         logger.info("="*60)
 
-        # Create agents
+        # Create C1 agent and C2 agent to get their details
         c1_agent = create_c1_agent()
-        c2_agent = create_c2_agent()
+        c2_agent = create_c2_message_generator_agent()
         
-        logger.info("Agents created", c1=C1_AGENT_NAME, c2=C2_AGENT_NAME)
+        logger.info("Agents created", c1=C1_MESSAGE_GENERATOR_AGENT_NAME, c2=C2_MESSAGE_GENERATOR_AGENT_NAME)
 
         # Initialize C1 Conversation
         # C1 is the Agent. We start by simulating the User (Customer) saying Hello to trigger C1.
@@ -62,7 +64,7 @@ class ConversationSimulationService:
         # Ideally, we should capture this initial "Hello" if we want complete transcript.
         # But simulation often implies generated content. I'll add it to history.
         conversation_history.append(ConversationMessage(
-            agent_name=C2_AGENT_NAME,
+            agent_name=C2_MESSAGE_GENERATOR_AGENT_NAME,
             message="Hello",
             timestamp=datetime.utcnow()
         ))
@@ -75,14 +77,14 @@ class ConversationSimulationService:
             logger.debug("Creating C1 response...")
             c1_response = openai_client.responses.create(
                 conversation=c1_conversation.id,
-                extra_body={"agent": {"name": C1_AGENT_NAME, "type": "agent_reference"}},
+                extra_body={"agent": {"name": C1_MESSAGE_GENERATOR_AGENT_NAME, "type": "agent_reference"}},
                 input="", # Empty input because conversation history has the context
             )
             c1_text = c1_response.output_text
             logger.info("C1 Response", text=c1_text)
 
             conversation_history.append(ConversationMessage(
-                agent_name=C1_AGENT_NAME,
+                agent_name=C1_MESSAGE_GENERATOR_AGENT_NAME,
                 message=c1_text,
                 timestamp=datetime.utcnow()
             ))
@@ -93,12 +95,12 @@ class ConversationSimulationService:
                 break
 
             # --- C2 (Customer) Turn ---
-            # Construct C2 input
+            # Construct C2 input using c2_message_generation module
             # Properties + Messages
             mapped_msgs = []
             for i, msg in enumerate(conversation_history):
                 # Map agent names to 'agent' or 'customer'
-                role = "agent" if msg.agent_name == C1_AGENT_NAME else "customer"
+                role = "agent" if msg.agent_name == C1_MESSAGE_GENERATOR_AGENT_NAME else "customer"
                 mapped_msgs.append({
                     role: msg.message,
                     "Id": i + 1
@@ -110,17 +112,14 @@ class ConversationSimulationService:
             }
             c2_input_text = f"Ongoing transcript: {json.dumps(c2_payload)}"
             
-            logger.debug("Creating C2 response...", input_preview=c2_input_text[:100])
-            # Use pseudo-code pattern for C2. It seems stateless regarding conversation ID or uses a separate one implicitly
-            c2_response = openai_client.responses.create(
-                 input=[{"role": "user", "content": c2_input_text}],
-                 extra_body={"agent": {"name": C2_AGENT_NAME, "type": "agent_reference"}},
-            )
-            c2_text = c2_response.output_text
+            logger.debug("Creating C2 response using c2_message_generation module...", input_preview=c2_input_text[:100])
+            # Use c2_message_generation_service for stateless C2 message generation
+            c2_result = await c2_message_generation_service.generate_message_stateless(c2_input_text)
+            c2_text = c2_result.response_text
             logger.info("C2 Response", text=c2_text)
 
             conversation_history.append(ConversationMessage(
-                agent_name=C2_AGENT_NAME,
+                agent_name=C2_MESSAGE_GENERATOR_AGENT_NAME,
                 message=c2_text,
                 timestamp=datetime.utcnow()
             ))

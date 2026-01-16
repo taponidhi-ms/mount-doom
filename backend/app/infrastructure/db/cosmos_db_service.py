@@ -32,13 +32,12 @@ class CosmosDBService:
     # Container names for each use case
     PERSONA_DISTRIBUTION_CONTAINER = "persona_distribution"
     PERSONA_GENERATOR_CONTAINER = "persona_generator"
-    GENERAL_PROMPT_CONTAINER = "general_prompt"
-    PROMPT_VALIDATOR_CONTAINER = "prompt_validator"
     CONVERSATION_SIMULATION_CONTAINER = "conversation_simulation"
     CONVERSATION_SIMULATION_V2_CONTAINER = "conversation_simulation_v2"
     TRANSCRIPT_PARSER_CONTAINER = "transcript_parser"
     PERSONA_DISTRIBUTION_EVALS_CONTAINER = "persona_distribution_evals"
     CONVERSATION_SIMULATION_EVALS_CONTAINER = "conversation_simulation_evals"
+    C2_MESSAGE_GENERATION_CONTAINER = "c2_message_generation"
     
     def __new__(cls):
         if cls._instance is None:

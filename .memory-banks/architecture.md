@@ -5,7 +5,6 @@
 ### Updated Agent Behavior Guidelines
 - C2Agent: Added behavior guidelines to restrict responses to simulation prompts only.
 - Persona Distribution Generator Agent: Added behavior guidelines to restrict responses to simulation prompts only.
-- Prompt Validator Agent: Added behavior guidelines to restrict responses to validation prompts only.
 
 Mount Doom is a fullstack AI agent simulation platform with FastAPI backend and Next.js frontend.
 
@@ -23,6 +22,12 @@ backend/app/
 │   └── db/              # Database services
 │       └── cosmos_db_service.py
 ├── modules/             # Feature modules (Vertical Slices)
+│   ├── c2_message_generation/
+│   │   ├── c2_message_generation_service.py
+│   │   ├── models.py
+│   │   ├── routes.py
+│   │   ├── agents.py
+│   │   └── instructions.py
 │   ├── conversation_simulation/
 │   │   ├── conversation_simulation_service.py
 │   │   ├── models.py    # Module-specific API and DB models
@@ -33,13 +38,8 @@ backend/app/
 │   │   ├── conversation_simulation_service.py
 │   │   ├── models.py
 │   │   ├── routes.py
-│   │   ├── agents.py
-│   │   └── instructions.py
-│   ├── general_prompt/
-│   │   ├── general_prompt_service.py
-│   │   ├── models.py
-│   │   ├── routes.py
-│   │   └── agents.py
+│   │   ├── agents.py    # Only C1 agent (uses c2_message_generation module for C2)
+│   │   └── instructions.py # Only C1 agent instructions
 │   ├── persona_distribution/
 │   │   ├── persona_distribution_service.py
 │   │   ├── models.py
@@ -52,20 +52,12 @@ backend/app/
 │   │   ├── routes.py
 │   │   ├── agents.py
 │   │   └── instructions.py
-│   ├── prompt_validator/
-│   │   ├── prompt_validator_service.py
-│   │   ├── models.py
-│   │   ├── routes.py
-│   │   ├── agents.py
-│   │   └── instructions.py
 │   ├── transcript_parser/
 │   │   ├── transcript_parser_service.py
 │   │   ├── models.py
 │   │   ├── routes.py
 │   │   ├── agents.py
 │   │   └── instructions.py
-│   └── system/          # System-wide routes
-│       └── routes.py    # e.g., Available Models
 └── main.py               # FastAPI application
 ```
 
@@ -109,12 +101,12 @@ For more details on Azure AI Agent Service and Workflow:
 
 #### Use Case Services
 Each service handles complete business logic for its use case:
+- **C2MessageGenerationService**: Generates C2 (customer) messages. Uses `create_c2_message_generator_agent()`. Provides both stateful (`generate_message()`) and stateless (`generate_message_stateless()`) generation methods.
 - **PersonaDistributionService**: Generates persona distributions. Uses `create_persona_distribution_agent()`.
 - **PersonaGeneratorService**: Generates exact personas. Uses `create_persona_generator_agent()`.
-- **GeneralPromptService**: Handles general prompts. Uses `create_general_prompt_agent()`.
-- **PromptValidatorService**: Validates prompts. Uses `create_prompt_validator_agent()`.
 - **TranscriptParserService**: Parses customer-representative transcripts. Uses `create_transcript_parser_agent()`.
 - **ConversationSimulationService**: Multi-agent conversation orchestration (C1/C2). Uses `create_c1_agent()` and `create_c2_agent()`.
+- **ConversationSimulationV2Service**: Multi-agent conversation orchestration (C1/C2). Uses `create_c1_agent()` and delegates C2 message generation to `C2MessageGenerationService`.
 - **PersonaDistributionEvalsService**: Prepares CXA AI Evals datasets from persona distribution runs.
 - **ConversationSimulationEvalsService**: Prepares CXA AI Evals datasets from conversation simulation runs.
 
@@ -159,6 +151,11 @@ Does NOT contain:
 - Feature-specific save methods
 
 ### Routes (One per use case)
+- `/api/v1/c2-message-generation/*` - Delegates to C2MessageGenerationService
+  - POST `/generate` - Generate C2 (customer) message
+  - GET `/browse` - Browse past C2 message generations with pagination
+  - POST `/delete` - Delete selected records
+  - POST `/download` - Download selected records as JSON
 - `/api/v1/persona-distribution/*` - Delegates to PersonaDistributionService
   - POST `/generate` - Generate persona distribution
   - GET `/browse` - Browse past persona distribution generations with pagination
@@ -167,18 +164,11 @@ Does NOT contain:
 - `/api/v1/persona-generator/*` - Delegates to PersonaGeneratorService
   - POST `/generate` - Generate exact personas
   - GET `/browse` - Browse past persona generations with pagination
-- `/api/v1/general-prompt/*` - Delegates to GeneralPromptService
-  - POST `/generate` - Generate response
-  - GET `/browse` - Browse past general prompts with pagination
-- `/api/v1/prompt-validator/*` - Delegates to PromptValidatorService
-  - POST `/validate` - Validate prompt
-  - GET `/browse` - Browse past validations with pagination
 - `/api/v1/conversation-simulation/*` - Delegates to ConversationSimulationService
   - POST `/simulate` - Simulate conversation
   - GET `/browse` - Browse past simulations with pagination
   - POST `/evals/prepare` - Prepare evals (delegates to ConversationSimulationEvalsService)
   - GET `/evals/latest` - Get latest simulation evals (delegates to ConversationSimulationEvalsService)
-- `/api/v1/models` - Get available models
 
 Routes only:
 1. Extract request parameters
@@ -193,8 +183,7 @@ Routes only:
 frontend/
 ├── app/             # Next.js App Router pages
 │   ├── persona-distribution/
-│   ├── general-prompt/
-│   ├── prompt-validator/
+│   ├── transcript-parser/
 │   └── conversation-simulation/
 ├── components/      # React components
 │   └── PageLayout.tsx  # Reusable page layout component
@@ -214,9 +203,8 @@ Each use case has a dedicated page with two tabs:
 - **History Tab**: Paginated view of past results
 
 Pages:
+- `/c2-message-generation` - Generate and view C2 (customer) messages
 - `/persona-distribution` - Generate and view persona distributions
-- `/general-prompt` - Generate and view general prompts
-- `/prompt-validator` - Validate and view prompt validations
 - `/transcript-parser` - Parse customer–representative transcripts and view parsed results
 - `/conversation-simulation` - Simulate and view conversations
   - Special feature: Simple form with customer intent, sentiment, and subject
@@ -287,6 +275,17 @@ The conversation simulation uses a shared conversation multi-agent workflow wher
 2. Conversation is reused across all agent invocations for context continuity
 3. Agents operate sequentially by adding messages and creating responses
 4. Each agent turn builds upon the complete conversation history
+
+### Conversation Simulation V2 Architecture
+In V2, the C2 (customer) message generation is delegated to a separate module:
+- **C1 Agent**: Managed by `conversation_simulation_v2` module
+- **C2 Agent**: Managed by `c2_message_generation` module
+- The `conversation_simulation_service` imports and uses `c2_message_generation_service.generate_message_stateless()` for C2 responses
+- This allows C2 message generation to be used independently (standalone API) or as part of conversation simulation
+
+### Agent Naming Convention
+- `C1_MESSAGE_GENERATOR_AGENT_NAME = "C1MessageGeneratorAgent"` - Service representative
+- `C2_MESSAGE_GENERATOR_AGENT_NAME = "C2MessageGeneratorAgent"` - Customer
 
 ### Agent Class Structure
 ```python

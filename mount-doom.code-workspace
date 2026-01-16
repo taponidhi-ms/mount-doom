@@ -20,5 +20,8 @@
       "path": ".",
       "name": "Root"
     }
-  ]
+  ],
+  "settings": {
+    "powershell.cwd": "Root"
+  }
 }

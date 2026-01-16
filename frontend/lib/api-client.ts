@@ -65,30 +65,6 @@ export interface PersonaGeneratorResponse extends BaseResponse {
   parsed_output?: any;
 }
 
-// General Prompt
-export interface GeneralPromptRequest {
-  prompt: string;
-  stream?: boolean;
-}
-
-export interface GeneralPromptResponse {
-  response_text: string;
-  tokens_used?: number;
-  time_taken_ms: number;
-  start_time: string;
-  end_time: string;
-  model_deployment_name: string;
-}
-
-// Prompt Validator
-export interface PromptValidatorRequest {
-  prompt: string;
-  model?: string;
-  stream?: boolean;
-}
-
-export interface PromptValidatorResponse extends BaseResponse {}
-
 // Transcript Parser
 export interface TranscriptParserRequest {
   transcript: string;
@@ -122,6 +98,13 @@ export interface ConversationSimulationResponse {
   c2_agent_details: AgentDetails;
   conversation_id: string;
 }
+
+// C2 Message Generation
+export interface C2MessageGenerationRequest {
+  prompt: string;
+}
+
+export interface C2MessageGenerationResponse extends BaseResponse {}
 
 // API Response wrapper
 interface ApiResponse<T> {
@@ -262,62 +245,6 @@ class ApiClient {
     });
   }
 
-  // General Prompt APIs
-  async generateGeneralResponse(
-    prompt: string
-  ): Promise<ApiResponse<GeneralPromptResponse>> {
-    return this.request<GeneralPromptResponse>('/api/v1/general-prompt/generate', {
-      method: 'POST',
-      body: JSON.stringify({ prompt }),
-    });
-  }
-
-  async browseGeneralPrompts(
-    page: number = 1,
-    pageSize: number = 10,
-    orderBy: string = 'timestamp',
-    orderDirection: 'ASC' | 'DESC' = 'DESC'
-  ): Promise<ApiResponse<BrowseResponse>> {
-    return this.request<BrowseResponse>(
-      `/api/v1/general-prompt/browse?page=${page}&page_size=${pageSize}&order_by=${orderBy}&order_direction=${orderDirection}`
-    );
-  }
-
-  async deleteGeneralPrompts(ids: string[]): Promise<ApiResponse<{ deleted_count: number; failed_count: number; errors: string[] }>> {
-    return this.request('/api/v1/general-prompt/delete', {
-      method: 'POST',
-      body: JSON.stringify(ids),
-    });
-  }
-
-  // Prompt Validator APIs
-  async validatePrompt(
-    prompt: string
-  ): Promise<ApiResponse<PromptValidatorResponse>> {
-    return this.request<PromptValidatorResponse>('/api/v1/prompt-validator/validate', {
-      method: 'POST',
-      body: JSON.stringify({ prompt }),
-    });
-  }
-
-  async browsePromptValidations(
-    page: number = 1,
-    pageSize: number = 10,
-    orderBy: string = 'timestamp',
-    orderDirection: 'ASC' | 'DESC' = 'DESC'
-  ): Promise<ApiResponse<BrowseResponse>> {
-    return this.request<BrowseResponse>(
-      `/api/v1/prompt-validator/browse?page=${page}&page_size=${pageSize}&order_by=${orderBy}&order_direction=${orderDirection}`
-    );
-  }
-
-  async deletePromptValidations(ids: string[]): Promise<ApiResponse<{ deleted_count: number; failed_count: number; errors: string[] }>> {
-    return this.request('/api/v1/prompt-validator/delete', {
-      method: 'POST',
-      body: JSON.stringify(ids),
-    });
-  }
-
   // Transcript Parser APIs
   async parseTranscript(
     transcript: string
@@ -441,6 +368,44 @@ class ApiClient {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(conversationIds),
+    });
+  }
+
+  // C2 Message Generation APIs
+  async generateC2Message(
+    prompt: string
+  ): Promise<ApiResponse<C2MessageGenerationResponse>> {
+    return this.request<C2MessageGenerationResponse>('/api/v1/c2-message-generation/generate', {
+      method: 'POST',
+      body: JSON.stringify({ prompt }),
+    });
+  }
+
+  async browseC2MessageGenerations(
+    page: number = 1,
+    pageSize: number = 10,
+    orderBy: string = 'timestamp',
+    orderDirection: 'ASC' | 'DESC' = 'DESC'
+  ): Promise<ApiResponse<BrowseResponse>> {
+    return this.request<BrowseResponse>(
+      `/api/v1/c2-message-generation/browse?page=${page}&page_size=${pageSize}&order_by=${orderBy}&order_direction=${orderDirection}`
+    );
+  }
+
+  async deleteC2MessageGenerations(ids: string[]): Promise<ApiResponse<{ deleted_count: number; failed_count: number; errors: string[] }>> {
+    return this.request('/api/v1/c2-message-generation/delete', {
+      method: 'POST',
+      body: JSON.stringify(ids),
+    });
+  }
+
+  async downloadC2MessageGenerations(ids: string[]): Promise<ApiResponse<Blob>> {
+    return this.requestBlob(`/api/v1/c2-message-generation/download`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(ids),
     });
   }
 }

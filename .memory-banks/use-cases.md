@@ -117,65 +117,7 @@
 
 ---
 
-## Use Case 3: General Prompt
-
-**Purpose**: Get responses for any general prompt using an agent.
-
-**Workflow**:
-1. User enters any general prompt
-2. Backend sends prompt to GeneralPromptAgent
-3. Agent generates response
-4. Response stored in Cosmos DB `general_prompt` container
-5. Frontend displays response with metrics
-
-**Agent**:
-- GeneralPromptAgent (fixed agent name)
-- Simple instructions: "You are a helpful assistant that answers general questions"
-- Model: gpt-4 (default from settings)
-
-**Browse API**:
-- GET `/api/v1/general-prompt/browse`
-- Supports pagination and ordering
-- Returns list of past general prompts
-
----
-
-## Use Case 4: Prompt Validator
-
-**Purpose**: Validate simulation prompts to ensure quality and effectiveness.
-
-**Workflow**:
-1. User enters simulation prompt to validate
-2. Backend sends prompt to PromptValidatorAgent
-3. PromptValidatorAgent analyzes prompt and provides feedback
-4. Response stored in Cosmos DB `prompt_validator` container with complete agent details
-5. Frontend displays validation results
-
-**Agent**:
-- PromptValidatorAgent (fixed agent name)
-- Instructions defined in `app/modules/prompt_validator/instructions.py`
-- Instruction set includes sample "good / needs improvement / invalid" prompts to improve consistency of reviews
-- Automatic versioning based on instruction hash
-- Model: gpt-4 (default from settings)
-
-**Validation Aspects**:
-- Clarity and specificity
-- Completeness
-- Potential improvements
-- Quality assessment
-
-**Database Schema**:
-- Document ID: conversation_id from Azure AI
-- Fields: prompt, response, tokens_used, time_taken_ms, agent_details, timestamp
-
-**Browse API**:
-- GET `/api/v1/prompt-validator/browse`
-- Supports pagination and ordering
-- Returns list of past validations
-
----
-
-## Use Case 5: Transcript Parser
+## Use Case 3: Transcript Parser
 
 **Purpose**: Parse customer-representative transcripts to extract intent, subject, and sentiment.
 
@@ -230,7 +172,7 @@
 
 ---
 
-## Use Case 6: Conversation Simulation
+## Use Case 4: Conversation Simulation
 
 **Purpose**: Simulate multi-turn conversations between customer service representative and customer.
 
@@ -311,7 +253,7 @@ RepresentativeLastMessage: {text}
 
 ---
 
-## Use Case 7: Conversation Simulation V2
+## Use Case 5: Conversation Simulation V2
 
 **Purpose**: Simulate multi-turn conversations v2 with distinct C1/C2 logic using Python control flow (Manual Logic).
 

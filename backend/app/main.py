@@ -15,12 +15,10 @@ logger.info("=" * 80)
 # This ensures services initialized during import use the proper logging config
 from app.modules.persona_distribution import routes as persona_distribution
 from app.modules.persona_generator import routes as persona_generator
-from app.modules.general_prompt import routes as general_prompt
-from app.modules.prompt_validator import routes as prompt_validator
 from app.modules.conversation_simulation import routes as conversation_simulation
 from app.modules.conversation_simulation_v2 import routes as conversation_simulation_v2
 from app.modules.transcript_parser import routes as transcript_parser
-from app.modules.system import routes as system_routes
+from app.modules.c2_message_generation import routes as c2_message_generation
 
 # Create FastAPI application
 app = FastAPI(
@@ -45,18 +43,14 @@ app.include_router(persona_distribution.router, prefix="/api/v1")
 logger.debug("Registered route", router="persona_distribution", prefix="/api/v1")
 app.include_router(persona_generator.router, prefix="/api/v1")
 logger.debug("Registered route", router="persona_generator", prefix="/api/v1")
-app.include_router(general_prompt.router, prefix="/api/v1")
-logger.debug("Registered route", router="general_prompt", prefix="/api/v1")
-app.include_router(prompt_validator.router, prefix="/api/v1")
-logger.debug("Registered route", router="prompt_validator", prefix="/api/v1")
 app.include_router(conversation_simulation.router, prefix="/api/v1")
 logger.debug("Registered route", router="conversation_simulation", prefix="/api/v1")
 app.include_router(conversation_simulation_v2.router, prefix="/api/v1")
 logger.debug("Registered route", router="conversation_simulation_v2", prefix="/api/v1")
 app.include_router(transcript_parser.router, prefix="/api/v1")
 logger.debug("Registered route", router="transcript_parser", prefix="/api/v1")
-app.include_router(system_routes.router, prefix="/api/v1")
-logger.debug("Registered route", router="system_routes", prefix="/api/v1")
+app.include_router(c2_message_generation.router, prefix="/api/v1")
+logger.debug("Registered route", router="c2_message_generation", prefix="/api/v1")
 logger.info("All API routes registered successfully")
 
 
