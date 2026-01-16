@@ -138,5 +138,65 @@
   {
     "title": "[INVALID] Transcript-Based with Previous Calls",
     "prompt": "I have data from 15 previous calls that were handled by our contact center. Please review these existing conversation IDs and use them as a basis to simulate new conversations with similar intents and customer behaviors."
+  },
+  {
+    "title": "ISP Technical Support",
+    "prompt": "Simulate 20 calls for ISP router setup issues to +1-800-123-4567. Mix 50% technical (neutral), 30% connection failure (angry), 20% general questions."
+  },
+  {
+    "title": "Credit Card Fraud Audit",
+    "prompt": "Generate 15 credit card fraud report calls. 80% panicked/anxious, 20% methodical. Call center: +1-212-999-8888."
+  },
+  {
+    "title": "Hotel Booking Modification",
+    "prompt": "Simulate 25 calls to hotel reservation line +1-407-555-0199. Focus on date changes (nervous), upgrades (excited), and cancellations (disappointed)."
+  },
+  {
+    "title": "University Admissions Help",
+    "prompt": "Create 60 calls for university admissions +1-617-555-0200. Topics: Application status (anxious), scholarship info (hopeful), deadline extension (desperate)."
+  },
+  {
+    "title": "Pet Insurance Claims",
+    "prompt": "Generate 30 calls for pet insurance +1-888-738-9999. 40% new claim (worried), 30% coverage check (curious), 30% claim denial (angry)."
+  },
+  {
+    "title": "[INVALID] Single Historical ID Replay",
+    "prompt": "Replay the scenario from ID: 6ba7b810-9dad-11d1-80b4-00c04fd430c8 exactly."
+  },
+  {
+    "title": "[INVALID] Batch Historical IDs",
+    "prompt": "Analyze these calls: 123e4567-e89b-12d3-a456-426614174000, 223e4567-e89b-12d3-a456-426614174001 and gen new ones."
+  },
+  {
+    "title": "[INVALID] Transcript Analysis",
+    "prompt": "Review the attached transcript file and create a simulation based on it."
+  },
+  {
+    "title": "[INVALID] Previous Call Data",
+    "prompt": "Use the previous 10 calls from the database to model the new simulation."
+  },
+  {
+    "title": "[INVALID] GUID Reference",
+    "prompt": "Simulate a conversation mirroring ID: 550e8400-e29b-41d4-a716-446655440000."
+  },
+  {
+    "title": "[IRRELEVANT] Weather Inquiry",
+    "prompt": "What is the weather like in Seattle today?"
+  },
+  {
+    "title": "[IRRELEVANT] Recipe Request",
+    "prompt": "Can you give me a recipe for chocolate chip cookies?"
+  },
+  {
+    "title": "[IRRELEVANT] Coding Task",
+    "prompt": "Write a Python script to sort a list of numbers."
+  },
+  {
+    "title": "[IRRELEVANT] Personal Assistant",
+    "prompt": "Remind me to buy milk at 5 PM."
+  },
+  {
+    "title": "[IRRELEVANT] Abusive Content",
+    "prompt": "You are stupid and useless. I hate this service."
   }
 ]

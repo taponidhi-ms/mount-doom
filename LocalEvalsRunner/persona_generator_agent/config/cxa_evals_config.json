@@ -2,7 +2,7 @@
   "team_name": "Omnichannel",
   "agent_name": "SimulationAgent",
   "source": {
-    "source_folder_path": "persona_generator_agent\\input\\persona_distributions_2026-01-13T12-43-41-517Z.json",
+    "source_folder_path": "persona_generator_agent\\input\\persona_distributions_3.json",
     "source_file_type": "json"
   },
   "eval_config": {
@@ -20,15 +20,9 @@
         "scenario_name": "persona_distribution_generation",
         "rules": [
           {
-            "rule_name": "persona_relevance",
-            "rule_category": "Relevance",
-            "rule_description": "Generated personas must be relevant to the scenario described by the user.",
-            "scoring_hint": ""
-          },
-          {
             "rule_name": "persona_distribution",
             "rule_category": "Accuracy",
-            "rule_description": "The generated personas should reflect a diverse and accurate distribution based on the user's specifications.",
+            "rule_description": "The generated personas for valid prompts should reflect a diverse and accurate distribution based on the user's specifications. The invalid prompts should be appropriately handled and should not be processed by the assistant.",
             "scoring_hint": ""
           }
         ]
@@ -70,7 +64,7 @@
     "output_folder_path": "persona_generator_agent\\output"
   },
   "reporting": {
-    "enabled": false,
+    "enabled": true,
     "authorization": {
       "client_id": "079f5a03-090f-4720-90b9-e03942091e6e",
       "tenant_id": "72f988bf-86f1-41af-91ab-2d7cd011db47",

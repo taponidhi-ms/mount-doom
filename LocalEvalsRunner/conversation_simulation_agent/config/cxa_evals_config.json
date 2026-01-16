@@ -2,8 +2,13 @@
   "team_name": "Omnichannel",
   "agent_name": "SimulationAgent",
   "source": {
-    "source_folder_path": "conversation_simulation_agent\\input\\conversation_simulations_2026-01-13T12-45-04-196Z.json",
-    "source_file_type": "json"
+    "source_folder_path": "conversation_simulation_agent\\input\\conversation_simulations_2026-01-14T13-38-44-974Z.json",
+    "source_file_type": "json",
+    "variable_columns": [
+      "customer_intent",
+      "customer_sentiment",
+      "conversation_subject"
+    ]
   },
   "eval_config": {
     "options": [
@@ -22,19 +27,13 @@
           {
             "rule_name": "persona_adherence",
             "rule_category": "Conversationality",
-            "rule_description": "The customer(assistant) should maintain consistency with their assigned persona throughout the conversation.",
+            "rule_description": "The customer should maintain consistency with their assigned persona throughout the conversation. Customer intent: {customer_intent}, sentiment: {customer_sentiment}, subject: {conversation_subject}. The customer's messages should align with these characteristics and not contradict them.",
             "scoring_hint": ""
           },
           {
             "rule_name": "goal_pursuit",
             "rule_category": "Usefulness",
-            "rule_description": "The customer(assistant) should actively work towards achieving their goal. The customer(assistant)'s messages should reflect their intent to accomplish this goal.",
-            "scoring_hint": ""
-          },
-          {
-            "rule_name": "topic_relevance",
-            "rule_category": "Relevance",
-            "rule_description": "The customer(assistant) should stay on topic and ask questions that are relevant to their goal. The customer(assistant) should not ask random, unrelated questions that have no connection to the conversation context or their stated problem.",
+            "rule_description": "The customer should actively work towards achieving their goal. The customer's messages should reflect their intent to accomplish this goal. Customer intent: {customer_intent}, sentiment: {customer_sentiment}, subject: {conversation_subject}. The customer should not deviate from this goal or introduce unrelated objectives.",
             "scoring_hint": ""
           }
         ]
@@ -76,7 +75,7 @@
     "output_folder_path": "conversation_simulation_agent\\output"
   },
   "reporting": {
-    "enabled": false,
+    "enabled": true,
     "authorization": {
       "client_id": "079f5a03-090f-4720-90b9-e03942091e6e",
       "tenant_id": "72f988bf-86f1-41af-91ab-2d7cd011db47",
