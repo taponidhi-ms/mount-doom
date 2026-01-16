@@ -1,6 +1,6 @@
 """Service for C2 message generation use case."""
 
-from datetime import datetime
+from datetime import datetime, timezone
 import structlog
 from typing import Optional, Dict, Any
 import json

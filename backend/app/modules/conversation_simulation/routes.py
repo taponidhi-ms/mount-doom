@@ -1,19 +1,15 @@
-from fastapi import APIRouter, HTTPException, Query
-from fastapi.responses import StreamingResponse, Response
-from app.modules.conversation_simulation.models import (
+from fastapi import APIRouter, HTTPException, Query, Response
+from app.models.shared import BrowseResponse
+from app.infrastructure.db.cosmos_db_service import cosmos_db_service
+from .models import (
     ConversationSimulationRequest,
     ConversationSimulationResponse
 )
-from app.models.shared import (
-    BrowseResponse
-)
-from app.core.config import settings
 from .conversation_simulation_service import conversation_simulation_service
-from app.infrastructure.db.cosmos_db_service import cosmos_db_service
 from datetime import datetime
 import time
-import structlog
 import json
+import structlog
 
 logger = structlog.get_logger()
 
@@ -22,24 +18,18 @@ router = APIRouter(prefix="/conversation-simulation", tags=["Conversation Simula
 @router.post("/simulate", response_model=ConversationSimulationResponse)
 async def simulate_conversation(request: ConversationSimulationRequest):
     """
-    Simulate a conversation between C1 and C2 agents using multi-agent workflow.
-    The workflow uses a single shared conversation where:
-    1. C1 agent generates a service representative response
-    2. C2 agent generates a customer response
-    This repeats until max_turns (10) or completion status is reached.
+    Simulate a conversation between C1 and C2 agents.
     """
-    MAX_TURNS = 10  # Hardcoded max turns (5 turns each for C1 and C2)
+    MAX_TURNS = 15
     logger.info("Received conversation simulation request", 
                max_turns=MAX_TURNS,
                customer_intent=request.customer_intent,
                customer_sentiment=request.customer_sentiment,
                conversation_subject=request.conversation_subject)
     
-    start_time = datetime.utcnow()
     start_ms = time.time() * 1000
 
     try:
-        # Convert request fields to dict for service
         conv_props_dict = {
             "CustomerIntent": request.customer_intent,
             "CustomerSentiment": request.customer_sentiment,
@@ -52,7 +42,6 @@ async def simulate_conversation(request: ConversationSimulationRequest):
             max_turns=MAX_TURNS
         )
 
-        end_time = datetime.utcnow()
         end_ms = time.time() * 1000
         total_time_taken_ms = end_ms - start_ms
 
@@ -60,22 +49,12 @@ async def simulate_conversation(request: ConversationSimulationRequest):
                    status=simulation_result.conversation_status,
                    messages=len(simulation_result.conversation_history))
 
-        # Save to database using service method
-        conversation_history_dict = [
-            {
-                "agent_name": msg.agent_name,
-                "message": msg.message,
-                "timestamp": msg.timestamp.isoformat()
-            }
-            for msg in simulation_result.conversation_history
-        ]
-
         c1_agent_details = simulation_result.c1_agent_details
         c2_agent_details = simulation_result.c2_agent_details
 
         await conversation_simulation_service.save_to_database(
             conversation_properties=conv_props_dict,
-            conversation_history=conversation_history_dict,
+            conversation_history=simulation_result.conversation_history,
             conversation_status=simulation_result.conversation_status,
             total_time_taken_ms=total_time_taken_ms,
             c1_agent_details={
@@ -95,24 +74,20 @@ async def simulate_conversation(request: ConversationSimulationRequest):
             conversation_id=simulation_result.conversation_id
         )
 
-        logger.info("Returning successful response", 
-                   total_time_ms=round(total_time_taken_ms, 2),
-                   status=simulation_result.conversation_status)
-        
         return ConversationSimulationResponse(
             conversation_history=simulation_result.conversation_history,
             conversation_status=simulation_result.conversation_status,
             total_time_taken_ms=total_time_taken_ms,
-            start_time=start_time,
-            end_time=end_time,
+            start_time=simulation_result.start_time,
+            end_time=simulation_result.end_time,
             c1_agent_details=c1_agent_details,
             c2_agent_details=c2_agent_details,
             conversation_id=simulation_result.conversation_id
         )
-
+        
     except Exception as e:
-        logger.error("Error in conversation simulation endpoint", error=str(e), exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Error simulating conversation: {str(e)}")
+        logger.error("Error in conversation simulation", error=str(e), exc_info=True)
+        raise
 
 @router.get("/browse", response_model=BrowseResponse)
 async def browse_conversation_simulations(
@@ -123,9 +98,8 @@ async def browse_conversation_simulations(
 ):
     """
     Browse conversation simulation records with pagination and ordering.
-    Returns a list of conversation simulation records from the database.
     """
-    logger.info("Browsing conversation simulations", 
+    logger.info("Browsing conversation simulations V2", 
                page=page, 
                page_size=page_size, 
                order_by=order_by,
@@ -151,7 +125,6 @@ async def browse_conversation_simulations(
 async def delete_conversation_simulations(conversation_ids: list[str]):
     """
     Delete conversation simulation records by their IDs.
-    Accepts a list of conversation IDs to delete.
     """
     logger.info("Received delete request", count=len(conversation_ids))
 
@@ -170,13 +143,13 @@ async def delete_conversation_simulations(conversation_ids: list[str]):
             try:
                 container.delete_item(item=conv_id, partition_key=conv_id)
                 deleted_count += 1
-                logger.debug("Deleted conversation", conversation_id=conv_id)
+                logger.debug("Deleted conversation V2", conversation_id=conv_id)
             except Exception as e:
                 error_msg = f"Failed to delete {conv_id}: {str(e)}"
                 errors.append(error_msg)
                 logger.warning(error_msg)
         
-        logger.info("Delete operation completed", deleted=deleted_count, failed=len(errors))
+        logger.info("Delete operation completed V2", deleted=deleted_count, failed=len(errors))
         
         return {
             "deleted_count": deleted_count,
@@ -187,6 +160,7 @@ async def delete_conversation_simulations(conversation_ids: list[str]):
     except Exception as e:
         logger.error("Error deleting conversation simulations", error=str(e), exc_info=True)
         raise HTTPException(status_code=500, detail=f"Error deleting conversation simulations: {str(e)}")
+
 
 @router.post("/download")
 async def download_conversation_simulations(conversation_ids: list[str]):
@@ -221,20 +195,7 @@ async def download_conversation_simulations(conversation_ids: list[str]):
                 c2_instructions = c2_agent_details.get("instructions", "")
                 
                 # Build conversation messages
-                conversation_messages = [
-                    {
-                        "role": "system",
-                        "content": "user is CSR, assistant is C2 Agent acting as customer"
-                    },
-                    {
-                        "role": "system",
-                        "content": c2_instructions
-                    },
-                    {
-                        "role": "system",
-                        "content": f"Simulate with properties: {json.dumps(conv_props)}"
-                    }
-                ]
+                conversation_messages = []
                 
                 # Add conversation history
                 conversation_history = item.get("conversation_history", [])
@@ -245,12 +206,12 @@ async def download_conversation_simulations(conversation_ids: list[str]):
                     # C1 is CSR (user), C2 is customer (assistant)
                     if "C1" in agent_name:
                         conversation_messages.append({
-                            "role": "user",
+                            "role": "customer_service_representative",
                             "content": message_text
                         })
                     elif "C2" in agent_name:
                         conversation_messages.append({
-                            "role": "assistant",
+                            "role": "customer",
                             "content": message_text
                         })
                 
@@ -265,8 +226,7 @@ async def download_conversation_simulations(conversation_ids: list[str]):
                 conversations.append(conversation)
                 
             except Exception as e:
-                logger.warning("Failed to retrieve conversation", conversation_id=conv_id, error=str(e))
-                # Continue with other items even if one fails
+                logger.warning("Failed to retrieve conversation V2", conversation_id=conv_id, error=str(e))
                 continue
         
         result = {"conversations": conversations}
@@ -282,3 +242,4 @@ async def download_conversation_simulations(conversation_ids: list[str]):
     except Exception as e:
         logger.error("Error downloading conversation simulations", error=str(e), exc_info=True)
         raise HTTPException(status_code=500, detail=f"Error downloading: {str(e)}")
+

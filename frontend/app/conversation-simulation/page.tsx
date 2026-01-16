@@ -283,7 +283,8 @@ export default function ConversationSimulationPage() {
       <Space direction="vertical" size="small" style={{ width: '100%' }}>
         {history.map((msg, index) => {
           const isSystem = msg.agent_name === 'System';
-          const isC1 = msg.agent_name === 'C1Agent';
+          // Check for V2 agent name as well
+          const isC1 = msg.agent_name === 'C1Agent' || msg.agent_name === 'C1MessageGeneratorAgent';
           
           // Determine background color
           let bgColor = '#ffffff';
@@ -457,7 +458,7 @@ export default function ConversationSimulationPage() {
       label: 'Simulate',
       children: (
         <Space direction="vertical" size="large" style={{ width: '100%' }}>
-          <Card title="Conversation Configuration">
+          <Card title="Conversation Configuration (V2)">
             <Space direction="vertical" size="middle" style={{ width: '100%' }}>
               <div>
                 <Text strong>Customer Intent</Text>
@@ -497,7 +498,7 @@ export default function ConversationSimulationPage() {
               
               <Alert 
                 message="Note" 
-                description="Conversations will run up to 20 turns or until completion is detected by the agents (e.g. 'I will end this call now')."
+                description="Conversations will run up to 20 turns using the new V2 Python logic."
                 type="info" 
                 showIcon 
               />
@@ -549,7 +550,7 @@ export default function ConversationSimulationPage() {
           </Card>
 
           {result && (
-            <Card title="Simulation Results">
+            <Card title="Simulation Results (V2)">
               <Space direction="vertical" size="middle" style={{ width: '100%' }}>
                 <Space size="large" wrap>
                   <div>
@@ -589,7 +590,7 @@ export default function ConversationSimulationPage() {
       label: 'Batch Simulation',
       children: (
         <Space direction="vertical" size="large" style={{ width: '100%' }}>
-          <Card title="Batch Processing">
+          <Card title="Batch Processing (V2)">
             <Space direction="vertical" size="middle" style={{ width: '100%' }}>
               <Alert
                 message="Paste Personas JSON"
@@ -713,7 +714,7 @@ export default function ConversationSimulationPage() {
       label: 'History',
       children: (
         <Card 
-          title="Simulation History"
+          title="Simulation History (V2)"
           extra={
             <Space>
               {selectedRowKeys.length > 0 && (
@@ -781,7 +782,7 @@ export default function ConversationSimulationPage() {
   return (
     <PageLayout
       title="Conversation Simulation"
-      description="Simulate multi-turn conversations between customer service representatives and customers."
+      description="Simulate multi-turn conversations with distinct C1/C2 logic."
       showBackButton
     >
       <Tabs 

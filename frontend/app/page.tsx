@@ -6,7 +6,6 @@ import {
   UsergroupAddOutlined, 
   UserAddOutlined, 
   MessageOutlined, 
-  CheckCircleOutlined, 
   CommentOutlined,
   FileSearchOutlined,
   ArrowRightOutlined
@@ -34,22 +33,10 @@ export default function Home() {
       description: 'Generate exact customer personas with specific intents, sentiments, subjects, and metadata. Perfect for creating detailed scenarios.',
     },
     {
-      title: 'General Prompt',
-      href: '/general-prompt',
-      icon: <MessageOutlined style={{ fontSize: '24px', color: colorPrimary }} />,
-      description: 'Get responses for any general prompt using LLM models directly. Flexible AI assistance for various tasks.',
-    },
-    {
       title: 'Transcript Parser',
       href: '/transcript-parser',
       icon: <FileSearchOutlined style={{ fontSize: '24px', color: colorPrimary }} />,
       description: 'Parse customer–representative transcripts to extract intent, subject, and sentiment.',
-    },
-    {
-      title: 'Prompt Validator',
-      href: '/prompt-validator',
-      icon: <CheckCircleOutlined style={{ fontSize: '24px', color: colorPrimary }} />,
-      description: 'Validate simulation prompts to ensure they meet quality standards. Get feedback on prompt effectiveness.',
     },
     {
       title: 'Conversation Simulation',
@@ -58,10 +45,10 @@ export default function Home() {
       description: 'Simulate multi-turn conversations between customer service representatives and customers with intelligent orchestration.',
     },
     {
-      title: 'Conversation Simulation V2',
-      href: '/conversation-simulation-v2',
-      icon: <CommentOutlined style={{ fontSize: '24px', color: colorPrimary }} />,
-      description: 'Simulate multi-turn conversations V2 with Manual Python Logic and separate C1/C2 Agent controls.',
+      title: 'C2 Message Generation',
+      href: '/c2-message-generation',
+      icon: <MessageOutlined style={{ fontSize: '24px', color: colorPrimary }} />,
+      description: 'Generate customer (C2) messages for conversation simulations using AI agents.',
     },
   ]
 

@@ -30,12 +30,6 @@ backend/app/
 │   │   └── instructions.py
 │   ├── conversation_simulation/
 │   │   ├── conversation_simulation_service.py
-│   │   ├── models.py    # Module-specific API and DB models
-│   │   ├── routes.py    # Module-specific API routes
-│   │   ├── agents.py    # Agent creation logic
-│   │   └── instructions.py # Agent instructions
-│   ├── conversation_simulation_v2/
-│   │   ├── conversation_simulation_service.py
 │   │   ├── models.py
 │   │   ├── routes.py
 │   │   ├── agents.py    # Only C1 agent (uses c2_message_generation module for C2)
@@ -105,10 +99,7 @@ Each service handles complete business logic for its use case:
 - **PersonaDistributionService**: Generates persona distributions. Uses `create_persona_distribution_agent()`.
 - **PersonaGeneratorService**: Generates exact personas. Uses `create_persona_generator_agent()`.
 - **TranscriptParserService**: Parses customer-representative transcripts. Uses `create_transcript_parser_agent()`.
-- **ConversationSimulationService**: Multi-agent conversation orchestration (C1/C2). Uses `create_c1_agent()` and `create_c2_agent()`.
-- **ConversationSimulationV2Service**: Multi-agent conversation orchestration (C1/C2). Uses `create_c1_agent()` and delegates C2 message generation to `C2MessageGenerationService`.
-- **PersonaDistributionEvalsService**: Prepares CXA AI Evals datasets from persona distribution runs.
-- **ConversationSimulationEvalsService**: Prepares CXA AI Evals datasets from conversation simulation runs.
+- **ConversationSimulationService**: Multi-agent conversation orchestration (C1/C2). Uses `create_c1_agent()` and delegates C2 message generation to `C2MessageGenerationService`.
 
 Services contain:
 - Agent configuration (name, instructions, model deployment)
@@ -159,16 +150,12 @@ Does NOT contain:
 - `/api/v1/persona-distribution/*` - Delegates to PersonaDistributionService
   - POST `/generate` - Generate persona distribution
   - GET `/browse` - Browse past persona distribution generations with pagination
-  - POST `/prepare-evals` - Prepare CXA AI Evals from selected runs (delegates to PersonaDistributionEvalsService)
-  - GET `/evals/latest` - Get the most recently prepared evals (delegates to PersonaDistributionEvalsService)
 - `/api/v1/persona-generator/*` - Delegates to PersonaGeneratorService
   - POST `/generate` - Generate exact personas
   - GET `/browse` - Browse past persona generations with pagination
 - `/api/v1/conversation-simulation/*` - Delegates to ConversationSimulationService
   - POST `/simulate` - Simulate conversation
   - GET `/browse` - Browse past simulations with pagination
-  - POST `/evals/prepare` - Prepare evals (delegates to ConversationSimulationEvalsService)
-  - GET `/evals/latest` - Get latest simulation evals (delegates to ConversationSimulationEvalsService)
 
 Routes only:
 1. Extract request parameters
@@ -276,9 +263,9 @@ The conversation simulation uses a shared conversation multi-agent workflow wher
 3. Agents operate sequentially by adding messages and creating responses
 4. Each agent turn builds upon the complete conversation history
 
-### Conversation Simulation V2 Architecture
-In V2, the C2 (customer) message generation is delegated to a separate module:
-- **C1 Agent**: Managed by `conversation_simulation_v2` module
+### Conversation Simulation Architecture
+The C2 (customer) message generation is delegated to a separate module:
+- **C1 Agent**: Managed by `conversation_simulation` module
 - **C2 Agent**: Managed by `c2_message_generation` module
 - The `conversation_simulation_service` imports and uses `c2_message_generation_service.generate_message_stateless()` for C2 responses
 - This allows C2 message generation to be used independently (standalone API) or as part of conversation simulation

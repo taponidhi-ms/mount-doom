@@ -52,15 +52,6 @@
 - Supports pagination and ordering
 - Returns list of past persona distribution generations
 
-**Evals Preparation**:
-- POST `/api/v1/persona-distribution/prepare-evals` - Prepare CXA AI Evals from selected runs
-- GET `/api/v1/persona-distribution/evals/latest` - Get latest prepared evals
-- Combines multiple persona distribution runs into standardized evals format
-- Generates predefined evaluation rules (no LLM usage)
-- Stores results in `persona_distribution_evals` container
-- Frontend: "Prepare for Evals" tab with multi-select table and a single zip download
-- Output: a zip named by `evals_id` containing `cxa_evals_config.json` and `cxa_evals_input_data.json`
-
 ---
 
 ## Use Case 2: Persona Generator
@@ -174,96 +165,15 @@
 
 ## Use Case 4: Conversation Simulation
 
-**Purpose**: Simulate multi-turn conversations between customer service representative and customer.
+**Purpose**: Simulate multi-turn conversations with distinct C1/C2 logic using Python control flow.
 
 **Participants**:
-- **C1Agent**: Customer Service Representative (fixed agent name)
-- **C2Agent**: Customer (fixed agent name)
-
-**Workflow**:
-1. User provides customer configuration:
-   - **Single Simulation**: Manually enter Customer Intent, Customer Sentiment, and Conversation Subject.
-   - **Batch Simulation**: Upload a JSON file containing a list of personas (CustomerIntent, CustomerSentiment, ConversationSubject).
-2. Max turns is hardcoded to 20 in backend
-3. Simulation starts (sequentially for batch):
-   - C1Agent speaks first (as service rep)
-  - Check for termination phrase after C1 ("transfer this call to my supervisor" or "end this call now")
-  - C2Agent responds (as customer) using injected customer properties
-   - Repeat until complete or max turns (20) reached
-4. Full conversation stored in Cosmos DB `conversation_simulation` container with details for agents
-5. Frontend displays conversation history with metrics
-
-**Agents**:
-- Agents use fixed names and instructions defined in `app/modules/conversation_simulation/instructions.py`
-- Automatic versioning for each agent based on their instruction hash
-- Model: gpt-4 (default from settings)
-- C1/C2 instruction sets include sample next-message prompt shapes to ground responses to the expected input format
-
-**C1 Agent Prompt Template**:
-```
-Generate a next message as an Agent for the following ongoing conversation:
-messages: {history}
-```
-
-**C2 Agent Prompt Template**:
-```
-Generate a next message as a customer for the following ongoing conversation:
-CustomerContext: {json}
-RepresentativeLastMessage: {text}
-```
-
-**Completion Logic**:
-- Conversation ends if C1 says "i will transfer this call to my supervisor now"
-- Conversation ends if C1 says "I will end this call now."
-- Conversation ends if max turns (20) reached
-
-**Metrics Tracked**:
-- Per-message tokens and timing
-- Total tokens used
-- Total time taken
-- Conversation status
-- Number of turns completed
-- Conversation ID from Azure AI
-
-**Database Schema**:
-- Document ID: conversation_id from Azure AI
-- Fields: conversation_properties, conversation_history, conversation_status, total_tokens_used, total_time_taken_ms, c1_agent_details, c2_agent_details, timestamp
-
-**Key Features**:
-- Turn-by-turn simulation
-- Intelligent completion detection
-- Full conversation history
-- Detailed per-message metrics
-- Maximum 20 turns for safety
-- Persona selection or manual input
-
-**Browse API**:
-- GET `/api/v1/conversation-simulation/browse`
-- Supports pagination and ordering
-- Returns list of past simulations
-
-**Evals Preparation**:
-- POST `/api/v1/conversation-simulation/evals/prepare` - Prepare CXA AI Evals from selected runs
-- GET `/api/v1/conversation-simulation/evals/latest` - Get latest prepared evals
-- Combines simulation runs into evals format
-- Target agent: C2Agent (evaluated as Assistant) against C1Agent (User messages)
-- Stores results in `conversation_simulation_evals` container
-- Frontend: "Prepare for Evals" tab
-- Output: zip download with config and data
-
----
-
-## Use Case 5: Conversation Simulation V2
-
-**Purpose**: Simulate multi-turn conversations v2 with distinct C1/C2 logic using Python control flow (Manual Logic).
-
-**Participants**:
-- **C1MessageGeneratorAgent**: Customer Service Representative (new agent name)
-- **C2MessageGeneratorAgent**: Customer (new agent name)
+- **C1MessageGeneratorAgent**: Customer Service Representative (agent name)
+- **C2MessageGeneratorAgent**: Customer (agent name, uses c2_message_generation module)
 
 **Workflow**:
 1. User provides customer configuration (Manual entry of Intent, Sentiment, Subject).
-2. Max turns is hardcoded to 10 in backend (v2 constraint).
+2. Max turns is hardcoded to 10 in backend.
 3. Simulation starts:
    - System initiates conversation with "Hello" from customer perspective to trigger C1.
    - Loop:
@@ -274,23 +184,23 @@ RepresentativeLastMessage: {text}
        - C2MessageGeneratorAgent generates response using this transcript as input.
        - C2 response is added to the conversation history.
      - Repeat until 10 turns.
-4. Full conversation stored in Cosmos DB `conversation_simulation_v2` container.
+4. Full conversation stored in Cosmos DB `conversation_simulation` container.
 5. Frontend displays conversation history.
 
 **Agents**:
-- Instructions defined in `app/modules/conversation_simulation_v2/instructions.py`
+- Instructions defined in `app/modules/conversation_simulation/instructions.py`
 - **C1 Instructions**: Standard CSR instructions, unaware of hidden conversation properties.
-- **C2 Instructions**: Customer instructions, explicitly aware of properties via JSON input. Includes instruction to "Use the Properties section..." and respond naturally.
+- **C2 Instructions**: Customer instructions (in c2_message_generation module), explicitly aware of properties via JSON input.
 
-**Differences from V1**:
-- Uses `C1MessageGeneratorAgent` and `C2MessageGeneratorAgent` instead of generic C1/C2.
+**Key Features**:
 - C1 is unaware of conversation properties (properties removed from C1 context).
-- C2 receives context via "Ongoing transcript" JSON input string instead of implicit context.
-- Orchestration is done via explicit Python loop + individual Agent API calls, rather than Azure AI Workflow YAML.
-- Data stored in `conversation_simulation_v2` container.
+- C2 receives context via "Ongoing transcript" JSON input string.
+- C2 message generation delegated to `c2_message_generation` module.
+- Orchestration is done via explicit Python loop + individual Agent API calls.
+- Data stored in `conversation_simulation` container.
 
 **Browse API**:
-- GET `/api/v1/conversation-simulation-v2/browse`
+- GET `/api/v1/conversation-simulation/browse`
 - Delete/Download endpoints also available.
 
 ---

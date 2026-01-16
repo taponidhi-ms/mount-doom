@@ -7,7 +7,6 @@ import {
   UsergroupAddOutlined, 
   UserAddOutlined, 
   MessageOutlined, 
-  CheckCircleOutlined, 
   CommentOutlined,
   FileSearchOutlined,
   MenuFoldOutlined,
@@ -58,29 +57,19 @@ export default function PageLayout({
       label: 'Persona Generator',
     },
     {
-      key: '/general-prompt',
-      icon: <MessageOutlined />,
-      label: 'General Prompt',
-    },
-    {
       key: '/transcript-parser',
       icon: <FileSearchOutlined />,
       label: 'Transcript Parser',
     },
     {
-      key: '/prompt-validator',
-      icon: <CheckCircleOutlined />,
-      label: 'Prompt Validator',
+      key: '/c2-message-generation',
+      icon: <MessageOutlined />,
+      label: 'C2 Message Generation',
     },
     {
       key: '/conversation-simulation',
       icon: <CommentOutlined />,
       label: 'Conversation Simulation',
-    },
-    {
-      key: '/conversation-simulation-v2',
-      icon: <CommentOutlined />,
-      label: 'Conversation Simulation V2',
     },
   ];
 

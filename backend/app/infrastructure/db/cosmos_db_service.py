@@ -1,4 +1,4 @@
-from azure.cosmos import CosmosClient, PartitionKey, exceptions
+from azure.cosmos import CosmosClient, PartitionKey, exceptions, DatabaseProxy
 from azure.identity import DefaultAzureCredential
 from app.core.config import settings
 from typing import Optional, Dict, Any, Union
@@ -27,16 +27,13 @@ class CosmosDBService:
     
     _instance: Optional['CosmosDBService'] = None
     _client: Optional[CosmosClient] = None
-    _database = None
+    _database: Optional[DatabaseProxy] = None
     
     # Container names for each use case
     PERSONA_DISTRIBUTION_CONTAINER = "persona_distribution"
     PERSONA_GENERATOR_CONTAINER = "persona_generator"
     CONVERSATION_SIMULATION_CONTAINER = "conversation_simulation"
-    CONVERSATION_SIMULATION_V2_CONTAINER = "conversation_simulation_v2"
     TRANSCRIPT_PARSER_CONTAINER = "transcript_parser"
-    PERSONA_DISTRIBUTION_EVALS_CONTAINER = "persona_distribution_evals"
-    CONVERSATION_SIMULATION_EVALS_CONTAINER = "conversation_simulation_evals"
     C2_MESSAGE_GENERATION_CONTAINER = "c2_message_generation"
     
     def __new__(cls):
@@ -104,6 +101,7 @@ class CosmosDBService:
         """Get the Cosmos DB Client instance (lazy initialization)."""
         if self._client is None:
             self._initialize_client()
+        assert self._client is not None
         return self._client
     
     @property
@@ -111,6 +109,7 @@ class CosmosDBService:
         """Get the database client (lazy initialization)."""
         if self._database is None:
             self._initialize_client()
+        assert self._database is not None
         return self._database
     
     async def ensure_container(self, container_name: str) -> Any:

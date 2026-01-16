@@ -289,21 +289,6 @@ class ApiClient {
     });
   }
 
-  async simulateConversationV2(
-    customer_intent: string,
-    customer_sentiment: string,
-    conversation_subject: string
-  ): Promise<ApiResponse<ConversationSimulationResponse>> {
-    return this.request<ConversationSimulationResponse>('/api/v1/conversation-simulation-v2/simulate', {
-      method: 'POST',
-      body: JSON.stringify({
-        customer_intent,
-        customer_sentiment,
-        conversation_subject,
-      }),
-    });
-  }
-
   async browseConversationSimulations(
     page: number = 1,
     pageSize: number = 10,
@@ -312,17 +297,6 @@ class ApiClient {
   ): Promise<ApiResponse<BrowseResponse>> {
     return this.request<BrowseResponse>(
       `/api/v1/conversation-simulation/browse?page=${page}&page_size=${pageSize}&order_by=${orderBy}&order_direction=${orderDirection}`
-    );
-  }
-
-  async browseConversationSimulationsV2(
-    page: number = 1,
-    pageSize: number = 10,
-    orderBy: string = 'timestamp',
-    orderDirection: 'ASC' | 'DESC' = 'DESC'
-  ): Promise<ApiResponse<BrowseResponse>> {
-    return this.request<BrowseResponse>(
-      `/api/v1/conversation-simulation-v2/browse?page=${page}&page_size=${pageSize}&order_by=${orderBy}&order_direction=${orderDirection}`
     );
   }
 
@@ -338,31 +312,9 @@ class ApiClient {
     );
   }
 
-  async deleteConversationSimulationsV2(
-    conversationIds: string[]
-  ): Promise<ApiResponse<{ deleted_count: number; failed_count: number; errors: string[] }>> {
-    return this.request<{ deleted_count: number; failed_count: number; errors: string[] }>(
-      '/api/v1/conversation-simulation-v2/delete',
-      {
-        method: 'POST',
-        body: JSON.stringify(conversationIds),
-      }
-    );
-  }
-
 
   async downloadConversationSimulations(conversationIds: string[]): Promise<ApiResponse<Blob>> {
     return this.requestBlob(`/api/v1/conversation-simulation/download`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(conversationIds),
-    });
-  }
-
-  async downloadConversationSimulationsV2(conversationIds: string[]): Promise<ApiResponse<Blob>> {
-    return this.requestBlob(`/api/v1/conversation-simulation-v2/download`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

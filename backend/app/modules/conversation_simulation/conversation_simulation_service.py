@@ -3,24 +3,21 @@
 from datetime import datetime
 import structlog
 import json
+import time
 from typing import List, Optional, Dict, Any
 
-from azure.ai.projects.models import WorkflowAgentDefinition, AgentReference, ResponseStreamEventType
 from app.infrastructure.ai.azure_ai_service import azure_ai_service
 from app.infrastructure.db.cosmos_db_service import cosmos_db_service
 from app.models.shared import AgentDetails
 from .models import ConversationMessage, ConversationSimulationResult, ConversationSimulationDocument
-from app.core.config import settings
-from .agents import create_c1_agent, create_c2_agent, C1_AGENT_NAME, C2_AGENT_NAME
+from .agents import create_c1_agent, C1_MESSAGE_GENERATOR_AGENT_NAME
+from app.modules.c2_message_generation.c2_message_generation_service import c2_message_generation_service
+from app.modules.c2_message_generation.agents import C2_MESSAGE_GENERATOR_AGENT_NAME, create_c2_message_generator_agent
 
 logger = structlog.get_logger()
 
-
 class ConversationSimulationService:
     """Service for simulating multi-agent conversations."""
-
-    C1_AGENT_NAME = C1_AGENT_NAME
-    C2_AGENT_NAME = C2_AGENT_NAME
 
     def __init__(self):
         pass
@@ -31,246 +28,150 @@ class ConversationSimulationService:
             max_turns: int
     ) -> ConversationSimulationResult:
         """
-        Simulate a multi-agent conversation using Azure AI Agent Workflow.
+        Simulate a multi-agent conversation.
         """
         start_time = datetime.utcnow()
-
-        # Build a simulation prompt from the provided conversation properties so the workflow
-        # has explicit context instead of an empty input.
-        simulation_prompt = (
-            "Conversation properties:\n"
-            f"- CustomerIntent: {conversation_properties.get('CustomerIntent', '')}\n"
-            f"- CustomerSentiment: {conversation_properties.get('CustomerSentiment', '')}\n"
-            f"- ConversationSubject: {conversation_properties.get('ConversationSubject', '')}\n"
-            f"- Raw JSON: {json.dumps(conversation_properties)}"
-        )
+        start_ms = time.time() * 1000
 
         logger.info("="*60)
         logger.info("Starting conversation simulation", 
                    max_turns=max_turns,
-                   simulation_prompt_length=len(simulation_prompt),
                    customer_intent=conversation_properties.get('CustomerIntent'),
                    customer_sentiment=conversation_properties.get('CustomerSentiment'),
                    conversation_subject=conversation_properties.get('ConversationSubject'))
         logger.info("="*60)
 
-        # Create agents with instructions
-        logger.info("Creating agents for simulation...")
+        # Create C1 agent and C2 agent to get their details
         c1_agent = create_c1_agent()
-        logger.debug("C1 Agent ready", agent_name=c1_agent.agent_version_object.name, version=c1_agent.agent_version_object.version)
+        c2_agent = create_c2_message_generator_agent()
         
-        c2_agent = create_c2_agent()
-        logger.debug("C2 Agent ready", agent_name=c2_agent.agent_version_object.name, version=c2_agent.agent_version_object.version)
-        
-        logger.info("All agents created successfully")
+        logger.info("Agents created", c1=C1_MESSAGE_GENERATOR_AGENT_NAME, c2=C2_MESSAGE_GENERATOR_AGENT_NAME)
 
-        # Workflow YAML
-        workflow_yaml = f"""
-kind: workflow
-trigger:
-  kind: OnConversationStart
-  id: my_workflow
-  actions:
-    - kind: SetVariable
-      id: set_initial_message
-      variable: Local.LatestMessage
-      value: "=UserMessage(System.LastMessageText)"
-
-    - kind: SetVariable
-      id: init_turn_count
-      variable: Local.TurnCount
-      value: 0
-
-    # Start Loop - C2 Turn
-    - kind: InvokeAzureAgent
-      id: c2_agent_turn
-      conversationId: "=System.ConversationId"
-      agent:
-        name: {c2_agent.agent_version_object.name}
-      input:
-        messages: "=Local.LatestMessage"
-      output:
-        messages: Local.LatestMessage
-
-    # C1 Agent Turn
-    - kind: InvokeAzureAgent
-      id: c1_agent_turn
-      conversationId: "=System.ConversationId"
-      agent:
-        name: {c1_agent.agent_version_object.name}
-      input:
-        messages: "=Local.LatestMessage"
-      output:
-        messages: Local.LatestMessage
-
-    # Check C1 Termination
-    - kind: ConditionGroup
-      id: check_c1_termination
-      conditions:
-        - condition: '=!IsBlank(Find("transfer this call to my supervisor", Last(Local.LatestMessage).Text))'
-          id: c1_terminates
-          actions:
-            - kind: EndConversation
-              id: end_workflow_c1
-        - condition: '=!IsBlank(Find("end this call now", Last(Local.LatestMessage).Text))'
-          id: c1_ends_call
-          actions:
-            - kind: EndConversation
-              id: end_workflow_c1_end_call
-      elseActions: []
-
-    # Increment Turn Count
-    - kind: SetVariable
-      id: increment_turn
-      variable: Local.TurnCount
-      value: "=Local.TurnCount + 1"
-
-    # Check Max Turns
-    - kind: ConditionGroup
-      id: check_max_turns
-      conditions:
-        - condition: "=Local.TurnCount >= {max_turns}"
-          id: max_turns_reached
-          actions:
-            - kind: EndConversation
-              id: end_workflow_max_turns
-      elseActions:
-        - kind: GotoAction
-          id: loop_back
-          actionId: c2_agent_turn
-"""
-
-        # Create Workflow Agent
-        logger.info("Creating workflow agent...")
-        logger.debug("Workflow YAML length", yaml_length=len(workflow_yaml))
-        workflow_agent = azure_ai_service.client.agents.create_version(
-            agent_name="conversation-workflow",
-            definition=WorkflowAgentDefinition(workflow=workflow_yaml)
+        # Initialize C1 Conversation
+        # C1 is the Agent. We start by simulating the User (Customer) saying Hello to trigger C1.
+        openai_client = azure_ai_service.openai_client
+        c1_conversation = openai_client.conversations.create(
+            items=[{"type": "message", "role": "user", "content": "Hello"}]
         )
-        logger.info("Workflow agent created", 
-                   workflow_name=workflow_agent.name, 
-                   workflow_version=workflow_agent.version)
-
-        # Run Workflow
-        logger.info("Creating conversation for workflow...")
-        conversation = azure_ai_service.openai_client.conversations.create()
-        logger.info("Conversation created", conversation_id=conversation.id)
-
-        input_text = f"{simulation_prompt}\n\nStart the simulation."
-        logger.debug("Input text prepared", input_length=len(input_text))
-
-        logger.info("Starting workflow stream...", conversation_id=conversation.id)
-        stream = azure_ai_service.openai_client.responses.create(
-            conversation=conversation.id,
-            extra_body={"agent": AgentReference(name=workflow_agent.name).as_dict()},
-            input=input_text,
-            stream=True
-        )
-        logger.info("Stream created, processing events...")
+        logger.info("C1 Conversation created", conversation_id=c1_conversation.id)
 
         conversation_history: List[ConversationMessage] = []
         conversation_status = "Ongoing"
-        current_actor = None
-
-        logger.info("Processing stream events...")
-        for event in stream:
-            if event.type == ResponseStreamEventType.RESPONSE_OUTPUT_ITEM_ADDED and event.item.type == "workflow_action":
-                if event.item.action_id == "c1_agent_turn":
-                    current_actor = self.C1_AGENT_NAME
-                elif event.item.action_id == "c2_agent_turn":
-                    current_actor = self.C2_AGENT_NAME
-            
-            elif event.type == ResponseStreamEventType.RESPONSE_OUTPUT_TEXT_DONE:
-                if current_actor:
-                    logger.info("Message received", actor=current_actor, message_preview=event.text[:100] + "...")
-                    conversation_history.append(ConversationMessage(
-                        agent_name=current_actor,
-                        message=event.text,
-                        timestamp=datetime.utcnow()
-                    ))
-            
-            elif event.type == ResponseStreamEventType.RESPONSE_COMPLETED:
-                logger.info("Stream completed")
-
-        # Determine final status
-        logger.info("Determining final conversation status...")
-        if conversation_history:
-            last_message = conversation_history[-1].message.lower()
-            if "end this call now" in last_message or "transfer this call to my supervisor" in last_message:
-                conversation_status = "Completed"
-                logger.info("Conversation marked as Completed by termination phrase")
-            else:
-                # If max turns reached, it might also be considered completed or just stopped
-                conversation_status = "Completed" if len(conversation_history) >= max_turns * 2 else "Ongoing"
-
-        end_time = datetime.utcnow()
-        total_time_ms = (end_time - start_time).total_seconds() * 1000
         
-        logger.info("="*60)
-        logger.info("Conversation simulation completed",
-                   status=conversation_status,
-                   total_messages=len(conversation_history),
-                   total_time_ms=round(total_time_ms, 2))
-        logger.info("="*60)
+        # Add initial "Hello" to history as C2 (Customer) message?
+        # The user pseudo code says: "Create a conversation where customer has just said Hello"
+        # Since C1 will respond to this, effectively the conversation has started.
+        # Ideally, we should capture this initial "Hello" if we want complete transcript.
+        # But simulation often implies generated content. I'll add it to history.
+        conversation_history.append(ConversationMessage(
+            agent_name=C2_MESSAGE_GENERATOR_AGENT_NAME,
+            message="Hello",
+            timestamp=datetime.utcnow()
+        ))
+
+        turn_count = 0
+        while turn_count < max_turns and conversation_status == "Ongoing":
+            logger.debug(f"Turn {turn_count + 1} starting")
+
+            # --- C1 (Agent) Turn ---
+            logger.debug("Creating C1 response...")
+            c1_response = openai_client.responses.create(
+                conversation=c1_conversation.id,
+                extra_body={"agent": {"name": C1_MESSAGE_GENERATOR_AGENT_NAME, "type": "agent_reference"}},
+                input="", # Empty input because conversation history has the context
+            )
+            c1_text = c1_response.output_text
+            logger.info("C1 Response", text=c1_text)
+
+            conversation_history.append(ConversationMessage(
+                agent_name=C1_MESSAGE_GENERATOR_AGENT_NAME,
+                message=c1_text,
+                timestamp=datetime.utcnow()
+            ))
+
+            # Check termination by C1
+            if "end this call now" in c1_text.lower() or "transfer this call to my supervisor" in c1_text.lower():
+                conversation_status = "Completed"
+                break
+
+            # --- C2 (Customer) Turn ---
+            # Construct C2 input using c2_message_generation module
+            # Properties + Messages
+            mapped_msgs = []
+            for i, msg in enumerate(conversation_history):
+                # Map agent names to 'agent' or 'customer'
+                role = "agent" if msg.agent_name == C1_MESSAGE_GENERATOR_AGENT_NAME else "customer"
+                mapped_msgs.append({
+                    role: msg.message,
+                    "Id": i + 1
+                })
+            
+            c2_payload = {
+                "Properties": conversation_properties,
+                "messages": mapped_msgs
+            }
+            c2_input_text = f"Ongoing transcript: {json.dumps(c2_payload)}"
+            
+            logger.debug("Creating C2 response using c2_message_generation module...", input_preview=c2_input_text[:100])
+            # Use c2_message_generation_service for stateless C2 message generation
+            c2_result = await c2_message_generation_service.generate_message_stateless(c2_input_text)
+            c2_text = c2_result.response_text
+            logger.info("C2 Response", text=c2_text)
+
+            conversation_history.append(ConversationMessage(
+                agent_name=C2_MESSAGE_GENERATOR_AGENT_NAME,
+                message=c2_text,
+                timestamp=datetime.utcnow()
+            ))
+
+            # Add C2 generated message to C1's conversation so C1 sees it next time
+            openai_client.conversations.items.create(
+                conversation_id=c1_conversation.id,
+                items=[{"type": "message", "role": "user", "content": c2_text}],
+            )
+
+            turn_count += 1
+            if turn_count >= max_turns:
+                conversation_status = "MaxTurnsReached"
+
+        end_ms = time.time() * 1000
+        total_time_taken_ms = end_ms - start_ms
 
         return ConversationSimulationResult(
             conversation_history=conversation_history,
             conversation_status=conversation_status,
-            total_time_taken_ms=total_time_ms,
+            total_time_taken_ms=total_time_taken_ms,
             start_time=start_time,
-            end_time=end_time,
+            end_time=datetime.utcnow(),
             c1_agent_details=c1_agent.agent_details,
             c2_agent_details=c2_agent.agent_details,
-
-            conversation_id=conversation.id
+            conversation_id=c1_conversation.id
         )
 
     async def save_to_database(
-        self,
-        conversation_properties: Dict[str, Any],
-        conversation_history: list,
-        conversation_status: str,
-        total_time_taken_ms: float,
-        c1_agent_details: Dict[str, Any],
-        c2_agent_details: Dict[str, Any],
-        conversation_id: str
-    ):
-        """
-        Save conversation simulation result to database.
-        
-        Args:
-            conversation_properties: Properties of the conversation
-            conversation_history: List of conversation messages
-            conversation_status: Status of the conversation
-            total_time_taken_ms: Total time taken in milliseconds
-            c1_agent_details: Details about C1 agent
-            c2_agent_details: Details about C2 agent
-            conversation_id: The conversation ID from Azure AI
-        """
-        logger.info("Saving conversation simulation to database",
-                   status=conversation_status,
-                   messages=len(conversation_history),
-                   time_ms=round(total_time_taken_ms, 2),
-                   conversation_id=conversation_id)
-        
-        # Create document with structure specific to conversation simulation
-        # Use conversation_id as the document ID
+            self,
+            conversation_properties: dict,
+            conversation_history: List[ConversationMessage],
+            conversation_status: str,
+            total_time_taken_ms: float,
+            c1_agent_details: dict,
+            c2_agent_details: dict,
+            conversation_id: str
+    ):n        """Save simulation result to Cosmos DB."""
         document = ConversationSimulationDocument(
-            id=conversation_id,
+            id=conversation_id,  # Use conversation ID as document ID
             conversation_properties=conversation_properties,
             conversation_history=conversation_history,
             conversation_status=conversation_status,
             total_time_taken_ms=total_time_taken_ms,
             c1_agent_details=AgentDetails(**c1_agent_details),
-            c2_agent_details=AgentDetails(**c2_agent_details)
+            c2_agent_details=AgentDetails(**c2_agent_details),
         )
-        
-        # Use generic save method from CosmosDBService
+
         await cosmos_db_service.save_document(
             container_name=cosmos_db_service.CONVERSATION_SIMULATION_CONTAINER,
-            document=document
+            document=document.model_dump(mode='json', by_alias=True)
         )
-        logger.info("Conversation simulation saved successfully", document_id=conversation_id)
-
+        logger.info("Saved simulation result to database", conversation_id=conversation_id)
 
 conversation_simulation_service = ConversationSimulationService()
