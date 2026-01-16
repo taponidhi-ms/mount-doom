@@ -46,7 +46,7 @@ class C2MessageGenerationService:
             logger.info("C2 Message Generator Agent ready", agent_version=agent.agent_version_object.version)
 
             # Create conversation with initial message
-            timestamp = datetime.utcnow()
+            timestamp = datetime.now(timezone.utc)
             logger.info("Creating conversation with user message...")
             conversation = azure_ai_service.openai_client.conversations.create(
                 items=[{"type": "message", "role": "user", "content": prompt}]
@@ -121,7 +121,7 @@ class C2MessageGenerationService:
             agent = create_c2_message_generator_agent()
 
             # Use stateless response creation (no conversation persistence)
-            timestamp = datetime.utcnow()
+            timestamp = datetime.now(timezone.utc)
             response = azure_ai_service.openai_client.responses.create(
                 input=[{"role": "user", "content": prompt}],
                 extra_body={"agent": {"name": agent.agent_version_object.name, "type": "agent_reference"}},

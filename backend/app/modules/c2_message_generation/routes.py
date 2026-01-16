@@ -10,7 +10,7 @@ from app.models.shared import BrowseResponse, AgentDetails
 from app.core.config import settings
 from .c2_message_generation_service import c2_message_generation_service
 from app.infrastructure.db.cosmos_db_service import cosmos_db_service
-from datetime import datetime
+from datetime import datetime, timezone
 import time
 import structlog
 import json
@@ -25,14 +25,14 @@ async def generate_c2_message(request: C2MessageGenerationRequest):
     """Generate a C2 (Customer) message from prompt."""
     logger.info("Received C2 message generation request", prompt_length=len(request.prompt))
     
-    start_time = datetime.utcnow()
+    start_time = datetime.now(timezone.utc)
     start_ms = time.time() * 1000
 
     try:
         # Get response from C2 message generation service
         agent_response = await c2_message_generation_service.generate_message(request.prompt)
         
-        end_time = datetime.utcnow()
+        end_time = datetime.now(timezone.utc)
         end_ms = time.time() * 1000
         time_taken_ms = end_ms - start_ms
 

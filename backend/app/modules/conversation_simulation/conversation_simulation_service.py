@@ -1,6 +1,6 @@
 """Service for conversation simulation use case."""
 
-from datetime import datetime
+from datetime import datetime, timezone
 import structlog
 import json
 import time
@@ -30,7 +30,7 @@ class ConversationSimulationService:
         """
         Simulate a multi-agent conversation.
         """
-        start_time = datetime.utcnow()
+        start_time = datetime.now(timezone.utc)
         start_ms = time.time() * 1000
 
         logger.info("="*60)
@@ -66,7 +66,7 @@ class ConversationSimulationService:
         conversation_history.append(ConversationMessage(
             agent_name=C2_MESSAGE_GENERATOR_AGENT_NAME,
             message="Hello",
-            timestamp=datetime.utcnow()
+            timestamp=datetime.now(timezone.utc)
         ))
 
         turn_count = 0
@@ -86,7 +86,7 @@ class ConversationSimulationService:
             conversation_history.append(ConversationMessage(
                 agent_name=C1_MESSAGE_GENERATOR_AGENT_NAME,
                 message=c1_text,
-                timestamp=datetime.utcnow()
+                timestamp=datetime.now(timezone.utc)
             ))
 
             # Check termination by C1
@@ -121,7 +121,7 @@ class ConversationSimulationService:
             conversation_history.append(ConversationMessage(
                 agent_name=C2_MESSAGE_GENERATOR_AGENT_NAME,
                 message=c2_text,
-                timestamp=datetime.utcnow()
+                timestamp=datetime.now(timezone.utc)
             ))
 
             # Add C2 generated message to C1's conversation so C1 sees it next time
@@ -142,7 +142,7 @@ class ConversationSimulationService:
             conversation_status=conversation_status,
             total_time_taken_ms=total_time_taken_ms,
             start_time=start_time,
-            end_time=datetime.utcnow(),
+            end_time=datetime.now(timezone.utc),
             c1_agent_details=c1_agent.agent_details,
             c2_agent_details=c2_agent.agent_details,
             conversation_id=c1_conversation.id
@@ -157,7 +157,8 @@ class ConversationSimulationService:
             c1_agent_details: dict,
             c2_agent_details: dict,
             conversation_id: str
-    ):n        """Save simulation result to Cosmos DB."""
+    ):
+        """Save simulation result to Cosmos DB."""
         document = ConversationSimulationDocument(
             id=conversation_id,  # Use conversation ID as document ID
             conversation_properties=conversation_properties,
