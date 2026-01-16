@@ -1,38 +1,42 @@
+"""Routes for Persona Distribution use case."""
+
 from fastapi import APIRouter, HTTPException, Query
-from fastapi.responses import StreamingResponse, Response
+from fastapi.responses import Response
+from datetime import datetime, timezone
+import time
+import structlog
+
 from app.modules.persona_distribution.models import (
     PersonaDistributionRequest,
     PersonaDistributionResponse
 )
-from app.models.shared import (
-    BrowseResponse,
-    AgentDetails
-)
-from app.core.config import settings
+from app.models.shared import BrowseResponse
 from .persona_distribution_service import persona_distribution_service
 from app.infrastructure.db.cosmos_db_service import cosmos_db_service
-from datetime import datetime
-import time
-import structlog
-import json
+from app.modules.shared.route_helpers import (
+    browse_records,
+    delete_records,
+    download_records_as_conversations
+)
 
 logger = structlog.get_logger()
 
 router = APIRouter(prefix="/persona-distribution", tags=["Persona Distribution"])
+
 
 @router.post("/generate", response_model=PersonaDistributionResponse)
 async def generate_persona_distribution(request: PersonaDistributionRequest):
     """Generate persona distribution from simulation prompt."""
     logger.info("Received persona distribution generation request", prompt_length=len(request.prompt))
     
-    start_time = datetime.utcnow()
+    start_time = datetime.now(timezone.utc)
     start_ms = time.time() * 1000
 
     try:
         # Get response from persona distribution generation service
         agent_response = await persona_distribution_service.generate_persona_distribution(request.prompt)
         
-        end_time = datetime.utcnow()
+        end_time = datetime.now(timezone.utc)
         end_ms = time.time() * 1000
         time_taken_ms = end_ms - start_ms
 
@@ -70,6 +74,7 @@ async def generate_persona_distribution(request: PersonaDistributionRequest):
         logger.error("Error in persona distribution generation endpoint", error=str(e), exc_info=True)
         raise HTTPException(status_code=500, detail=f"Error generating persona distribution: {str(e)}")
 
+
 @router.get("/browse", response_model=BrowseResponse)
 async def browse_persona_distributions(
     page: int = Query(default=1, ge=1, description="Page number (1-indexed)"),
@@ -77,123 +82,36 @@ async def browse_persona_distributions(
     order_by: str = Query(default="timestamp", description="Field to order by"),
     order_direction: str = Query(default="DESC", pattern="^(ASC|DESC)$", description="Order direction")
 ):
-    """
-    Browse persona distribution generation records with pagination and ordering.
-    Returns a list of persona distribution generation records from the database.
-    """
-    logger.info("Browsing persona distributions", 
-               page=page, 
-               page_size=page_size, 
-               order_by=order_by,
-               order_direction=order_direction)
+    """Browse persona distribution generation records with pagination and ordering."""
+    return await browse_records(
+        container_name=cosmos_db_service.PERSONA_DISTRIBUTION_CONTAINER,
+        page=page,
+        page_size=page_size,
+        order_by=order_by,
+        order_direction=order_direction,
+        use_case_name="persona distributions"
+    )
 
-    try:
-        result = await cosmos_db_service.browse_container(
-            container_name=cosmos_db_service.PERSONA_DISTRIBUTION_CONTAINER,
-            page=page,
-            page_size=page_size,
-            order_by=order_by,
-            order_direction=order_direction
-        )
 
-        logger.info("Returning browse results", total_count=result["total_count"])
-        return result
-
-    except Exception as e:
-        logger.error("Error browsing persona distributions", error=str(e), exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Error browsing persona distributions: {str(e)}")
 @router.post("/delete")
 async def delete_persona_distributions(ids: list[str]):
     """Delete persona distribution records by their IDs."""
-    logger.info("Received delete request", count=len(ids))
-    if not ids:
-        raise HTTPException(status_code=400, detail="No IDs provided")
+    return await delete_records(
+        container_name=cosmos_db_service.PERSONA_DISTRIBUTION_CONTAINER,
+        ids=ids,
+        use_case_name="persona distributions"
+    )
 
-    try:
-        container = await cosmos_db_service.ensure_container(
-            cosmos_db_service.PERSONA_DISTRIBUTION_CONTAINER
-        )
-        
-        deleted_count = 0
-        errors = []
-        
-        for item_id in ids:
-            try:
-                container.delete_item(item=item_id, partition_key=item_id)
-                deleted_count += 1
-            except Exception as e:
-                errors.append(f"Failed to delete {item_id}: {str(e)}")
-                logger.warning(f"Failed to delete {item_id}", error=str(e))
-        
-        logger.info("Delete operation completed", deleted=deleted_count, failed=len(errors))
-        return {"deleted_count": deleted_count, "failed_count": len(errors), "errors": errors}
-    
-    except Exception as e:
-        logger.error("Error deleting persona distributions", error=str(e), exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Error deleting: {str(e)}")
 
 @router.post("/download")
-async def download_persona_distributions(ids: list[str]):
-    """
-    Download persona distribution records as JSON.
-    Returns conversations array with system prompt, user prompt, and assistant response.
-    """
-    logger.info("Received download request", count=len(ids))
-    
-    if not ids:
-        raise HTTPException(status_code=400, detail="No IDs provided")
+async def download_persona_distributions(ids: list[str]) -> Response:
+    """Download persona distribution records as JSON."""
+    return await download_records_as_conversations(
+        container_name=cosmos_db_service.PERSONA_DISTRIBUTION_CONTAINER,
+        ids=ids,
+        scenario_name="persona_distribution_generation",
+        filename="persona_distributions.json",
+        use_case_name="persona distributions",
+        input_field="prompt"
+    )
 
-    try:
-        container = await cosmos_db_service.ensure_container(
-            cosmos_db_service.PERSONA_DISTRIBUTION_CONTAINER
-        )
-        
-        conversations = []
-        
-        for item_id in ids:
-            try:
-                item = container.read_item(item=item_id, partition_key=item_id)
-                
-                # Extract agent instructions from agent_details
-                agent_details = item.get("agent_details", {})
-                agent_instructions = agent_details.get("instructions", "")
-                
-                # Extract data from the stored item
-                conversation = {
-                    "Id": item.get("id"),
-                    "scenario_name": "persona_distribution_generation",
-                    "conversation": [
-                        {
-                            "role": "system",
-                            "content": agent_instructions
-                        },
-                        {
-                            "role": "user",
-                            "content": item.get("prompt", "")
-                        },
-                        {
-                            "role": "assistant",
-                            "content": item.get("response", "")
-                        }
-                    ]
-                }
-                conversations.append(conversation)
-                
-            except Exception as e:
-                logger.warning("Failed to retrieve item", item_id=item_id, error=str(e))
-                # Continue with other items even if one fails
-                continue
-        
-        result = {"conversations": conversations}
-        json_str = json.dumps(result, indent=2)
-        
-        logger.info("Returning download data", conversation_count=len(conversations))
-        return Response(
-            content=json_str,
-            media_type="application/json",
-            headers={"Content-Disposition": 'attachment; filename="persona_distributions.json"'}
-        )
-        
-    except Exception as e:
-        logger.error("Error downloading persona distributions", error=str(e), exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Error downloading: {str(e)}")

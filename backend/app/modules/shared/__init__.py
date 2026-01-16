@@ -1,14 +1,23 @@
 """
 Shared module for common single-agent and multi-agent functionality.
 
-This module provides base classes and factory functions that can be
+This module provides base classes and helper functions that can be
 reused across different agent use cases to minimize code duplication.
 """
 
 from .base_single_agent_service import BaseSingleAgentService
-from .base_routes import create_single_agent_routes
+from .route_helpers import (
+    browse_records,
+    delete_records,
+    download_records_as_conversations,
+    download_records_raw
+)
 
 __all__ = [
     'BaseSingleAgentService',
-    'create_single_agent_routes',
+    'browse_records',
+    'delete_records',
+    'download_records_as_conversations',
+    'download_records_raw',
 ]
+

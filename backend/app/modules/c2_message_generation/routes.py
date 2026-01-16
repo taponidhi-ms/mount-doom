@@ -2,18 +2,22 @@
 
 from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import Response
+from datetime import datetime, timezone
+import time
+import structlog
+
 from app.modules.c2_message_generation.models import (
     C2MessageGenerationRequest,
     C2MessageGenerationResponse
 )
-from app.models.shared import BrowseResponse, AgentDetails
-from app.core.config import settings
+from app.models.shared import BrowseResponse
 from .c2_message_generation_service import c2_message_generation_service
 from app.infrastructure.db.cosmos_db_service import cosmos_db_service
-from datetime import datetime, timezone
-import time
-import structlog
-import json
+from app.modules.shared.route_helpers import (
+    browse_records,
+    delete_records,
+    download_records_as_conversations
+)
 
 logger = structlog.get_logger()
 
@@ -76,126 +80,36 @@ async def browse_c2_message_generations(
     order_by: str = Query(default="timestamp", description="Field to order by"),
     order_direction: str = Query(default="DESC", pattern="^(ASC|DESC)$", description="Order direction")
 ):
-    """
-    Browse C2 message generation records with pagination and ordering.
-    Returns a list of C2 message generation records from the database.
-    """
-    logger.info("Browsing C2 message generations", 
-               page=page, 
-               page_size=page_size, 
-               order_by=order_by,
-               order_direction=order_direction)
-
-    try:
-        result = await cosmos_db_service.browse_container(
-            container_name=cosmos_db_service.C2_MESSAGE_GENERATION_CONTAINER,
-            page=page,
-            page_size=page_size,
-            order_by=order_by,
-            order_direction=order_direction
-        )
-
-        logger.info("Returning browse results", total_count=result["total_count"])
-        return result
-
-    except Exception as e:
-        logger.error("Error browsing C2 message generations", error=str(e), exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Error browsing C2 message generations: {str(e)}")
+    """Browse C2 message generation records with pagination and ordering."""
+    return await browse_records(
+        container_name=cosmos_db_service.C2_MESSAGE_GENERATION_CONTAINER,
+        page=page,
+        page_size=page_size,
+        order_by=order_by,
+        order_direction=order_direction,
+        use_case_name="C2 message generations"
+    )
 
 
 @router.post("/delete")
 async def delete_c2_message_generations(ids: list[str]):
     """Delete C2 message generation records by their IDs."""
-    logger.info("Received delete request", count=len(ids))
-    if not ids:
-        raise HTTPException(status_code=400, detail="No IDs provided")
-
-    try:
-        container = await cosmos_db_service.ensure_container(
-            cosmos_db_service.C2_MESSAGE_GENERATION_CONTAINER
-        )
-        
-        deleted_count = 0
-        errors = []
-        
-        for item_id in ids:
-            try:
-                container.delete_item(item=item_id, partition_key=item_id)
-                deleted_count += 1
-            except Exception as e:
-                errors.append(f"Failed to delete {item_id}: {str(e)}")
-                logger.warning(f"Failed to delete {item_id}", error=str(e))
-        
-        logger.info("Delete operation completed", deleted=deleted_count, failed=len(errors))
-        return {"deleted_count": deleted_count, "failed_count": len(errors), "errors": errors}
-    
-    except Exception as e:
-        logger.error("Error deleting C2 message generations", error=str(e), exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Error deleting: {str(e)}")
+    return await delete_records(
+        container_name=cosmos_db_service.C2_MESSAGE_GENERATION_CONTAINER,
+        ids=ids,
+        use_case_name="C2 message generations"
+    )
 
 
 @router.post("/download")
-async def download_c2_message_generations(ids: list[str]):
-    """
-    Download C2 message generation records as JSON.
-    Returns conversations array with system prompt, user prompt, and assistant response.
-    """
-    logger.info("Received download request", count=len(ids))
-    
-    if not ids:
-        raise HTTPException(status_code=400, detail="No IDs provided")
+async def download_c2_message_generations(ids: list[str]) -> Response:
+    """Download C2 message generation records as JSON."""
+    return await download_records_as_conversations(
+        container_name=cosmos_db_service.C2_MESSAGE_GENERATION_CONTAINER,
+        ids=ids,
+        scenario_name="c2_message_generation",
+        filename="c2_message_generations.json",
+        use_case_name="C2 message generations",
+        input_field="prompt"
+    )
 
-    try:
-        container = await cosmos_db_service.ensure_container(
-            cosmos_db_service.C2_MESSAGE_GENERATION_CONTAINER
-        )
-        
-        conversations = []
-        
-        for item_id in ids:
-            try:
-                item = container.read_item(item=item_id, partition_key=item_id)
-                
-                # Extract agent instructions from agent_details
-                agent_details = item.get("agent_details", {})
-                agent_instructions = agent_details.get("instructions", "")
-                
-                # Extract data from the stored item
-                conversation = {
-                    "Id": item.get("id"),
-                    "scenario_name": "c2_message_generation",
-                    "conversation": [
-                        {
-                            "role": "system",
-                            "content": agent_instructions
-                        },
-                        {
-                            "role": "user",
-                            "content": item.get("prompt", "")
-                        },
-                        {
-                            "role": "assistant",
-                            "content": item.get("response", "")
-                        }
-                    ]
-                }
-                conversations.append(conversation)
-                
-            except Exception as e:
-                logger.warning("Failed to retrieve item", item_id=item_id, error=str(e))
-                # Continue with other items even if one fails
-                continue
-        
-        result = {"conversations": conversations}
-        json_str = json.dumps(result, indent=2)
-        
-        logger.info("Returning download data", conversation_count=len(conversations))
-        return Response(
-            content=json_str,
-            media_type="application/json",
-            headers={"Content-Disposition": 'attachment; filename="c2_message_generations.json"'}
-        )
-        
-    except Exception as e:
-        logger.error("Error downloading C2 message generations", error=str(e), exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Error downloading: {str(e)}")

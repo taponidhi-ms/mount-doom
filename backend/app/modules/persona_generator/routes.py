@@ -1,36 +1,42 @@
+"""Routes for Persona Generator use case."""
+
 from fastapi import APIRouter, HTTPException, Query
+from fastapi.responses import Response
+from datetime import datetime, timezone
+import time
+import structlog
+
 from app.modules.persona_generator.models import (
     PersonaGeneratorRequest,
     PersonaGeneratorResponse
 )
-from app.models.shared import (
-    BrowseResponse,
-    AgentDetails
-)
-from app.core.config import settings
+from app.models.shared import BrowseResponse
 from .persona_generator_service import persona_generator_service
 from app.infrastructure.db.cosmos_db_service import cosmos_db_service
-from datetime import datetime
-import time
-import structlog
+from app.modules.shared.route_helpers import (
+    browse_records,
+    delete_records,
+    download_records_as_conversations
+)
 
 logger = structlog.get_logger()
 
 router = APIRouter(prefix="/persona-generator", tags=["Persona Generator"])
+
 
 @router.post("/generate", response_model=PersonaGeneratorResponse)
 async def generate_personas(request: PersonaGeneratorRequest):
     """Generate exact personas from prompt."""
     logger.info("Received persona generation request", prompt_length=len(request.prompt))
     
-    start_time = datetime.utcnow()
+    start_time = datetime.now(timezone.utc)
     start_ms = time.time() * 1000
 
     try:
         # Get response from persona generator service
         agent_response = await persona_generator_service.generate_personas(request.prompt)
         
-        end_time = datetime.utcnow()
+        end_time = datetime.now(timezone.utc)
         end_ms = time.time() * 1000
         time_taken_ms = end_ms - start_ms
 
@@ -68,6 +74,7 @@ async def generate_personas(request: PersonaGeneratorRequest):
         logger.error("Error in persona generation endpoint", error=str(e), exc_info=True)
         raise HTTPException(status_code=500, detail=f"Error generating personas: {str(e)}")
 
+
 @router.get("/browse", response_model=BrowseResponse)
 async def browse_persona_generations(
     page: int = Query(default=1, ge=1, description="Page number (1-indexed)"),
@@ -75,58 +82,36 @@ async def browse_persona_generations(
     order_by: str = Query(default="timestamp", description="Field to order by"),
     order_direction: str = Query(default="DESC", pattern="^(ASC|DESC)$", description="Order direction")
 ):
-    """
-    Browse persona generation records with pagination and ordering.
-    Returns a list of persona generation records from the database.
-    """
-    logger.info("Browsing persona generations", 
-               page=page, 
-               page_size=page_size, 
-               order_by=order_by,
-               order_direction=order_direction)
+    """Browse persona generation records with pagination and ordering."""
+    return await browse_records(
+        container_name=cosmos_db_service.PERSONA_GENERATOR_CONTAINER,
+        page=page,
+        page_size=page_size,
+        order_by=order_by,
+        order_direction=order_direction,
+        use_case_name="persona generations"
+    )
 
-    try:
-        result = await cosmos_db_service.browse_container(
-            container_name=cosmos_db_service.PERSONA_GENERATOR_CONTAINER,
-            page=page,
-            page_size=page_size,
-            order_by=order_by,
-            order_direction=order_direction
-        )
-
-        logger.info("Returning browse results", total_count=result["total_count"])
-        return result
-
-    except Exception as e:
-        logger.error("Error browsing persona generations", error=str(e), exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Error browsing persona generations: {str(e)}")
 
 @router.post("/delete")
 async def delete_persona_generations(ids: list[str]):
     """Delete persona generation records by their IDs."""
-    logger.info("Received delete request", count=len(ids))
-    if not ids:
-        raise HTTPException(status_code=400, detail="No IDs provided")
+    return await delete_records(
+        container_name=cosmos_db_service.PERSONA_GENERATOR_CONTAINER,
+        ids=ids,
+        use_case_name="persona generations"
+    )
 
-    try:
-        container = await cosmos_db_service.ensure_container(
-            cosmos_db_service.PERSONA_GENERATOR_CONTAINER
-        )
-        
-        deleted_count = 0
-        errors = []
-        
-        for item_id in ids:
-            try:
-                container.delete_item(item=item_id, partition_key=item_id)
-                deleted_count += 1
-            except Exception as e:
-                errors.append(f"Failed to delete {item_id}: {str(e)}")
-                logger.warning(f"Failed to delete {item_id}", error=str(e))
-        
-        logger.info("Delete operation completed", deleted=deleted_count, failed=len(errors))
-        return {"deleted_count": deleted_count, "failed_count": len(errors), "errors": errors}
-    
-    except Exception as e:
-        logger.error("Error deleting persona generations", error=str(e), exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Error deleting: {str(e)}")
+
+@router.post("/download")
+async def download_persona_generations(ids: list[str]) -> Response:
+    """Download persona generation records as JSON."""
+    return await download_records_as_conversations(
+        container_name=cosmos_db_service.PERSONA_GENERATOR_CONTAINER,
+        ids=ids,
+        scenario_name="persona_generation",
+        filename="persona_generations.json",
+        use_case_name="persona generations",
+        input_field="prompt"
+    )
+
