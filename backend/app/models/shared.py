@@ -1,6 +1,6 @@
 from typing import Optional, List, Dict, Any
 from pydantic import BaseModel, Field
-from datetime import datetime
+from datetime import datetime, timezone
 
 # --- Common API Schemas ---
 
@@ -56,11 +56,11 @@ class BaseResponse(BaseModel):
 class BaseDocument(BaseModel):
     """Base document for Cosmos DB."""
     id: str
-    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
 class AvailableAgentsResponse(BaseModel):
-    """Response containing available agents for a use case."""
+    """Response containing available agents for a feature."""
     agents: List[AgentInfo]
 
 

@@ -11,6 +11,7 @@
 - Use type hints for all function parameters and returns
 - Use async/await for I/O operations
 - Use Pydantic for data validation
+- **IMPORTANT**: Use `datetime.now(timezone.utc)` instead of deprecated `datetime.utcnow()`
 
 ### Naming Conventions
 - Classes: PascalCase (e.g., `AzureAIService`)
@@ -153,7 +154,7 @@ logger.info("="*60)
 Pages now use reusable templates configured via config objects:
 
 #### SingleAgentTemplate Usage
-For single-agent use cases (Persona Distribution, Persona Generator, Transcript Parser, C2 Message Generation):
+For single-agent features (Persona Distribution, Persona Generator, Transcript Parser, C2 Message Generation):
 
 ```typescript
 'use client'
@@ -190,7 +191,7 @@ export default function XxxPage() {
 ```
 
 #### MultiAgentTemplate Usage
-For multi-agent use cases (Conversation Simulation):
+For multi-agent features (Conversation Simulation):
 
 ```typescript
 'use client'
@@ -273,7 +274,7 @@ Standard components used across pages:
 - `Tag` - Status and label indicators
 
 ### Page Structure Pattern
-All use case pages follow this structure:
+All feature pages follow this structure:
 1. **Header**: Title and description (via PageLayout component)
 2. **Tabs**: Generate/Validate/Simulate tab, Batch Processing tab, and History tab
 3. **Generate/Validate/Simulate Tab**:
@@ -407,13 +408,13 @@ const columns = [
 ### CosmosDBService - Infrastructure Only
 The CosmosDBService is a singleton infrastructure service that:
 - Manages Cosmos DB client and database references
-- Provides container name constants for all use cases
+- Provides container name constants for all features
 - Offers generic operations (ensure_container, save_document, browse_container)
 - Does NOT contain feature-specific business logic or document structures
 
 ### Feature Service Persistence
 Each feature service handles its own database persistence:
-- Defines document structure specific to the use case
+- Defines document structure specific to the feature
 - Uses conversation_id from Azure AI as document ID
 - Creates documents with all required fields
 - Calls `cosmos_db_service.save_document()` for actual persistence
@@ -428,7 +429,7 @@ async def save_to_database(self, ...params, conversation_id: str):
         "prompt": prompt,
         "response": response,
         "parsed_output": parsed_output,  # For persona agents
-        # ... other fields specific to this use case
+        # ... other fields specific to this feature
     }
     
     # Use generic infrastructure method
@@ -439,7 +440,7 @@ async def save_to_database(self, ...params, conversation_id: str):
 ```
 
 ### Container Strategy
-- One container per use case
+- One container per feature
 - Partition key: `/id`
 - Auto-create containers if missing
 - Store complete request/response data
@@ -476,8 +477,8 @@ The AzureAIService is now a **singleton client factory** with minimal responsibi
 - Prompt building or formatting
 
 ### Service-Specific Agent Configuration
-Each use case service (PersonaDistributionService, PromptValidatorService, etc.) contains:
-- Fixed `agent_name` and `instructions` (imported from instruction_sets module) for that use case
+Each feature service (PersonaDistributionService, TranscriptParserService, etc.) contains:
+- Fixed `agent_name` and `instructions` (imported from instruction_sets module) for that feature
 - Agent creation logic by calling `azure_ai_service.create_agent()` with instruction string
 - Workflow-specific logic (conversation management, multi-agent orchestration, etc.)
 - Metrics tracking and data transformation
@@ -561,7 +562,7 @@ For conversation simulation with multiple agents:
 ### Documentation Files Policy
 **IMPORTANT**: Documentation should ONLY exist in the following locations:
 - `README.md` files (root, backend, frontend)
-- `.memory-banks/` directory files (architecture.md, conventions.md, use-cases.md, etc.)
+- `.memory-banks/` directory files (architecture.md, conventions.md, features.md, etc.)
 - Code comments and docstrings where necessary
 
 **DO NOT CREATE**:

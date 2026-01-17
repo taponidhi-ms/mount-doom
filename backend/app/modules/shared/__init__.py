@@ -2,7 +2,7 @@
 Shared module for common single-agent and multi-agent functionality.
 
 This module provides base classes and helper functions that can be
-reused across different agent use cases to minimize code duplication.
+reused across different agent features to minimize code duplication.
 """
 
 from .base_single_agent_service import BaseSingleAgentService

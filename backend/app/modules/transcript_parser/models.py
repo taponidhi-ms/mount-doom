@@ -4,11 +4,11 @@ from pydantic import BaseModel
 from app.models.shared import BaseRequest, BaseResponse, AgentDetails, BaseDocument
 
 class TranscriptParserRequest(BaseRequest):
-    """Request for transcript parser use case."""
+    """Request for transcript parser feature."""
     transcript: str
 
 class TranscriptParserResponse(BaseResponse):
-    """Response for transcript parser use case."""
+    """Response for transcript parser feature."""
     parsed_output: Optional[Dict[str, Any]] = None
 
 class TranscriptParserResult(BaseModel):

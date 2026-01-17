@@ -1,9 +1,9 @@
-# Mount Doom - Use Cases
+# Mount Doom - Features
 
-## Use Case 1: Persona Distribution Generator
+## Feature 1: Persona Distribution Generator
 
 ### Updated Agent Behavior Guidelines
-- All agents involved in use cases must follow the newly defined behavior guidelines to ensure appropriate handling of prompts.
+- All agents involved in features must follow the newly defined behavior guidelines to ensure appropriate handling of prompts.
 
 
 **Purpose**: Generate persona distributions from simulation prompts using specialized AI agents. Outputs structured JSON with conversation counts, intents, sentiments, and proportions.
@@ -54,7 +54,7 @@
 
 ---
 
-## Use Case 2: Persona Generator
+## Feature 2: Persona Generator
 
 **Purpose**: Generate exact customer personas with specific intents, sentiments, subjects, and metadata. Outputs a list of detailed personas for conversation simulations.
 
@@ -108,7 +108,7 @@
 
 ---
 
-## Use Case 3: Transcript Parser
+## Feature 3: Transcript Parser
 
 **Purpose**: Parse customer-representative transcripts to extract intent, subject, and sentiment.
 
@@ -163,7 +163,29 @@
 
 ---
 
-## Use Case 4: Conversation Simulation
+## Feature 4: C2 Message Generation
+
+**Purpose**: Generate C2 (customer) messages for use in conversation simulations or standalone.
+
+**Workflow**:
+1. User provides a prompt with conversation context
+2. Backend sends prompt to C2MessageGeneratorAgent via Azure AI Projects
+3. Agent generates a customer message based on the context
+4. Response stored in Cosmos DB `c2_message_generation` container
+5. Frontend displays the generated message
+
+**Agent**:
+- C2MessageGeneratorAgent (fixed agent name)
+- Instructions defined in `app/modules/c2_message_generation/instructions.py`
+- Model: gpt-4 (default from settings)
+
+**Database Schema**:
+- Document ID: conversation_id from Azure AI
+- Fields: prompt, response, tokens_used, time_taken_ms, agent_details, timestamp
+
+---
+
+## Feature 5: Conversation Simulation
 
 **Purpose**: Simulate multi-turn conversations with distinct C1/C2 logic using Python control flow.
 
@@ -173,7 +195,7 @@
 
 **Workflow**:
 1. User provides customer configuration (Manual entry of Intent, Sentiment, Subject).
-2. Max turns is hardcoded to 10 in backend.
+2. Max turns is hardcoded to 15 in backend.
 3. Simulation starts:
    - System initiates conversation with "Hello" from customer perspective to trigger C1.
    - Loop:
@@ -183,7 +205,7 @@
        - Backend constructs JSON transcript of conversation + properties.
        - C2MessageGeneratorAgent generates response using this transcript as input.
        - C2 response is added to the conversation history.
-     - Repeat until 10 turns.
+     - Repeat until 15 turns.
 4. Full conversation stored in Cosmos DB `conversation_simulation` container.
 5. Frontend displays conversation history.
 
@@ -205,17 +227,17 @@
 
 ---
 
-## Common Features Across All Use Cases
+## Common Features Across All Features
 
 ### Request Features
 - Non-streaming by default (streaming planned for future)
 - Model is hardcoded in backend (GPT-4)
-- Prompt input (varies by use case)
+- Prompt input (varies by feature)
 
 ### Response Features
 - Token usage tracking
 - Timing metrics (milliseconds)
-- Start and end timestamps
+- Start and end timestamps (using `datetime.now(timezone.utc)`)
 - Full response text or conversation history
 - Copy-to-clipboard JSON export
 - Conversation ID tracking
@@ -223,9 +245,8 @@
 ### Storage
 - All results saved to Cosmos DB
 - Document IDs use conversation_id from Azure AI
-- Separate containers per use case
+- Separate containers per feature
 - JSON parsing for persona agents (parsed_output field)
-- Separate containers per use case
 - Complete request/response data
 - Timestamps for analytics
 

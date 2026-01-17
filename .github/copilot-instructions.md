@@ -8,12 +8,12 @@
 1. **Read First**: Always read these files before starting any work:
    - `.memory-banks/architecture.md` - Project architecture and structure
    - `.memory-banks/conventions.md` - Development conventions and patterns
-   - `.memory-banks/use-cases.md` - Detailed use case descriptions
+   - `.memory-banks/features.md` - Detailed feature descriptions
 
 2. **Why This Matters**: Memory banks contain:
    - Architectural decisions and patterns
    - Coding conventions and best practices
-   - Use case workflows and requirements
+   - Feature workflows and requirements
    - Important context that may not be obvious from code alone
 
 ### After Making Changes
@@ -30,8 +30,8 @@
    - New error handling approaches
    - Updates to testing strategies
 
-3. **Use Case Changes** → Update `.memory-banks/use-cases.md`
-   - New use cases or features
+3. **Feature Changes** → Update `.memory-banks/features.md`
+   - New features
    - Changes to existing workflows
    - New metrics or tracking requirements
    - Updates to agent/model configurations
@@ -66,6 +66,7 @@ Mount Doom is a fullstack AI agent simulation platform built with FastAPI (backe
 - Use structlog for logging
 - Error handling with HTTPException
 - Agent instructions stored in `backend/app/modules/[module]/instructions.py`
+- **IMPORTANT**: Use `datetime.now(timezone.utc)` instead of deprecated `datetime.utcnow()`
 
 ### Frontend (TypeScript)
 - Use TypeScript for all files
@@ -82,10 +83,11 @@ backend/app/
 ├── core/            # Configuration
 ├── infrastructure/  # Infrastructure services (DB, AI)
 ├── modules/         # Feature modules (Vertical Slices)
+│   ├── shared/      # Shared base classes (BaseSingleAgentService, route_helpers)
 │   ├── [feature]/   # e.g., conversation_simulation/
 │   │   ├── routes.py       # API Endpoints
 │   │   ├── models.py       # Schemas
-│   │   ├── service.py      # Business Logic
+│   │   ├── *_service.py    # Business Logic
 │   │   ├── agents.py       # Agent Factory
 │   │   └── instructions.py # Agent Prompts
 │   └── ...
@@ -96,8 +98,8 @@ backend/app/
 ### Frontend
 ```
 frontend/
-├── app/             # Next.js pages (one per use case)
-├── components/      # Reusable React components (PageLayout)
+├── app/             # Next.js pages (one per feature)
+├── components/      # Reusable React components (PageLayout, SingleAgentTemplate, MultiAgentTemplate)
 └── lib/            # API client and utilities
 ```
 
@@ -110,6 +112,7 @@ frontend/
 - Agent instructions stored in `modules/[module]/instructions.py`
 - Use `create_agent()` with instructions from module
 - Services located in `modules/[module]/[name]_service.py`
+- Single-agent services extend `BaseSingleAgentService` for consistency
 
 ### Frontend API Pattern
 - Centralized API client in `lib/api-client.ts`
@@ -118,12 +121,13 @@ frontend/
 - Show loading states during API calls with Button loading prop
 - No model selection (hardcoded in backend)
 
-## Use Cases (4 Total)
+## Features (5 Total)
 
-1. **Persona Generation**: Generate personas using specialized parser-based agent
-2. **General Prompt**: Direct model access for general prompts
-3. **Prompt Validator**: Validate simulation prompts
-4. **Conversation Simulation**: Multi-turn conversations (max 20 turns) between C1 (service rep) and C2 (customer) agents with simplified API (just intent, sentiment, subject)
+1. **Persona Distribution**: Generate persona distributions from simulation prompts
+2. **Persona Generator**: Generate exact customer personas with metadata
+3. **Transcript Parser**: Parse customer-representative transcripts to extract intent, subject, sentiment
+4. **C2 Message Generation**: Generate C2 (customer) messages
+5. **Conversation Simulation**: Multi-turn conversations (max 15 turns) between C1 (service rep) and C2 (customer) agents
 
 ## Azure Integration
 
@@ -134,30 +138,92 @@ frontend/
 - Track token usage from responses
 
 ### Cosmos DB
-- One container per use case
+- One container per feature
 - Auto-create containers if missing
 - Store complete request/response data
 - Include all metrics and timestamps
 
 ## Common Tasks
 
-### Adding New Use Case
-1. Create module directory `backend/app/modules/[new_use_case]/`
-2. Create `instructions.py` with agent prompts
-3. Create `models.py` for API schemas
-4. Create `agents.py` with agent factory
-5. Create `[name]_service.py` for logic
-6. Create `routes.py` for API endpoints
-7. Register router in `backend/app/main.py`
-8. Add Cosmos DB method in `backend/app/infrastructure/db/cosmos_db_service.py`
-9. Create page in `frontend/app/[use-case]/page.tsx`
-10. Add API methods in `frontend/lib/api-client.ts`
+### Adding a New Single-Agent Feature
+Single-agent features use one agent to process a prompt and return a response.
+
+1. **Create module directory**: `backend/app/modules/[feature_name]/`
+
+2. **Create `instructions.py`** with agent prompts:
+   ```python
+   AGENT_NAME = "FeatureNameAgent"
+   AGENT_INSTRUCTIONS = """Your agent instructions here..."""
+   ```
+
+3. **Create `agents.py`** with agent factory:
+   ```python
+   from app.infrastructure.ai.azure_ai_service import azure_ai_service
+   from .instructions import AGENT_NAME, AGENT_INSTRUCTIONS
+   
+   def create_feature_agent():
+       return azure_ai_service.create_agent(
+           name=AGENT_NAME,
+           instructions=AGENT_INSTRUCTIONS
+       )
+   ```
+
+4. **Create `models.py`** for API schemas:
+   ```python
+   from pydantic import BaseModel
+   from app.models.shared import BaseRequest, BaseResponse
+   
+   class FeatureRequest(BaseRequest):
+       prompt: str
+   
+   class FeatureResponse(BaseResponse):
+       parsed_output: Optional[Dict[str, Any]] = None
+   ```
+
+5. **Create `[feature_name]_service.py`** for business logic (or extend `BaseSingleAgentService`)
+
+6. **Create `routes.py`** for API endpoints:
+   - Use `browse_records`, `delete_records`, `download_records_as_conversations` from `app.modules.shared.route_helpers`
+
+7. **Register router** in `backend/app/main.py`
+
+8. **Add container constant** in `backend/app/infrastructure/db/cosmos_db_service.py`
+
+9. **Create frontend page** in `frontend/app/[feature-name]/page.tsx` using `SingleAgentTemplate`
+
+10. **Add API methods** in `frontend/lib/api-client.ts`
+
+### Adding a New Multi-Agent Feature
+Multi-agent features orchestrate multiple agents in a conversation loop.
+
+1. **Create module directory**: `backend/app/modules/[feature_name]/`
+
+2. **Create `instructions.py`** with prompts for each agent
+
+3. **Create `agents.py`** with factory functions for each agent
+
+4. **Create `models.py`** with conversation-specific schemas (messages, history, etc.)
+
+5. **Create `[feature_name]_service.py`** with orchestration logic:
+   - Implement conversation loop
+   - Handle termination conditions
+   - Track per-message and total metrics
+
+6. **Create `routes.py`** for API endpoints
+
+7. **Register router** in `backend/app/main.py`
+
+8. **Add container constant** in `backend/app/infrastructure/db/cosmos_db_service.py`
+
+9. **Create frontend page** in `frontend/app/[feature-name]/page.tsx` using `MultiAgentTemplate`
+
+10. **Add API methods** in `frontend/lib/api-client.ts`
 
 ### Metrics to Track
 - Tokens used (from Azure AI response)
-- Time taken (calculated with time.time())
-- Start timestamp (datetime.utcnow())
-- End timestamp (datetime.utcnow())
+- Time taken (calculated with `time.time()`)
+- Start timestamp: `datetime.now(timezone.utc)`
+- End timestamp: `datetime.now(timezone.utc)`
 
 ### Response Format
 All API responses should include:
@@ -168,7 +234,7 @@ All API responses should include:
     "time_taken_ms": float,
     "start_time": datetime,
     "end_time": datetime,
-    # ... use case specific fields
+    # ... feature-specific fields
 }
 ```
 
@@ -193,6 +259,7 @@ All API responses should include:
 6. **Reusability**: Shared components and utilities
 7. **Accessibility**: ARIA labels, semantic HTML, keyboard navigation
 8. **Performance**: Async operations, proper loading states
+9. **Datetime**: Always use `datetime.now(timezone.utc)` for timezone-aware UTC timestamps
 
 ## Testing Considerations
 - Mock Azure services for unit tests
@@ -216,16 +283,40 @@ All API responses should include:
 - Consider performance implications
 - Keep changes minimal and focused
 - Update related documentation
-- **ALWAYS**: Update memory banks if your changes affect architecture, conventions, or use cases
+- **ALWAYS**: Update memory banks if your changes affect architecture, conventions, or features
 - Follow clean architecture principles
+
+### Feature Change Validation
+When making changes to any feature, **ALWAYS validate compatibility between backend and frontend**:
+
+1. **API Contract Validation**:
+   - Verify request schemas match between `backend/app/modules/[feature]/models.py` and `frontend/lib/api-client.ts`
+   - Verify response schemas match between backend Pydantic models and frontend TypeScript types
+   - Check that field names, types, and optional/required status are consistent
+
+2. **Endpoint Validation**:
+   - Confirm route paths in `backend/app/modules/[feature]/routes.py` match API calls in `frontend/lib/api-client.ts`
+   - Verify HTTP methods (GET, POST, etc.) are consistent
+   - Check query parameters and request body structures
+
+3. **Type Alignment Checklist**:
+   - Backend Pydantic `BaseModel` ↔ Frontend TypeScript `interface`
+   - Backend `Optional[X]` ↔ Frontend `X | null` or `X?`
+   - Backend `datetime` ↔ Frontend `string` (ISO format)
+   - Backend `List[X]` ↔ Frontend `X[]`
+   - Backend `Dict[str, Any]` ↔ Frontend `Record<string, any>`
+
+4. **Test After Changes**:
+   - Run the backend server and verify endpoints respond correctly
+   - Test frontend API calls to ensure no type mismatches or 422 errors
+   - Check browser console for any parsing or type errors
 
 ## Helpful Context
 
 - **Conversation Simulation**: C1 always starts, orchestrator checks after each message
-- **General Prompt**: Uses model directly, not agent
 - **All responses**: Stored in Cosmos DB automatically
-- **UI Pattern**: Each use case has dedicated page with similar layout
-- **Result Display**: Shared component for showing responses and metrics
+- **UI Pattern**: Each feature has dedicated page with similar layout
+- **Result Display**: Shared template components for showing responses and metrics
 
 ## Notes Directory Policy
 
@@ -233,6 +324,6 @@ The repository includes a root-level `notes/` directory intended for personal no
 
 1. Do not read, parse, or reference files in `notes/` for memory bank ingestion or any Copilot/AI-assisted workflows.
 2. Do not import or depend on `notes/` contents from application code or tests.
-3. Treat `notes/` as non-source documentation that is tracked by Git but excluded from architectural, convention, or use-case documentation.
+3. Treat `notes/` as non-source documentation that is tracked by Git but excluded from architectural, convention, or feature documentation.
 
 This policy ensures that only `.memory-banks/` governs project context while allowing collaborators to keep tracked personal notes.

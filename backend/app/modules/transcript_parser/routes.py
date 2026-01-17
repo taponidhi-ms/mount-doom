@@ -1,4 +1,4 @@
-"""Routes for Transcript Parser use case."""
+"""Routes for Transcript Parser feature."""
 
 from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import Response
@@ -88,8 +88,7 @@ async def browse_transcripts(
         page=page,
         page_size=page_size,
         order_by=order_by,
-        order_direction=order_direction,
-        use_case_name="transcript parsing records"
+        order_direction=order_direction
     )
 
 
@@ -98,8 +97,7 @@ async def delete_transcripts(ids: list[str]):
     """Delete transcript parsing records by their IDs."""
     return await delete_records(
         container_name=cosmos_db_service.TRANSCRIPT_PARSER_CONTAINER,
-        ids=ids,
-        use_case_name="transcript parsing records"
+        ids=ids
     )
 
 
@@ -111,7 +109,6 @@ async def download_transcripts(ids: list[str]) -> Response:
         ids=ids,
         scenario_name="transcript_parsing",
         filename="transcript_parsing_records.json",
-        use_case_name="transcript parsing records",
         input_field="transcript"
     )
 

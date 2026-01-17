@@ -1,4 +1,4 @@
-"""Service for conversation simulation use case."""
+"""Service for conversation simulation feature."""
 
 from datetime import datetime, timezone
 import structlog

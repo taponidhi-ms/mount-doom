@@ -1,4 +1,4 @@
-"""Routes for Persona Distribution use case."""
+"""Routes for Persona Distribution feature."""
 
 from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import Response
@@ -88,8 +88,7 @@ async def browse_persona_distributions(
         page=page,
         page_size=page_size,
         order_by=order_by,
-        order_direction=order_direction,
-        use_case_name="persona distributions"
+        order_direction=order_direction
     )
 
 
@@ -98,8 +97,7 @@ async def delete_persona_distributions(ids: list[str]):
     """Delete persona distribution records by their IDs."""
     return await delete_records(
         container_name=cosmos_db_service.PERSONA_DISTRIBUTION_CONTAINER,
-        ids=ids,
-        use_case_name="persona distributions"
+        ids=ids
     )
 
 
@@ -111,7 +109,6 @@ async def download_persona_distributions(ids: list[str]) -> Response:
         ids=ids,
         scenario_name="persona_distribution_generation",
         filename="persona_distributions.json",
-        use_case_name="persona distributions",
         input_field="prompt"
     )
 

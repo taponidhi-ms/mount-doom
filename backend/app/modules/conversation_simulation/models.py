@@ -20,13 +20,13 @@ class ConversationMessage(BaseModel):
     timestamp: datetime
 
 class ConversationSimulationRequest(BaseRequest):
-    """Request for conversation simulation use case."""
+    """Request for conversation simulation feature."""
     customer_intent: str
     customer_sentiment: str
     conversation_subject: str
 
 class ConversationSimulationResponse(BaseModel):
-    """Response for conversation simulation use case."""
+    """Response for conversation simulation feature."""
     conversation_history: List[ConversationMessage]
     conversation_status: str
     total_time_taken_ms: float

@@ -1,4 +1,4 @@
-"""Routes for Persona Generator use case."""
+"""Routes for Persona Generator feature."""
 
 from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import Response
@@ -88,8 +88,7 @@ async def browse_persona_generations(
         page=page,
         page_size=page_size,
         order_by=order_by,
-        order_direction=order_direction,
-        use_case_name="persona generations"
+        order_direction=order_direction
     )
 
 
@@ -98,8 +97,7 @@ async def delete_persona_generations(ids: list[str]):
     """Delete persona generation records by their IDs."""
     return await delete_records(
         container_name=cosmos_db_service.PERSONA_GENERATOR_CONTAINER,
-        ids=ids,
-        use_case_name="persona generations"
+        ids=ids
     )
 
 
@@ -111,7 +109,6 @@ async def download_persona_generations(ids: list[str]) -> Response:
         ids=ids,
         scenario_name="persona_generation",
         filename="persona_generations.json",
-        use_case_name="persona generations",
         input_field="prompt"
     )
 

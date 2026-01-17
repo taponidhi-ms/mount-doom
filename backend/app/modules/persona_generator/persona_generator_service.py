@@ -1,6 +1,6 @@
-"""Service for persona generator use case."""
+"""Service for persona generator feature."""
 
-from datetime import datetime
+from datetime import datetime, timezone
 import structlog
 from typing import Optional, Dict, Any
 import json
@@ -67,7 +67,7 @@ class PersonaGeneratorService:
             logger.info("Persona Generator Agent ready", agent_version=agent.agent_version_object.version)
 
             # Create conversation with initial message
-            timestamp = datetime.utcnow()
+            timestamp = datetime.now(timezone.utc)
             logger.info("Creating conversation with user message...")
             conversation = azure_ai_service.openai_client.conversations.create(
                 items=[{"type": "message", "role": "user", "content": prompt}]

@@ -1,4 +1,4 @@
-"""Routes for C2 Message Generation use case."""
+"""Routes for C2 Message Generation feature."""
 
 from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import Response
@@ -86,8 +86,7 @@ async def browse_c2_message_generations(
         page=page,
         page_size=page_size,
         order_by=order_by,
-        order_direction=order_direction,
-        use_case_name="C2 message generations"
+        order_direction=order_direction
     )
 
 
@@ -96,8 +95,7 @@ async def delete_c2_message_generations(ids: list[str]):
     """Delete C2 message generation records by their IDs."""
     return await delete_records(
         container_name=cosmos_db_service.C2_MESSAGE_GENERATION_CONTAINER,
-        ids=ids,
-        use_case_name="C2 message generations"
+        ids=ids
     )
 
 
@@ -109,7 +107,6 @@ async def download_c2_message_generations(ids: list[str]) -> Response:
         ids=ids,
         scenario_name="c2_message_generation",
         filename="c2_message_generations.json",
-        use_case_name="C2 message generations",
         input_field="prompt"
     )
 

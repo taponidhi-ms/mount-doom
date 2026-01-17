@@ -70,7 +70,7 @@ Abstract base class for single-agent services providing:
 - Abstract methods for module-specific configuration:
   - `get_agent_creator()` - Returns the agent factory function
   - `get_container_name()` - Returns Cosmos DB container name
-  - `get_use_case_name()` - Returns use case identifier
+  - `get_feature_name()` - Returns feature identifier for logging
 
 #### base_routes.py
 Factory function `create_single_agent_routes()` that generates standard CRUD endpoints:
@@ -82,7 +82,7 @@ Factory function `create_single_agent_routes()` that generates standard CRUD end
 Services can extend BaseSingleAgentService for consistency while maintaining module-specific customizations.
 
 ### Key Principles
-- **Separation of Concerns**: Each service handles one use case's business logic
+- **Separation of Concerns**: Each service handles one feature's business logic
 - **Layered Architecture**: Clear separation between routes (API layer) and services (business logic layer)
 - **Dependency Injection**: Routes depend on services, not directly on Azure AI
 - **Single Responsibility**: Each service class has one reason to change
@@ -119,8 +119,8 @@ For more details on Azure AI Agent Service and Workflow:
 - [Azure AI Projects SDK README](https://github.com/Azure/azure-sdk-for-python/blob/main/sdk/ai/azure-ai-projects/README.md)
 - [Azure AI Documentation](https://github.com/MicrosoftDocs/azure-ai-docs/tree/main/articles/ai-foundry/default/agents)
 
-#### Use Case Services
-Each service handles complete business logic for its use case:
+#### Feature Services
+Each service handles complete business logic for its feature:
 - **C2MessageGenerationService**: Generates C2 (customer) messages. Uses `create_c2_message_generator_agent()`. Provides both stateful (`generate_message()`) and stateless (`generate_message_stateless()`) generation methods.
 - **PersonaDistributionService**: Generates persona distributions. Uses `create_persona_distribution_agent()`.
 - **PersonaGeneratorService**: Generates exact personas. Uses `create_persona_generator_agent()`.
@@ -129,7 +129,7 @@ Each service handles complete business logic for its use case:
 
 Services contain:
 - Agent configuration (name, instructions, model deployment)
-- Workflow logic specific to the use case
+- Workflow logic specific to the feature
 - Conversation management
 - Token and timing tracking
 - Data transformation and formatting
@@ -167,7 +167,7 @@ Does NOT contain:
 - Document structure definitions
 - Feature-specific save methods
 
-### Routes (One per use case)
+### Routes (One per feature)
 - `/api/v1/c2-message-generation/*` - Delegates to C2MessageGenerationService
   - POST `/generate` - Generate C2 (customer) message
   - GET `/browse` - Browse past C2 message generations with pagination
@@ -228,7 +228,7 @@ The navigation sidebar organizes pages into:
 ### Templates
 
 #### SingleAgentTemplate
-Reusable template for single-agent use cases with three tabs:
+Reusable template for single-agent features with three tabs:
 - **Generate Tab**: Form for creating single requests with sample inputs
 - **Batch Tab**: Process multiple inputs with configurable delay
 - **History Tab**: Paginated view of past results with filter, sort, download, multi-select, delete
@@ -247,7 +247,7 @@ Pages using SingleAgentTemplate:
 - C2 Message Generation
 
 #### MultiAgentTemplate
-Reusable template for multi-agent use cases with three tabs:
+Reusable template for multi-agent features with three tabs:
 - **Simulate Tab**: Form with configurable input fields and sample configurations
 - **Batch Tab**: Process multiple configurations in batch
 - **History Tab**: Paginated view with expandable rows showing conversation history
@@ -271,7 +271,7 @@ Global timezone management via React Context:
 - Persisted to localStorage
 
 ### Pages
-Each use case has a dedicated page that configures and renders the appropriate template:
+Each feature has a dedicated page that configures and renders the appropriate template:
 - `/c2-message-generation` - SingleAgentTemplate with C2 message generation config
 - `/persona-distribution` - SingleAgentTemplate with persona distribution config
 - `/persona-generator` - SingleAgentTemplate with persona generator config

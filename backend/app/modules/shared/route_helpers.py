@@ -25,7 +25,7 @@ async def browse_records(
     page_size: int,
     order_by: str,
     order_direction: str,
-    use_case_name: str
+    log_name: Optional[str] = None
 ) -> Dict[str, Any]:
     """
     Browse records with pagination and ordering.
@@ -36,12 +36,13 @@ async def browse_records(
         page_size: Items per page
         order_by: Field to order by
         order_direction: ASC or DESC
-        use_case_name: Name for logging
+        log_name: Name for logging (defaults to container_name if not provided)
     
     Returns:
         Dict with items and total_count
     """
-    logger.info(f"Browsing {use_case_name}", 
+    display_name = log_name or container_name
+    logger.info(f"Browsing {display_name}", 
                page=page, 
                page_size=page_size, 
                order_by=order_by,
@@ -60,14 +61,14 @@ async def browse_records(
         return result
 
     except Exception as e:
-        logger.error(f"Error browsing {use_case_name}", error=str(e), exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Error browsing {use_case_name}: {str(e)}")
+        logger.error(f"Error browsing {display_name}", error=str(e), exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Error browsing {container_name}: {str(e)}")
 
 
 async def delete_records(
     container_name: str,
     ids: List[str],
-    use_case_name: str
+    log_name: Optional[str] = None
 ) -> Dict[str, Any]:
     """
     Delete records by their IDs.
@@ -75,12 +76,13 @@ async def delete_records(
     Args:
         container_name: Cosmos DB container name
         ids: List of record IDs to delete
-        use_case_name: Name for logging
+        log_name: Name for logging (defaults to container_name if not provided)
     
     Returns:
         Dict with deleted_count, failed_count, and errors
     """
-    logger.info(f"Received delete request for {use_case_name}", count=len(ids))
+    display_name = log_name or container_name
+    logger.info(f"Received delete request for {display_name}", count=len(ids))
     
     if not ids:
         raise HTTPException(status_code=400, detail="No IDs provided")
@@ -103,7 +105,7 @@ async def delete_records(
         return {"deleted_count": deleted_count, "failed_count": len(errors), "errors": errors}
     
     except Exception as e:
-        logger.error(f"Error deleting {use_case_name}", error=str(e), exc_info=True)
+        logger.error(f"Error deleting from {display_name}", error=str(e), exc_info=True)
         raise HTTPException(status_code=500, detail=f"Error deleting: {str(e)}")
 
 
@@ -112,7 +114,7 @@ async def download_records_as_conversations(
     ids: List[str],
     scenario_name: str,
     filename: str,
-    use_case_name: str,
+    log_name: Optional[str] = None,
     input_field: str = "prompt"
 ) -> Response:
     """
@@ -123,13 +125,14 @@ async def download_records_as_conversations(
         ids: List of record IDs to download
         scenario_name: Name for the scenario field in output
         filename: Output filename
-        use_case_name: Name for logging
+        log_name: Name for logging (defaults to container_name if not provided)
         input_field: Field name for user input (prompt or transcript)
     
     Returns:
         Response with JSON content
     """
-    logger.info(f"Received download request for {use_case_name}", count=len(ids))
+    display_name = log_name or container_name
+    logger.info(f"Received download request for {display_name}", count=len(ids))
     
     if not ids:
         raise HTTPException(status_code=400, detail="No IDs provided")
@@ -183,7 +186,7 @@ async def download_records_as_conversations(
         )
         
     except Exception as e:
-        logger.error(f"Error downloading {use_case_name}", error=str(e), exc_info=True)
+        logger.error(f"Error downloading from {display_name}", error=str(e), exc_info=True)
         raise HTTPException(status_code=500, detail=f"Error downloading: {str(e)}")
 
 
@@ -191,7 +194,7 @@ async def download_records_raw(
     container_name: str,
     ids: List[str],
     filename: str,
-    use_case_name: str
+    log_name: Optional[str] = None
 ) -> Response:
     """
     Download records as raw JSON (without conversation format transformation).
@@ -200,12 +203,13 @@ async def download_records_raw(
         container_name: Cosmos DB container name
         ids: List of record IDs to download
         filename: Output filename
-        use_case_name: Name for logging
+        log_name: Name for logging (defaults to container_name if not provided)
     
     Returns:
         Response with JSON content
     """
-    logger.info(f"Received download request for {use_case_name}", count=len(ids))
+    display_name = log_name or container_name
+    logger.info(f"Received download request for {display_name}", count=len(ids))
     
     if not ids:
         raise HTTPException(status_code=400, detail="No IDs provided")
@@ -238,5 +242,5 @@ async def download_records_raw(
         )
     
     except Exception as e:
-        logger.error(f"Error downloading {use_case_name}", error=str(e), exc_info=True)
+        logger.error(f"Error downloading from {display_name}", error=str(e), exc_info=True)
         raise HTTPException(status_code=500, detail=f"Error downloading: {str(e)}")

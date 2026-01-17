@@ -1,7 +1,7 @@
 """
 Base service for single-agent operations.
 
-This module provides a reusable base class for all single-agent use cases,
+This module provides a reusable base class for all single-agent features,
 handling common patterns like agent creation, conversation management,
 response extraction, and database persistence.
 """
@@ -39,7 +39,7 @@ class BaseSingleAgentService(ABC):
     Subclasses must implement:
     - get_agent_creator(): Returns the agent creation function
     - get_container_name(): Returns the Cosmos DB container name
-    - get_use_case_name(): Returns a human-readable use case name for logging
+    - get_feature_name(): Returns a human-readable feature name for logging
     """
     
     def __init__(self):
@@ -47,17 +47,17 @@ class BaseSingleAgentService(ABC):
     
     @abstractmethod
     def get_agent_creator(self) -> Callable:
-        """Return the function that creates the agent for this use case."""
+        """Return the function that creates the agent for this feature."""
         pass
     
     @abstractmethod
     def get_container_name(self) -> str:
-        """Return the Cosmos DB container name for this use case."""
+        """Return the Cosmos DB container name for this feature."""
         pass
     
     @abstractmethod
-    def get_use_case_name(self) -> str:
-        """Return a human-readable name for this use case (for logging)."""
+    def get_feature_name(self) -> str:
+        """Return a human-readable name for this feature (for logging)."""
         pass
     
     def _parse_json_output(self, response_text: str) -> Optional[Dict[str, Any]]:
@@ -72,11 +72,11 @@ class BaseSingleAgentService(ABC):
         """
         try:
             parsed = json.loads(response_text)
-            logger.info(f"{self.get_use_case_name()}: Successfully parsed JSON output", 
+            logger.info(f"{self.get_feature_name()}: Successfully parsed JSON output", 
                        keys=list(parsed.keys()) if isinstance(parsed, dict) else "not a dict")
             return parsed
         except json.JSONDecodeError as e:
-            logger.warning(f"{self.get_use_case_name()}: Failed to parse JSON output", 
+            logger.warning(f"{self.get_feature_name()}: Failed to parse JSON output", 
                           error=str(e), 
                           response_preview=response_text[:200])
             return None
@@ -92,18 +92,18 @@ class BaseSingleAgentService(ABC):
         Returns:
             SingleAgentResult containing the response and metadata
         """
-        use_case = self.get_use_case_name()
+        feature = self.get_feature_name()
         
         try:
             logger.info("="*60)
-            logger.info(f"Starting {use_case} generation", prompt_length=len(prompt))
+            logger.info(f"Starting {feature} generation", prompt_length=len(prompt))
             logger.debug("Prompt preview", prompt=prompt[:200] + "..." if len(prompt) > 200 else prompt)
 
             # Create agent with instructions
-            logger.info(f"Creating {use_case} Agent...")
+            logger.info(f"Creating {feature} Agent...")
             agent_creator = self.get_agent_creator()
             agent = agent_creator()
-            logger.info(f"{use_case} Agent ready", agent_version=agent.agent_version_object.version)
+            logger.info(f"{feature} Agent ready", agent_version=agent.agent_version_object.version)
 
             # Create conversation with initial message
             timestamp = datetime.now(timezone.utc)
@@ -115,7 +115,7 @@ class BaseSingleAgentService(ABC):
             logger.info("Conversation created", conversation_id=conversation_id)
 
             # Create response using the agent
-            logger.info(f"Requesting response from {use_case} Agent...")
+            logger.info(f"Requesting response from {feature} Agent...")
             response = azure_ai_service.openai_client.responses.create(
                 conversation=conversation_id,
                 extra_body={"agent": {"name": agent.agent_version_object.name, "type": "agent_reference"}},
@@ -131,7 +131,7 @@ class BaseSingleAgentService(ABC):
                 logger.error("No response text found in response")
                 raise ValueError("No response found")
             
-            logger.info(f"{use_case} generated successfully", 
+            logger.info(f"{feature} generated successfully", 
                        response_length=len(response_text),
                        response_preview=response_text[:150] + "..." if len(response_text) > 150 else response_text)
 
@@ -150,7 +150,7 @@ class BaseSingleAgentService(ABC):
                 logger.debug("No token usage information available")
             
             logger.info("="*60)
-            logger.info(f"{use_case} generation completed",
+            logger.info(f"{feature} generation completed",
                        tokens_used=tokens_used,
                        agent_version=agent.agent_version_object.version,
                        conversation_id=conversation_id,
@@ -167,7 +167,7 @@ class BaseSingleAgentService(ABC):
             )
 
         except Exception as e:
-            logger.error(f"Error generating {use_case}", error=str(e), exc_info=True)
+            logger.error(f"Error generating {feature}", error=str(e), exc_info=True)
             raise
     
     async def save_to_database(
@@ -189,10 +189,10 @@ class BaseSingleAgentService(ABC):
         
         Uses the conversation_id as document ID.
         """
-        use_case = self.get_use_case_name()
+        feature = self.get_feature_name()
         container_name = self.get_container_name()
         
-        logger.info(f"Saving {use_case} result to database", 
+        logger.info(f"Saving {feature} result to database", 
                    conversation_id=conversation_id,
                    container=container_name)
         
@@ -219,11 +219,11 @@ class BaseSingleAgentService(ABC):
                 document=document.model_dump(mode='json')
             )
             
-            logger.info(f"{use_case} result saved successfully", 
+            logger.info(f"{feature} result saved successfully", 
                        document_id=conversation_id)
             
         except Exception as e:
-            logger.error(f"Error saving {use_case} result to database", 
+            logger.error(f"Error saving {feature} result to database", 
                         error=str(e), 
                         exc_info=True)
             raise
