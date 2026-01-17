@@ -69,6 +69,6 @@ def get_all_workflows() -> Dict[str, WorkflowConfig]:
     return WORKFLOW_REGISTRY
 
 
-def list_workflow_ids() -> list[str]:
+def list_workflow_ids() -> List[str]:
     """Get list of all workflow IDs."""
     return list(WORKFLOW_REGISTRY.keys())

@@ -7,11 +7,12 @@ This module provides a single consolidated API for all single-agent operations.
 from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import Response
 from datetime import datetime, timezone
+from typing import Dict, Any
 import time
 import json
 import structlog
 
-from app.models.shared import BrowseResponse
+from app.models.shared import BrowseResponse, AgentDetails
 from app.infrastructure.db.cosmos_db_service import cosmos_db_service
 
 from .config import get_agent_config, get_all_agents, AgentConfig
@@ -21,6 +22,21 @@ from .agents_service import unified_agents_service
 logger = structlog.get_logger()
 
 router = APIRouter(prefix="/agents", tags=["Agents"])
+
+
+def _format_agent_details(agent_details: AgentDetails) -> Dict[str, Any]:
+    """Transform AgentDetails to a dictionary for API response."""
+    created_at = agent_details.created_at
+    if isinstance(created_at, datetime):
+        created_at = created_at.isoformat()
+    
+    return {
+        "agent_name": agent_details.agent_name,
+        "agent_version": agent_details.agent_version,
+        "instructions": agent_details.instructions,
+        "model_deployment_name": agent_details.model_deployment_name,
+        "created_at": created_at
+    }
 
 
 @router.get("/list", response_model=AgentListResponse)
@@ -126,13 +142,7 @@ async def invoke_agent(agent_id: str, request: AgentInvokeRequest):
             time_taken_ms=time_taken_ms,
             start_time=start_time,
             end_time=end_time,
-            agent_details={
-                "agent_name": result["agent_details"].agent_name,
-                "agent_version": result["agent_details"].agent_version,
-                "instructions": result["agent_details"].instructions,
-                "model_deployment_name": result["agent_details"].model_deployment_name,
-                "created_at": result["agent_details"].created_at.isoformat() if isinstance(result["agent_details"].created_at, datetime) else result["agent_details"].created_at
-            },
+            agent_details=_format_agent_details(result["agent_details"]),
             parsed_output=result.get("parsed_output")
         )
         

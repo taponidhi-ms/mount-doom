@@ -5,7 +5,7 @@ This module maintains configurations for all agents in the system.
 Each agent is defined with its name, description, instructions, and container.
 """
 
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 from dataclasses import dataclass, field
 
 # Import instructions from existing modules
@@ -88,6 +88,6 @@ def get_all_agents() -> Dict[str, AgentConfig]:
     return AGENT_REGISTRY
 
 
-def list_agent_ids() -> list[str]:
+def list_agent_ids() -> List[str]:
     """Get list of all agent IDs."""
     return list(AGENT_REGISTRY.keys())
