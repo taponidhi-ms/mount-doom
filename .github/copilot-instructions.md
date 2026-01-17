@@ -83,7 +83,7 @@ backend/app/
 ├── core/            # Configuration
 ├── infrastructure/  # Infrastructure services (DB, AI)
 ├── modules/         # Feature modules (Vertical Slices)
-│   ├── shared/      # Shared base classes (BaseSingleAgentService, route_helpers)
+│   ├── shared/      # Reserved for future shared utilities
 │   ├── agents/      # Unified agents API (consolidated single-agent controller)
 │   │   ├── config.py       # Agent configuration registry
 │   │   ├── routes.py       # Unified API endpoints
@@ -93,12 +93,14 @@ backend/app/
 │   │   ├── config.py       # Workflow configuration registry
 │   │   ├── routes.py       # Workflow listing endpoints
 │   │   └── models.py       # API schemas
-│   ├── [feature]/   # e.g., conversation_simulation/
+│   ├── conversation_simulation/  # Multi-agent workflow (full module)
 │   │   ├── routes.py       # API Endpoints
 │   │   ├── models.py       # Schemas
 │   │   ├── *_service.py    # Business Logic
 │   │   ├── agents.py       # Agent Factory
 │   │   └── instructions.py # Agent Prompts
+│   ├── [agent_module]/      # e.g., persona_distribution/, c2_message_generation/
+│   │   └── instructions.py  # Only instructions file (used by agents module)
 │   └── ...
 ├── models/          # Shared Pydantic schemas
 └── main.py         # FastAPI app
@@ -125,9 +127,8 @@ frontend/
 - Agent configuration centralized in `modules/agents/config.py`
 - Workflow configuration centralized in `modules/workflows/config.py`
 - Agent instructions stored in `modules/[module]/instructions.py`
-- Use `create_agent()` with instructions from module
-- Services located in `modules/[module]/[name]_service.py`
-- Single-agent services extend `BaseSingleAgentService` for consistency
+- Single-agent modules only need `instructions.py` (all logic in unified agents service)
+- Multi-agent workflows (like conversation_simulation) still need full module structure
 
 ### Frontend API Pattern
 - Centralized API client in `lib/api-client.ts`

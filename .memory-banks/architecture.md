@@ -23,51 +23,38 @@ backend/app/
 │   └── db/              # Database services
 │       └── cosmos_db_service.py
 ├── modules/             # Feature modules (Vertical Slices)
-│   ├── shared/          # Shared base classes for modules
-│   │   ├── __init__.py
-│   │   ├── base_single_agent_service.py  # Base class for single-agent services
-│   │   └── base_routes.py                # Factory for standard CRUD routes
-│   ├── agents/          # Unified agents API (NEW)
+│   ├── shared/          # Reserved for future shared utilities
+│   │   └── __init__.py
+│   ├── agents/          # Unified agents API
 │   │   ├── __init__.py
 │   │   ├── config.py    # Agent configuration registry
 │   │   ├── models.py    # API schemas for agents
 │   │   ├── routes.py    # Unified agents endpoints
 │   │   └── agents_service.py  # Generic agent invocation service
-│   ├── workflows/       # Workflow configurations (NEW)
+│   ├── workflows/       # Workflow configurations
 │   │   ├── __init__.py
 │   │   ├── config.py    # Workflow configuration registry
 │   │   ├── models.py    # API schemas for workflows
 │   │   └── routes.py    # Workflow listing endpoints
-│   ├── c2_message_generation/
-│   │   ├── c2_message_generation_service.py
-│   │   ├── models.py
-│   │   ├── routes.py
-│   │   ├── agents.py
+│   ├── conversation_simulation/  # Multi-agent workflow (still needs full module)
+│   │   ├── __init__.py
+│   │   ├── agents.py    # C1 agent factory
+│   │   ├── conversation_simulation_service.py  # Orchestration logic
+│   │   ├── instructions.py  # C1 agent instructions
+│   │   ├── models.py    # API schemas
+│   │   └── routes.py    # Simulation endpoints
+│   ├── c2_message_generation/  # Instructions only (used by agents module)
+│   │   ├── __init__.py
 │   │   └── instructions.py
-│   ├── conversation_simulation/
-│   │   ├── conversation_simulation_service.py
-│   │   ├── models.py
-│   │   ├── routes.py
-│   │   ├── agents.py    # Only C1 agent (uses c2_message_generation module for C2)
-│   │   └── instructions.py # Only C1 agent instructions
-│   ├── persona_distribution/
-│   │   ├── persona_distribution_service.py
-│   │   ├── models.py
-│   │   ├── routes.py
-│   │   ├── agents.py
+│   ├── persona_distribution/   # Instructions only (used by agents module)
+│   │   ├── __init__.py
 │   │   └── instructions.py
-│   ├── persona_generator/
-│   │   ├── persona_generator_service.py
-│   │   ├── models.py
-│   │   ├── routes.py
-│   │   ├── agents.py
+│   ├── persona_generator/      # Instructions only (used by agents module)
+│   │   ├── __init__.py
 │   │   └── instructions.py
-│   ├── transcript_parser/
-│   │   ├── transcript_parser_service.py
-│   │   ├── models.py
-│   │   ├── routes.py
-│   │   ├── agents.py
-│   │   └── instructions.py
+│   └── transcript_parser/      # Instructions only (used by agents module)
+│       ├── __init__.py
+│       └── instructions.py
 └── main.py               # FastAPI application
 ```
 
@@ -106,27 +93,6 @@ A module for multi-agent workflow configurations:
 #### Workflow Routes (routes.py)
 - `GET /api/v1/workflows/list` - List all available workflows with agent details
 - `GET /api/v1/workflows/{workflow_id}` - Get specific workflow details including agent instructions
-
-### Shared Module (modules/shared/)
-Base classes to reduce code duplication across single-agent modules:
-
-#### BaseSingleAgentService
-Abstract base class for single-agent services providing:
-- Common `generate()` method for AI agent invocation
-- Common `save_to_database()` method for persistence
-- Abstract methods for module-specific configuration:
-  - `get_agent_creator()` - Returns the agent factory function
-  - `get_container_name()` - Returns Cosmos DB container name
-  - `get_feature_name()` - Returns feature identifier for logging
-
-#### base_routes.py
-Factory function `create_single_agent_routes()` that generates standard CRUD endpoints:
-- POST `/generate` - Generate response from agent
-- GET `/browse` - Browse history with pagination
-- POST `/delete` - Delete selected records
-- POST `/download` - Download selected records as JSON
-
-Services can extend BaseSingleAgentService for consistency while maintaining module-specific customizations.
 
 ### Key Principles
 - **Separation of Concerns**: Each service handles one feature's business logic
@@ -167,12 +133,8 @@ For more details on Azure AI Agent Service and Workflow:
 - [Azure AI Documentation](https://github.com/MicrosoftDocs/azure-ai-docs/tree/main/articles/ai-foundry/default/agents)
 
 #### Feature Services
-Each service handles complete business logic for its feature:
-- **C2MessageGenerationService**: Generates C2 (customer) messages. Uses `create_c2_message_generator_agent()`. Provides both stateful (`generate_message()`) and stateless (`generate_message_stateless()`) generation methods.
-- **PersonaDistributionService**: Generates persona distributions. Uses `create_persona_distribution_agent()`.
-- **PersonaGeneratorService**: Generates exact personas. Uses `create_persona_generator_agent()`.
-- **TranscriptParserService**: Parses customer-representative transcripts. Uses `create_transcript_parser_agent()`.
-- **ConversationSimulationService**: Multi-agent conversation orchestration (C1/C2). Uses `create_c1_agent()` and delegates C2 message generation to `C2MessageGenerationService`.
+- **UnifiedAgentsService** (`modules/agents/agents_service.py`): Handles all single-agent operations. Uses agent configurations from the registry.
+- **ConversationSimulationService**: Multi-agent conversation orchestration (C1/C2). Still uses dedicated module in `modules/conversation_simulation/`.
 
 Services contain:
 - Agent configuration (name, instructions, model deployment)
@@ -216,23 +178,7 @@ Does NOT contain:
 
 ### Routes
 
-#### Legacy Routes (maintained for backward compatibility)
-- `/api/v1/c2-message-generation/*` - Delegates to C2MessageGenerationService
-  - POST `/generate` - Generate C2 (customer) message
-  - GET `/browse` - Browse past C2 message generations with pagination
-  - POST `/delete` - Delete selected records
-  - POST `/download` - Download selected records as JSON
-- `/api/v1/persona-distribution/*` - Delegates to PersonaDistributionService
-  - POST `/generate` - Generate persona distribution
-  - GET `/browse` - Browse past persona distribution generations with pagination
-- `/api/v1/persona-generator/*` - Delegates to PersonaGeneratorService
-  - POST `/generate` - Generate exact personas
-  - GET `/browse` - Browse past persona generations with pagination
-- `/api/v1/conversation-simulation/*` - Delegates to ConversationSimulationService
-  - POST `/simulate` - Simulate conversation
-  - GET `/browse` - Browse past simulations with pagination
-
-#### Unified Agents API (NEW - Primary API for Frontend)
+#### Unified Agents API (Primary API for Single Agents)
 - `/api/v1/agents/*` - Unified agents API
   - GET `/list` - List all agents with configurations and instructions
   - GET `/{agent_id}` - Get specific agent details
@@ -241,10 +187,17 @@ Does NOT contain:
   - POST `/{agent_id}/delete` - Delete agent records
   - POST `/{agent_id}/download` - Download agent records
 
-#### Workflows API (NEW)
+#### Workflows API
 - `/api/v1/workflows/*` - Workflow configurations
   - GET `/list` - List all workflows with agent details
   - GET `/{workflow_id}` - Get specific workflow details
+
+#### Conversation Simulation (Multi-Agent Workflow)
+- `/api/v1/conversation-simulation/*` - Delegates to ConversationSimulationService
+  - POST `/simulate` - Simulate conversation between C1 and C2 agents
+  - GET `/browse` - Browse past simulations with pagination
+  - POST `/delete` - Delete selected records
+  - POST `/download` - Download selected records as JSON
 
 Routes only:
 1. Extract request parameters
