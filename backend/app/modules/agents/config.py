@@ -8,11 +8,13 @@ Each agent is defined with its name, description, instructions, and container.
 from typing import Dict, Any, Optional, List
 from dataclasses import dataclass, field
 
-# Import instructions from existing modules
-from app.modules.persona_distribution.instructions import PERSONA_DISTRIBUTION_AGENT_INSTRUCTIONS
-from app.modules.persona_generator.instructions import PERSONA_GENERATOR_AGENT_INSTRUCTIONS
-from app.modules.transcript_parser.instructions import TRANSCRIPT_PARSER_AGENT_INSTRUCTIONS
-from app.modules.c2_message_generation.instructions import C2_MESSAGE_GENERATOR_AGENT_INSTRUCTIONS
+# Import instructions from centralized instructions module
+from .instructions import (
+    PERSONA_DISTRIBUTION_AGENT_INSTRUCTIONS,
+    PERSONA_GENERATOR_AGENT_INSTRUCTIONS,
+    TRANSCRIPT_PARSER_AGENT_INSTRUCTIONS,
+    C2_MESSAGE_GENERATOR_AGENT_INSTRUCTIONS,
+)
 
 
 @dataclass

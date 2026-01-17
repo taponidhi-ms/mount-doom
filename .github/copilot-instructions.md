@@ -86,22 +86,19 @@ backend/app/
 │   ├── shared/      # Reserved for future shared utilities
 │   ├── agents/      # Unified agents API (consolidated single-agent controller)
 │   │   ├── config.py       # Agent configuration registry
+│   │   ├── instructions.py # All agent instructions (centralized)
 │   │   ├── routes.py       # Unified API endpoints
 │   │   ├── agents_service.py  # Generic invocation service
 │   │   └── models.py       # API schemas
-│   ├── workflows/   # Workflow configurations
-│   │   ├── config.py       # Workflow configuration registry
-│   │   ├── routes.py       # Workflow listing endpoints
-│   │   └── models.py       # API schemas
-│   ├── conversation_simulation/  # Multi-agent workflow (full module)
-│   │   ├── routes.py       # API Endpoints
-│   │   ├── models.py       # Schemas
-│   │   ├── *_service.py    # Business Logic
-│   │   ├── agents.py       # Agent Factory
-│   │   └── instructions.py # Agent Prompts
-│   ├── [agent_module]/      # e.g., persona_distribution/, c2_message_generation/
-│   │   └── instructions.py  # Only instructions file (used by agents module)
-│   └── ...
+│   └── workflows/   # Workflows module
+│       ├── config.py       # Workflow configuration registry
+│       ├── routes.py       # Workflow listing endpoints
+│       ├── models.py       # API schemas
+│       └── conversation_simulation/  # Multi-agent workflow
+│           ├── routes.py       # API Endpoints
+│           ├── models.py       # Schemas
+│           ├── conversation_simulation_service.py  # Business Logic
+│           └── agents.py       # Agent Factory
 ├── models/          # Shared Pydantic schemas
 └── main.py         # FastAPI app
 ```
@@ -125,10 +122,9 @@ frontend/
 - Use dependency injection
 - Separate Azure AI and Cosmos DB concerns
 - Agent configuration centralized in `modules/agents/config.py`
+- All agent instructions centralized in `modules/agents/instructions.py`
 - Workflow configuration centralized in `modules/workflows/config.py`
-- Agent instructions stored in `modules/[module]/instructions.py`
-- Single-agent modules only need `instructions.py` (all logic in unified agents service)
-- Multi-agent workflows (like conversation_simulation) still need full module structure
+- Multi-agent workflows live inside `modules/workflows/` directory
 
 ### Frontend API Pattern
 - Centralized API client in `lib/api-client.ts`
@@ -169,18 +165,14 @@ frontend/
 ### Adding a New Single-Agent Feature
 Single-agent features use one agent to process a prompt and return a response.
 
-**Method 1: Using the Unified Agents API (Recommended)**
-
-1. **Create module directory**: `backend/app/modules/[feature_name]/`
-
-2. **Create `instructions.py`** with agent prompts:
+1. **Add agent instructions** to `backend/app/modules/agents/instructions.py`:
    ```python
    FEATURE_AGENT_INSTRUCTIONS = """Your agent instructions here..."""
    ```
 
-3. **Register in agent config** (`backend/app/modules/agents/config.py`):
+2. **Register in agent config** (`backend/app/modules/agents/config.py`):
    ```python
-   from app.modules.[feature_name].instructions import FEATURE_AGENT_INSTRUCTIONS
+   from .instructions import FEATURE_AGENT_INSTRUCTIONS
    
    # Add to AGENT_REGISTRY:
    "[feature_name]": AgentConfig(
@@ -196,51 +188,36 @@ Single-agent features use one agent to process a prompt and return a response.
    ),
    ```
 
-4. **Add container constant** in `backend/app/infrastructure/db/cosmos_db_service.py`
+3. **Add container constant** in `backend/app/infrastructure/db/cosmos_db_service.py`
 
-5. **Update frontend navigation** in `frontend/components/PageLayout.tsx` to add the new agent link
-
-**Method 2: Legacy approach with dedicated routes (for backward compatibility)**
-
-1. **Create module directory**: `backend/app/modules/[feature_name]/`
-
-2. **Create `instructions.py`** with agent prompts
-
-3. **Create `agents.py`** with agent factory
-
-4. **Create `models.py`** for API schemas
-
-5. **Create `[feature_name]_service.py`** for business logic (or extend `BaseSingleAgentService`)
-
-6. **Create `routes.py`** for API endpoints
-
-7. **Register router** in `backend/app/main.py`
-
-8. **Add container constant** in `backend/app/infrastructure/db/cosmos_db_service.py`
-
-9. **Create frontend page** in `frontend/app/[feature-name]/page.tsx` using `SingleAgentTemplate`
-
-10. **Add API methods** in `frontend/lib/api-client.ts`
+4. **Update frontend navigation** in `frontend/components/PageLayout.tsx` to add the new agent link
 
 ### Adding a New Multi-Agent Workflow
-Multi-agent features orchestrate multiple agents in a conversation loop.
+Multi-agent workflows orchestrate multiple agents in a conversation loop.
 
-1. **Create module directory**: `backend/app/modules/[feature_name]/`
+1. **Create workflow directory**: `backend/app/modules/workflows/[workflow_name]/`
 
-2. **Create `instructions.py`** with prompts for each agent
+2. **Add agent instructions** to `backend/app/modules/agents/instructions.py` for any new agents
 
-3. **Create `agents.py`** with factory functions for each agent
+3. **Create `agents.py`** with factory functions for each agent:
+   ```python
+   from app.modules.agents.instructions import YOUR_AGENT_INSTRUCTIONS
+   ```
 
 4. **Create `models.py`** with conversation-specific schemas (messages, history, etc.)
 
-5. **Create `[feature_name]_service.py`** with orchestration logic:
+5. **Create `[workflow_name]_service.py`** with orchestration logic:
    - Implement conversation loop
    - Handle termination conditions
    - Track per-message and total metrics
 
 6. **Create `routes.py`** for API endpoints
 
-7. **Register router** in `backend/app/main.py`
+7. **Register router** in `backend/app/main.py`:
+   ```python
+   from app.modules.workflows.[workflow_name] import routes as workflow_name
+   app.include_router(workflow_name.router, prefix="/api/v1")
+   ```
 
 8. **Add container constant** in `backend/app/infrastructure/db/cosmos_db_service.py`
 

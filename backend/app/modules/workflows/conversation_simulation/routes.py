@@ -99,7 +99,7 @@ async def browse_conversation_simulations(
     """
     Browse conversation simulation records with pagination and ordering.
     """
-    logger.info("Browsing conversation simulations V2", 
+    logger.info("Browsing conversation simulations", 
                page=page, 
                page_size=page_size, 
                order_by=order_by,
@@ -143,13 +143,13 @@ async def delete_conversation_simulations(conversation_ids: list[str]):
             try:
                 container.delete_item(item=conv_id, partition_key=conv_id)
                 deleted_count += 1
-                logger.debug("Deleted conversation V2", conversation_id=conv_id)
+                logger.debug("Deleted conversation", conversation_id=conv_id)
             except Exception as e:
                 error_msg = f"Failed to delete {conv_id}: {str(e)}"
                 errors.append(error_msg)
                 logger.warning(error_msg)
         
-        logger.info("Delete operation completed V2", deleted=deleted_count, failed=len(errors))
+        logger.info("Delete operation completed", deleted=deleted_count, failed=len(errors))
         
         return {
             "deleted_count": deleted_count,
@@ -190,10 +190,6 @@ async def download_conversation_simulations(conversation_ids: list[str]):
                 customer_sentiment = conv_props.get("CustomerSentiment", "")
                 conversation_subject = conv_props.get("ConversationSubject", "")
                 
-                # Extract agent details
-                c2_agent_details = item.get("c2_agent_details", {})
-                c2_instructions = c2_agent_details.get("instructions", "")
-                
                 # Build conversation messages
                 conversation_messages = []
                 
@@ -226,7 +222,7 @@ async def download_conversation_simulations(conversation_ids: list[str]):
                 conversations.append(conversation)
                 
             except Exception as e:
-                logger.warning("Failed to retrieve conversation V2", conversation_id=conv_id, error=str(e))
+                logger.warning("Failed to retrieve conversation", conversation_id=conv_id, error=str(e))
                 continue
         
         result = {"conversations": conversations}
@@ -242,4 +238,3 @@ async def download_conversation_simulations(conversation_ids: list[str]):
     except Exception as e:
         logger.error("Error downloading conversation simulations", error=str(e), exc_info=True)
         raise HTTPException(status_code=500, detail=f"Error downloading: {str(e)}")
-

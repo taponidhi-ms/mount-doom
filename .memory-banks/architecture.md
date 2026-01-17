@@ -28,43 +28,39 @@ backend/app/
 │   ├── agents/          # Unified agents API
 │   │   ├── __init__.py
 │   │   ├── config.py    # Agent configuration registry
+│   │   ├── instructions.py  # All agent instructions (centralized)
 │   │   ├── models.py    # API schemas for agents
 │   │   ├── routes.py    # Unified agents endpoints
 │   │   └── agents_service.py  # Generic agent invocation service
-│   ├── workflows/       # Workflow configurations
-│   │   ├── __init__.py
-│   │   ├── config.py    # Workflow configuration registry
-│   │   ├── models.py    # API schemas for workflows
-│   │   └── routes.py    # Workflow listing endpoints
-│   ├── conversation_simulation/  # Multi-agent workflow (still needs full module)
-│   │   ├── __init__.py
-│   │   ├── agents.py    # C1 agent factory
-│   │   ├── conversation_simulation_service.py  # Orchestration logic
-│   │   ├── instructions.py  # C1 agent instructions
-│   │   ├── models.py    # API schemas
-│   │   └── routes.py    # Simulation endpoints
-│   ├── c2_message_generation/  # Instructions only (used by agents module)
-│   │   ├── __init__.py
-│   │   └── instructions.py
-│   ├── persona_distribution/   # Instructions only (used by agents module)
-│   │   ├── __init__.py
-│   │   └── instructions.py
-│   ├── persona_generator/      # Instructions only (used by agents module)
-│   │   ├── __init__.py
-│   │   └── instructions.py
-│   └── transcript_parser/      # Instructions only (used by agents module)
+│   └── workflows/       # Workflows module
 │       ├── __init__.py
-│       └── instructions.py
+│       ├── config.py    # Workflow configuration registry
+│       ├── models.py    # API schemas for workflows
+│       ├── routes.py    # Workflow listing endpoints
+│       └── conversation_simulation/  # Multi-agent workflow
+│           ├── __init__.py
+│           ├── agents.py    # C1 and C2 agent factories
+│           ├── conversation_simulation_service.py  # Orchestration logic
+│           ├── models.py    # API schemas
+│           └── routes.py    # Simulation endpoints
 └── main.py               # FastAPI application
 ```
 
 ### Unified Agents Module (modules/agents/)
 A centralized module that provides a single API for all single-agent operations:
 
+#### Centralized Instructions (instructions.py)
+All agent instructions are consolidated in a single file:
+- `PERSONA_DISTRIBUTION_AGENT_INSTRUCTIONS`
+- `PERSONA_GENERATOR_AGENT_INSTRUCTIONS`
+- `TRANSCRIPT_PARSER_AGENT_INSTRUCTIONS`
+- `C2_MESSAGE_GENERATOR_AGENT_INSTRUCTIONS`
+- `C1_AGENT_INSTRUCTIONS`
+
 #### Agent Configuration Registry (config.py)
 - Maintains `AGENT_REGISTRY` dictionary with all agent configurations
 - Each `AgentConfig` contains: agent_id, agent_name, display_name, description, instructions, container_name, input_field, input_label, input_placeholder
-- Imports instructions from individual feature modules
+- Imports instructions from centralized `instructions.py`
 - Provides helper functions: `get_agent_config()`, `get_all_agents()`, `list_agent_ids()`
 
 #### Unified Agents Service (agents_service.py)

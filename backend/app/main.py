@@ -13,7 +13,7 @@ logger.info("=" * 80)
 
 # Import routes after logging is configured
 # This ensures services initialized during import use the proper logging config
-from app.modules.conversation_simulation import routes as conversation_simulation
+from app.modules.workflows.conversation_simulation import routes as conversation_simulation
 from app.modules.agents import routes as agents
 from app.modules.workflows import routes as workflows
 

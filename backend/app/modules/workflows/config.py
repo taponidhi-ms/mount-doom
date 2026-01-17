@@ -7,9 +7,8 @@ This module maintains configurations for all workflows in the system.
 from typing import Dict, Any, Optional, List
 from dataclasses import dataclass
 
-# Import instructions from existing modules
-from app.modules.conversation_simulation.instructions import C1_AGENT_INSTRUCTIONS
-from app.modules.c2_message_generation.instructions import C2_MESSAGE_GENERATOR_AGENT_INSTRUCTIONS
+# Import instructions from centralized agents instructions module
+from app.modules.agents.instructions import C1_AGENT_INSTRUCTIONS, C2_MESSAGE_GENERATOR_AGENT_INSTRUCTIONS
 
 
 @dataclass
