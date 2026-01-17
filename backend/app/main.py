@@ -18,6 +18,8 @@ from app.modules.persona_generator import routes as persona_generator
 from app.modules.conversation_simulation import routes as conversation_simulation
 from app.modules.transcript_parser import routes as transcript_parser
 from app.modules.c2_message_generation import routes as c2_message_generation
+from app.modules.agents import routes as agents
+from app.modules.workflows import routes as workflows
 
 # Create FastAPI application
 app = FastAPI(
@@ -48,6 +50,11 @@ app.include_router(transcript_parser.router, prefix="/api/v1")
 logger.debug("Registered route", router="transcript_parser", prefix="/api/v1")
 app.include_router(c2_message_generation.router, prefix="/api/v1")
 logger.debug("Registered route", router="c2_message_generation", prefix="/api/v1")
+# Unified agents and workflows APIs
+app.include_router(agents.router, prefix="/api/v1")
+logger.debug("Registered route", router="agents", prefix="/api/v1")
+app.include_router(workflows.router, prefix="/api/v1")
+logger.debug("Registered route", router="workflows", prefix="/api/v1")
 logger.info("All API routes registered successfully")
 
 

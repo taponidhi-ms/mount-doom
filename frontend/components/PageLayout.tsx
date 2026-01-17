@@ -12,8 +12,7 @@ import {
   MenuFoldOutlined,
   MenuUnfoldOutlined,
   RobotOutlined,
-  TeamOutlined,
-  UserOutlined,
+  BranchesOutlined,
   GlobalOutlined,
 } from '@ant-design/icons'
 import { Button, Typography, Layout, Menu, theme, Select, Space, Tooltip } from 'antd'
@@ -67,16 +66,14 @@ export default function PageLayout({
 
   const items: MenuItem[] = [
     getItem('Home', '/', <HomeOutlined />),
-    getItem('Simulation Agents', 'simulation-agents', <RobotOutlined />, [
-      getItem('Single Agent', 'single-agent', <UserOutlined />, [
-        getItem('Persona Distribution', '/persona-distribution', <UsergroupAddOutlined />),
-        getItem('Persona Generator', '/persona-generator', <UserAddOutlined />),
-        getItem('Transcript Parser', '/transcript-parser', <FileSearchOutlined />),
-        getItem('C2 Message Generation', '/c2-message-generation', <MessageOutlined />),
-      ]),
-      getItem('Multi Agent', 'multi-agent', <TeamOutlined />, [
-        getItem('Conversation Simulation', '/conversation-simulation', <CommentOutlined />),
-      ]),
+    getItem('Agents', 'agents', <RobotOutlined />, [
+      getItem('Persona Distribution', '/agents/persona_distribution', <UsergroupAddOutlined />),
+      getItem('Persona Generator', '/agents/persona_generator', <UserAddOutlined />),
+      getItem('Transcript Parser', '/agents/transcript_parser', <FileSearchOutlined />),
+      getItem('C2 Message Generator', '/agents/c2_message_generation', <MessageOutlined />),
+    ]),
+    getItem('Workflows', 'workflows', <BranchesOutlined />, [
+      getItem('Conversation Simulation', '/workflows/conversation_simulation', <CommentOutlined />),
     ]),
   ]
 
@@ -90,16 +87,13 @@ export default function PageLayout({
   const getDefaultOpenKeys = () => {
     if (pathname === '/') return []
     
-    const singleAgentPaths = ['/persona-distribution', '/persona-generator', '/transcript-parser', '/c2-message-generation']
-    const multiAgentPaths = ['/conversation-simulation']
-    
-    if (singleAgentPaths.includes(pathname)) {
-      return ['simulation-agents', 'single-agent']
+    if (pathname.startsWith('/agents/')) {
+      return ['agents']
     }
-    if (multiAgentPaths.includes(pathname)) {
-      return ['simulation-agents', 'multi-agent']
+    if (pathname.startsWith('/workflows/')) {
+      return ['workflows']
     }
-    return ['simulation-agents']
+    return []
   }
 
   const handleMenuClick: MenuProps['onClick'] = (e) => {
