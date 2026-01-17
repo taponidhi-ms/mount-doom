@@ -27,6 +27,17 @@ backend/app/
 │   │   ├── __init__.py
 │   │   ├── base_single_agent_service.py  # Base class for single-agent services
 │   │   └── base_routes.py                # Factory for standard CRUD routes
+│   ├── agents/          # Unified agents API (NEW)
+│   │   ├── __init__.py
+│   │   ├── config.py    # Agent configuration registry
+│   │   ├── models.py    # API schemas for agents
+│   │   ├── routes.py    # Unified agents endpoints
+│   │   └── agents_service.py  # Generic agent invocation service
+│   ├── workflows/       # Workflow configurations (NEW)
+│   │   ├── __init__.py
+│   │   ├── config.py    # Workflow configuration registry
+│   │   ├── models.py    # API schemas for workflows
+│   │   └── routes.py    # Workflow listing endpoints
 │   ├── c2_message_generation/
 │   │   ├── c2_message_generation_service.py
 │   │   ├── models.py
@@ -59,6 +70,42 @@ backend/app/
 │   │   └── instructions.py
 └── main.py               # FastAPI application
 ```
+
+### Unified Agents Module (modules/agents/)
+A centralized module that provides a single API for all single-agent operations:
+
+#### Agent Configuration Registry (config.py)
+- Maintains `AGENT_REGISTRY` dictionary with all agent configurations
+- Each `AgentConfig` contains: agent_id, agent_name, display_name, description, instructions, container_name, input_field, input_label, input_placeholder
+- Imports instructions from individual feature modules
+- Provides helper functions: `get_agent_config()`, `get_all_agents()`, `list_agent_ids()`
+
+#### Unified Agents Service (agents_service.py)
+- Generic service that can invoke any agent by agent_id
+- Uses agent config to determine instructions and container
+- Handles conversation creation, response extraction, JSON parsing
+- Saves results to the appropriate Cosmos DB container
+
+#### Unified Agents Routes (routes.py)
+- `GET /api/v1/agents/list` - List all available agents with configurations
+- `GET /api/v1/agents/{agent_id}` - Get specific agent details including instructions
+- `POST /api/v1/agents/{agent_id}/invoke` - Invoke agent with input
+- `GET /api/v1/agents/{agent_id}/browse` - Browse agent history
+- `POST /api/v1/agents/{agent_id}/delete` - Delete agent records
+- `POST /api/v1/agents/{agent_id}/download` - Download agent records
+
+### Workflows Module (modules/workflows/)
+A module for multi-agent workflow configurations:
+
+#### Workflow Configuration Registry (config.py)
+- Maintains `WORKFLOW_REGISTRY` dictionary with workflow configurations
+- Each `WorkflowConfig` contains: workflow_id, display_name, description, agents list, route_prefix
+- Each `WorkflowAgentConfig` contains: agent_id, agent_name, display_name, role, instructions
+- Currently contains: conversation_simulation workflow with C1 and C2 agents
+
+#### Workflow Routes (routes.py)
+- `GET /api/v1/workflows/list` - List all available workflows with agent details
+- `GET /api/v1/workflows/{workflow_id}` - Get specific workflow details including agent instructions
 
 ### Shared Module (modules/shared/)
 Base classes to reduce code duplication across single-agent modules:
@@ -167,7 +214,9 @@ Does NOT contain:
 - Document structure definitions
 - Feature-specific save methods
 
-### Routes (One per feature)
+### Routes
+
+#### Legacy Routes (maintained for backward compatibility)
 - `/api/v1/c2-message-generation/*` - Delegates to C2MessageGenerationService
   - POST `/generate` - Generate C2 (customer) message
   - GET `/browse` - Browse past C2 message generations with pagination
@@ -183,6 +232,20 @@ Does NOT contain:
   - POST `/simulate` - Simulate conversation
   - GET `/browse` - Browse past simulations with pagination
 
+#### Unified Agents API (NEW - Primary API for Frontend)
+- `/api/v1/agents/*` - Unified agents API
+  - GET `/list` - List all agents with configurations and instructions
+  - GET `/{agent_id}` - Get specific agent details
+  - POST `/{agent_id}/invoke` - Invoke agent with input
+  - GET `/{agent_id}/browse` - Browse agent history
+  - POST `/{agent_id}/delete` - Delete agent records
+  - POST `/{agent_id}/download` - Download agent records
+
+#### Workflows API (NEW)
+- `/api/v1/workflows/*` - Workflow configurations
+  - GET `/list` - List all workflows with agent details
+  - GET `/{workflow_id}` - Get specific workflow details
+
 Routes only:
 1. Extract request parameters
 2. Call appropriate service method
@@ -195,17 +258,23 @@ Routes only:
 ```
 frontend/
 ├── app/                        # Next.js App Router pages
-│   ├── c2-message-generation/
+│   ├── agents/                 # Dynamic agents pages (NEW)
+│   │   └── [agentId]/          # Dynamic route for any agent
+│   │       └── page.tsx
+│   ├── workflows/              # Workflow pages (NEW)
+│   │   └── conversation_simulation/
+│   │       └── page.tsx
+│   ├── c2-message-generation/  # Legacy pages (kept for backward compatibility)
 │   ├── conversation-simulation/
 │   ├── persona-distribution/
 │   ├── persona-generator/
 │   └── transcript-parser/
 ├── components/                 # React components
 │   ├── PageLayout.tsx          # Reusable page layout with navigation
-│   ├── SingleAgentTemplate.tsx # Template for single-agent pages
-│   └── MultiAgentTemplate.tsx  # Template for multi-agent pages
+│   ├── SingleAgentTemplate.tsx # Template for single-agent pages (legacy)
+│   └── MultiAgentTemplate.tsx  # Template for multi-agent pages (legacy)
 └── lib/                        # Utilities and API client
-    ├── api-client.ts           # Backend API client
+    ├── api-client.ts           # Backend API client (includes agents and workflows APIs)
     ├── types.ts                # Shared TypeScript types
     └── timezone-context.tsx    # Global timezone context (UTC/IST)
 ```
@@ -213,6 +282,8 @@ frontend/
 ### Key Principles
 - **Template-based UI**: Single-agent and multi-agent pages use reusable templates
 - **Global timezone support**: User can toggle between UTC and IST (default: IST)
+- **Dynamic routing**: Agents pages use dynamic [agentId] routing
+- **Instructions display**: All agent pages show the agent's instruction set
 - Component reusability
 - Type safety with TypeScript
 - Responsive design with Ant Design
@@ -220,10 +291,14 @@ frontend/
 - Tab-based interface for generate, batch, and history views
 
 ### Navigation Structure
-The navigation sidebar organizes pages into:
-- **Simulation Agents**
-  - **Single Agent** - Pages using SingleAgentTemplate (4 pages)
-  - **Multi Agent** - Pages using MultiAgentTemplate (1 page)
+The navigation sidebar organizes pages into two main sections:
+- **Agents** - Individual agents for single-agent operations
+  - Persona Distribution Generator
+  - Persona Generator
+  - Transcript Parser
+  - C2 Message Generator
+- **Workflows** - Multi-agent workflows
+  - Conversation Simulation
 
 ### Templates
 
