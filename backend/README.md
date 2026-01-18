@@ -9,32 +9,61 @@ The backend follows clean architecture principles with clear separation of conce
 ```
 backend/
 ├── app/
-│   ├── core/                # Core configuration
+│   ├── core/                # Core configuration and logging
 │   ├── infrastructure/      # Shared infrastructure services
+│   │   ├── ai/             # Azure AI service
+│   │   └── db/             # Cosmos DB service
 │   ├── models/              # Shared models
+│   │   ├── shared.py        # Common API and DB schemas
+│   │   └── single_agent.py  # Shared schemas for single-agent operations
 │   ├── modules/             # Feature modules (Vertical Slices)
-│   │   ├── conversation_simulation/
-│   │   ├── general_prompt/
+│   │   ├── agents/          # Unified agents API
+│   │   │   ├── config.py   # Agent configuration registry
+│   │   │   ├── instructions.py  # Centralized agent instructions
+│   │   │   ├── models.py   # API schemas
+│   │   │   ├── routes.py   # Unified agents endpoints
+│   │   │   └── agents_service.py  # Generic agent invocation
+│   │   ├── workflows/       # Workflows module
+│   │   │   ├── config.py   # Workflow configuration registry
+│   │   │   ├── models.py   # API schemas
+│   │   │   ├── routes.py   # Workflow listing endpoints
+│   │   │   └── conversation_simulation/  # Multi-agent workflow
 │   │   ├── persona_distribution/
 │   │   ├── persona_generator/
-│   │   ├── prompt_validator/
 │   │   ├── transcript_parser/
-│   │   └── system/
+│   │   └── shared/
 │   └── main.py             # FastAPI application entry point
 ├── tests/                   # Test files
 ├── requirements.txt         # Python dependencies
 └── .env.example            # Environment variables template
 ```
 
-## Agent Architecture
+## Unified Agent Architecture
 
-This application uses a **fixed agent architecture** where each use case has predefined agents with fixed names and instruction sets:
+The application uses a **unified agent architecture** with centralized configuration and instructions:
 
-### Agent Names (Fixed)
-- **PersonaAgent** - Generates personas from simulation prompts
-- **PromptValidatorAgent** - Validates simulation prompts for quality
-- **C1Agent** - Customer service representative in conversations
-- **C2Agent** - Customer in conversations
+### Unified Agents Module (`app/modules/agents/`)
+A centralized module providing a single API for all single-agent operations:
+
+**Centralized Instructions** (`instructions.py`):
+- All agent instructions consolidated in one file
+- Instructions: `PERSONA_DISTRIBUTION_AGENT_INSTRUCTIONS`, `PERSONA_GENERATOR_AGENT_INSTRUCTIONS`, `TRANSCRIPT_PARSER_AGENT_INSTRUCTIONS`, `C2_MESSAGE_GENERATOR_AGENT_INSTRUCTIONS`
+
+**Agent Configuration Registry** (`config.py`):
+- Maintains `AGENT_REGISTRY` dictionary with all agent configurations
+- Each `AgentConfig` contains: agent_id, agent_name, display_name, description, instructions, container_name, input fields
+- Provides helper functions: `get_agent_config()`, `get_all_agents()`, `list_agent_ids()`
+
+**Unified Agents Service** (`agents_service.py`):
+- Generic service that can invoke any agent by agent_id
+- Handles conversation creation, response extraction, JSON parsing
+- Saves results to the appropriate Cosmos DB container
+
+**Current Registered Agents**:
+- **PersonaDistributionGeneratorAgent** - Generates persona distributions from simulation prompts
+- **PersonaGeneratorAgent** - Generates customer personas
+- **TranscriptParserAgent** - Parses transcripts to extract intent, subject, sentiment
+- **C2MessageGeneratorAgent** - Generates customer messages for simulations
 
 ### Agent Versioning
 - Agent versions are automatically generated based on instruction set changes
@@ -42,22 +71,18 @@ This application uses a **fixed agent architecture** where each use case has pre
 - When instructions change, a new version is automatically created
 - All agent details (name, version, instructions, model) are saved to Cosmos DB
 
-### Instruction Sets
-All agent instructions are defined in the `app/modules/*/instructions.py` files:
-- Each module has its own instruction definitions (e.g., `modules/conversation_simulation/instructions.py`)
-- Instructions are constant strings that define agent behavior
-- Modifying instructions in these files automatically creates new agent versions
-
 ## Features
 
-### Use Cases
+### Single Agents (via Unified Agents API)
 
-1. **Persona Distribution** - Generate persona distributions from simulation prompts
+1. **Persona Distribution** - Generate persona distributions from simulation prompts with structured JSON output
 2. **Persona Generation** - Generate exact customer personas from natural language descriptions
-3. **General Prompt** - Get responses for any general prompt using LLM models directly (no agent)
-4. **Prompt Validator** - Validate simulation prompts using PromptValidatorAgent
-5. **Transcript Parser** - Parse customer-representative transcripts to extract intent, subject, and sentiment
-6. **Conversation Simulation** - Multi-turn conversation between C1Agent (service rep) and C2Agent (customer)
+3. **Transcript Parser** - Parse customer-representative transcripts to extract intent, subject, and sentiment
+4. **C2 Message Generation** - Generate customer messages for use in conversation simulations
+
+### Multi-Agent Workflows
+
+5. **Conversation Simulation** - Multi-turn conversation between C1 (service rep) and C2 (customer) agents
 
 ### Key Capabilities
 
@@ -109,7 +134,7 @@ pip install -r requirements.txt
 3. Configure environment variables:
 ```bash
 cp .env.example .env
-# Edit .env with your Azure credentials and agent/model IDs
+# Edit .env with your Azure credentials
 ```
 
 ### Configuration
@@ -131,12 +156,11 @@ COSMOS_DB_USE_EMULATOR=false
 # COSMOS_DB_USE_EMULATOR=true
 # COSMOS_DB_KEY=C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==
 
-# Model IDs (for direct model access in general prompt)
-GENERAL_MODEL_1=gpt-4
-GENERAL_MODEL_2=gpt-35-turbo
+# Default model deployment (optional - can be overridden per request)
+default_model_deployment=gpt-4.1
 ```
 
-**Note:** Agent IDs are no longer required in configuration. Each use case uses fixed agent names defined in the `instruction_sets` module.
+**Note:** Agent configurations (IDs, names, instructions) are defined in code (`modules/agents/config.py`), not in environment variables. The unified agents API provides access to all registered agents.
 
 ### Using Local Cosmos DB Emulator
 
@@ -213,25 +237,28 @@ The API will be available at:
 
 ## API Endpoints
 
-### Persona Generation
+### Unified Agents API
 
-- `GET /api/v1/persona-generation/models` - Get available models
-- `POST /api/v1/persona-generation/generate` - Generate persona using PersonaAgent
+- `GET /api/v1/agents/list` - List all available agents with configurations
+- `GET /api/v1/agents/{agent_id}` - Get specific agent details including instructions
+- `POST /api/v1/agents/{agent_id}/invoke` - Invoke agent with input
+- `GET /api/v1/agents/{agent_id}/browse` - Browse agent history with pagination
+- `POST /api/v1/agents/{agent_id}/delete` - Delete agent records
+- `POST /api/v1/agents/{agent_id}/download` - Download agent records as JSON
 
-### General Prompt
+**Available agent_ids**: `persona_distribution`, `persona_generator`, `transcript_parser`, `c2_message_generation`
 
-- `GET /api/v1/general-prompt/models` - Get available models
-- `POST /api/v1/general-prompt/generate` - Generate response (direct model access, no agent)
+### Workflows API
 
-### Prompt Validator
+- `GET /api/v1/workflows/list` - List all available workflows with agent details
+- `GET /api/v1/workflows/{workflow_id}` - Get specific workflow details including agent instructions
 
-- `GET /api/v1/prompt-validator/models` - Get available models
-- `POST /api/v1/prompt-validator/validate` - Validate prompt using PromptValidatorAgent
+### Conversation Simulation (Multi-Agent Workflow)
 
-### Conversation Simulation
-
-- `GET /api/v1/conversation-simulation/models` - Get available models
-- `POST /api/v1/conversation-simulation/simulate` - Simulate conversation using C1Agent and C2Agent
+- `POST /api/v1/conversation-simulation/simulate` - Simulate conversation using C1 and C2 agents
+- `GET /api/v1/conversation-simulation/browse` - Browse past simulations with pagination
+- `POST /api/v1/conversation-simulation/delete` - Delete selected records
+- `POST /api/v1/conversation-simulation/download` - Download selected records as JSON
 
 ### Health Check
 
@@ -239,13 +266,13 @@ The API will be available at:
 
 ## Request Examples
 
-### Generate Persona
+### Invoke Agent (Unified API)
 
 ```bash
-curl -X POST "http://localhost:8000/api/v1/persona-generation/generate" \
+curl -X POST "http://localhost:8000/api/v1/agents/persona_generator/invoke" \
   -H "Content-Type: application/json" \
   -d '{
-    "prompt": "Create a persona for a tech-savvy millennial",
+    "input": "Create a persona for a tech-savvy millennial",
     "model_deployment_name": "gpt-4"
   }'
 ```
@@ -259,13 +286,19 @@ Response includes agent details:
   "start_time": "2025-01-15T10:30:00Z",
   "end_time": "2025-01-15T10:30:01Z",
   "agent_details": {
-    "agent_name": "PersonaAgent",
+    "agent_name": "PersonaGeneratorAgent",
     "agent_version": "vab12cd34",
     "instructions": "You are a specialized persona generation agent...",
     "model": "gpt-4",
     "timestamp": "2025-01-15T10:30:00Z"
   }
 }
+```
+
+### List All Agents
+
+```bash
+curl -X GET "http://localhost:8000/api/v1/agents/list"
 ```
 
 ### Simulate Conversation
@@ -284,7 +317,7 @@ curl -X POST "http://localhost:8000/api/v1/conversation-simulation/simulate" \
   }'
 ```
 
-Response includes details for both agents (C1Agent and C2Agent).
+Response includes details for both C1 (service rep) and C2 (customer) agents.
 
 ## Authentication
 
@@ -317,21 +350,24 @@ The automatic token refresh should prevent the need for manual token management 
 All use case results are automatically stored in Cosmos DB in separate containers with complete agent details:
 
 ### Containers
-- `persona_generation` - Persona generation results with PersonaAgent details
-- `general_prompt` - General prompt results (model-only, no agent)
-- `prompt_validator` - Validation results with PromptValidatorAgent details
-- `conversation_simulation` - Conversation results with C1Agent and C2Agent details
+- `persona_distribution` - Persona distribution generation results
+- `persona_generator` - Persona generation results
+- `transcript_parser` - Transcript parsing results
+- `c2_message_generation` - C2 message generation results
+- `conversation_simulation` - Conversation simulation results with C1 and C2 agent details
 
 ### Stored Information
 Each record includes:
-- Request data (prompt, model, parameters)
+- Document ID: `conversation_id` from Azure AI (ensures uniqueness)
+- Request data (prompt/input, model, parameters)
 - Response data (text, tokens used, timing)
 - Agent details:
-  - Agent name (e.g., "PersonaAgent", "C1Agent")
+  - Agent name (e.g., "PersonaGeneratorAgent", "C1MessageGeneratorAgent")
   - Agent version (hash of instructions)
   - Complete instruction set
   - Model used
   - Timestamp
+- For JSON-based agents: `parsed_output` field with structured data
 
 Containers are created automatically if they don't exist.
 
@@ -345,26 +381,47 @@ The project follows Python best practices:
 - Pydantic models for data validation
 - Clean architecture with separation of concerns
 
-### Adding New Use Cases
+### Adding New Features
 
-1. Create instruction set in `app/instruction_sets/`:
-   - Define agent name constant (e.g., `MY_AGENT_NAME = "MyAgent"`)
-   - Define instructions constant (e.g., `MY_AGENT_INSTRUCTIONS = "..."`)
-   - Export in `__init__.py`
+#### Adding a New Single Agent
 
-2. Create request/response schemas in `app/models/schemas.py`:
-   - Inherit from `BaseRequest` and `BaseResponse`
-   - Include model parameter (default "gpt-4")
-   - Response automatically includes `agent_details`
+1. Add instructions to `backend/app/modules/agents/instructions.py`:
+   ```python
+   MY_NEW_AGENT_INSTRUCTIONS = """
+   Your agent instructions here...
+   """
+   ```
 
-3. Add route file in `app/api/routes/`:
-   - Import instruction set constants
-   - Call `azure_ai_service.get_agent_response()` with agent name and instructions
-   - Save to Cosmos DB with agent details
+2. Register in `backend/app/modules/agents/config.py`:
+   ```python
+   "my_agent": AgentConfig(
+       agent_id="my_agent",
+       agent_name="MyAgentName",
+       display_name="My Agent",
+       description="Agent description",
+       instructions=MY_NEW_AGENT_INSTRUCTIONS,
+       container_name="my_agent",
+       input_field="prompt",
+       input_label="Prompt",
+       input_placeholder="Enter your prompt...",
+   )
+   ```
 
-4. Include the router in `app/main.py`
+3. Add container constant to `cosmos_db_service.py`:
+   ```python
+   CONTAINER_MY_AGENT = "my_agent"
+   ```
 
-5. Add Cosmos DB save method in `app/services/cosmos_db_service.py`
+4. Frontend will automatically work via unified agents API at `/api/v1/agents/my_agent/invoke`
+
+#### Adding a New Multi-Agent Workflow
+
+1. Create directory: `backend/app/modules/workflows/{workflow_name}/`
+2. Add agent instructions to `modules/agents/instructions.py`
+3. Create workflow files: `agents.py`, `models.py`, `{workflow}_service.py`, `routes.py`
+4. Register router in `main.py`
+5. Register in `modules/workflows/config.py`
+6. Create frontend page in `app/workflows/{workflow_id}/page.tsx`
 
 ## Troubleshooting
 
@@ -381,14 +438,15 @@ The project follows Python best practices:
    - Ensure credentials have proper permissions
 
 3. **Agent/Model Not Found**
-   - Models are now selected via the API (gpt-4, gpt-35-turbo)
-   - Agent names are fixed and defined in instruction_sets module
-   - Check that the model exists in your Azure AI deployment
+   - Models are selected via the API (gpt-4, gpt-4.1, etc.)
+   - Agent IDs are defined in `modules/agents/config.py` in AGENT_REGISTRY
+   - Check that the model deployment exists in your Azure AI project
+   - Verify agent_id exists: GET `/api/v1/agents/list`
 
 4. **Instruction Set Changes Not Reflected**
-   - Modify instruction files in `app/instruction_sets/`
+   - Modify instruction files in `app/modules/agents/instructions.py`
    - Restart the server to load new instructions
-   - New agent version will be automatically created
+   - New agent version will be automatically created based on instruction hash
 
 ## License
 

@@ -5,11 +5,10 @@ A fullstack application for multi-agent conversation simulation and prompt gener
 ## Overview
 
 Mount Doom is an enterprise-grade simulation platform that enables:
-- Multi-agent conversation simulations between customer service representatives and customers
+- Multi-agent conversation simulations between customer service representatives (C1) and customers (C2)
 - Persona distribution generation from simulation prompts (structured JSON with intents, sentiments, and proportions)
 - Persona generation from natural language descriptions
-- General-purpose AI assistance via direct model access
-- Prompt validation for quality assurance
+- C2 customer message generation for simulations
 - Transcript parsing to extract intent, subject, and sentiment from customer-representative conversations
 - Comprehensive tracking of tokens, timing, and conversation history
 - Persistent storage in Azure Cosmos DB
@@ -41,23 +40,24 @@ mount-doom/
 
 ## Features
 
-### 1. Persona Distribution Generator
+### Single Agents
+
+#### 1. Persona Distribution Generator
 Generate persona distributions from simulation prompts using specialized AI agents. Outputs structured JSON with conversation counts, intents, sentiments, and proportions.
 
-### 2. Persona Generator
+#### 2. Persona Generator
 Generate exact customer personas with specific intents, sentiments, subjects, and metadata for use in conversation simulations.
 
-### 3. General Prompt
-Get responses for any general prompt using LLM models directly (GPT-4, GPT-3.5 Turbo).
-
-### 4. Prompt Validator
-Validate simulation prompts to ensure they meet quality standards.
-
-### 5. Transcript Parser
+#### 3. Transcript Parser
 Parse customer-representative transcripts to extract intent, subject, and sentiment.
 
-### 6. Conversation Simulation
-Simulate complex multi-turn conversations between customer service representatives and customers with intelligent orchestration.
+#### 4. C2 Message Generator
+Generate customer (C2) messages for use in conversation simulations. Simulates realistic customer responses.
+
+### Multi-Agent Workflows
+
+#### 5. Conversation Simulation
+Simulate complex multi-turn conversations between customer service representatives (C1) and customers (C2) with intelligent orchestration.
 
 ## Quick Start
 
