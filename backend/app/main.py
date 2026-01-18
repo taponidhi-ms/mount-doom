@@ -13,11 +13,9 @@ logger.info("=" * 80)
 
 # Import routes after logging is configured
 # This ensures services initialized during import use the proper logging config
-from app.modules.persona_distribution import routes as persona_distribution
-from app.modules.persona_generator import routes as persona_generator
-from app.modules.conversation_simulation import routes as conversation_simulation
-from app.modules.transcript_parser import routes as transcript_parser
-from app.modules.c2_message_generation import routes as c2_message_generation
+from app.modules.workflows.conversation_simulation import routes as conversation_simulation
+from app.modules.agents import routes as agents
+from app.modules.workflows import routes as workflows
 
 # Create FastAPI application
 app = FastAPI(
@@ -38,16 +36,14 @@ app.add_middleware(
 
 # Include routers
 logger.info("Registering API routes...")
-app.include_router(persona_distribution.router, prefix="/api/v1")
-logger.debug("Registered route", router="persona_distribution", prefix="/api/v1")
-app.include_router(persona_generator.router, prefix="/api/v1")
-logger.debug("Registered route", router="persona_generator", prefix="/api/v1")
+# Conversation simulation workflow (multi-agent)
 app.include_router(conversation_simulation.router, prefix="/api/v1")
 logger.debug("Registered route", router="conversation_simulation", prefix="/api/v1")
-app.include_router(transcript_parser.router, prefix="/api/v1")
-logger.debug("Registered route", router="transcript_parser", prefix="/api/v1")
-app.include_router(c2_message_generation.router, prefix="/api/v1")
-logger.debug("Registered route", router="c2_message_generation", prefix="/api/v1")
+# Unified agents and workflows APIs
+app.include_router(agents.router, prefix="/api/v1")
+logger.debug("Registered route", router="agents", prefix="/api/v1")
+app.include_router(workflows.router, prefix="/api/v1")
+logger.debug("Registered route", router="workflows", prefix="/api/v1")
 logger.info("All API routes registered successfully")
 
 

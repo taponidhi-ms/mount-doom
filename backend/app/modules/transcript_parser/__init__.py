@@ -1,1 +1,0 @@
-"""Transcript Parser module initialization."""

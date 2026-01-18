@@ -111,6 +111,59 @@ export interface C2MessageGenerationRequest {
 
 export interface C2MessageGenerationResponse extends BaseResponse {}
 
+// ========================================
+// Unified Agents API Types
+// ========================================
+
+export interface AgentInfo {
+  agent_id: string;
+  agent_name: string;
+  display_name: string;
+  description: string;
+  instructions: string;
+  input_field: string;
+  input_label: string;
+  input_placeholder: string;
+}
+
+export interface AgentListResponse {
+  agents: AgentInfo[];
+}
+
+export interface AgentInvokeResponse {
+  response_text: string;
+  tokens_used?: number;
+  time_taken_ms: number;
+  start_time: string;
+  end_time: string;
+  agent_details: Record<string, unknown>;
+  parsed_output?: Record<string, unknown>;
+}
+
+// ========================================
+// Workflows API Types
+// ========================================
+
+export interface WorkflowAgentInfo {
+  agent_id: string;
+  agent_name: string;
+  display_name: string;
+  role: string;
+  instructions: string;
+}
+
+export interface WorkflowInfo {
+  workflow_id: string;
+  display_name: string;
+  description: string;
+  agents: WorkflowAgentInfo[];
+  route_prefix: string;
+}
+
+export interface WorkflowListResponse {
+  workflows: WorkflowInfo[];
+}
+
 // API Response wrapper (internal)
 interface InternalApiResponse<T> {
   data?: T;
@@ -364,6 +417,69 @@ class ApiClient {
       },
       body: JSON.stringify(ids),
     });
+  }
+
+  // ========================================
+  // Unified Agents APIs
+  // ========================================
+
+  async listAgents(): Promise<ApiResponse<AgentListResponse>> {
+    return this.request<AgentListResponse>('/api/v1/agents/list');
+  }
+
+  async getAgent(agentId: string): Promise<ApiResponse<AgentInfo>> {
+    return this.request<AgentInfo>(`/api/v1/agents/${agentId}`);
+  }
+
+  async invokeAgent(
+    agentId: string,
+    input: string
+  ): Promise<ApiResponse<AgentInvokeResponse>> {
+    return this.request<AgentInvokeResponse>(`/api/v1/agents/${agentId}/invoke`, {
+      method: 'POST',
+      body: JSON.stringify({ input }),
+    });
+  }
+
+  async browseAgentHistory(
+    agentId: string,
+    page: number = 1,
+    pageSize: number = 10,
+    orderBy: string = 'timestamp',
+    orderDirection: 'ASC' | 'DESC' = 'DESC'
+  ): Promise<ApiResponse<BrowseResponse>> {
+    return this.request<BrowseResponse>(
+      `/api/v1/agents/${agentId}/browse?page=${page}&page_size=${pageSize}&order_by=${orderBy}&order_direction=${orderDirection}`
+    );
+  }
+
+  async deleteAgentRecords(agentId: string, ids: string[]): Promise<ApiResponse<{ deleted_count: number; failed_count: number; errors: string[] }>> {
+    return this.request(`/api/v1/agents/${agentId}/delete`, {
+      method: 'POST',
+      body: JSON.stringify(ids),
+    });
+  }
+
+  async downloadAgentRecords(agentId: string, ids: string[]): Promise<ApiResponse<Blob>> {
+    return this.requestBlob(`/api/v1/agents/${agentId}/download`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(ids),
+    });
+  }
+
+  // ========================================
+  // Workflows APIs
+  // ========================================
+
+  async listWorkflows(): Promise<ApiResponse<WorkflowListResponse>> {
+    return this.request<WorkflowListResponse>('/api/v1/workflows/list');
+  }
+
+  async getWorkflow(workflowId: string): Promise<ApiResponse<WorkflowInfo>> {
+    return this.request<WorkflowInfo>(`/api/v1/workflows/${workflowId}`);
   }
 }
 

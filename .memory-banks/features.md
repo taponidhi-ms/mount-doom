@@ -227,6 +227,52 @@
 
 ---
 
+## Unified Agents API
+
+**Purpose**: Provides a single consolidated API for all single-agent operations, replacing the need for separate endpoints per agent.
+
+**Key Features**:
+- List all available agents with their configurations and instructions
+- Invoke any agent by agent_id with a generic input
+- Browse, delete, and download agent history records
+- Agent instructions are exposed to the frontend for display
+
+**Agent Registry**:
+The agent configuration is centralized in `backend/app/modules/agents/config.py`:
+- `persona_distribution` - Persona Distribution Generator Agent
+- `persona_generator` - Persona Generator Agent
+- `transcript_parser` - Transcript Parser Agent
+- `c2_message_generation` - C2 Message Generator Agent
+
+**API Endpoints**:
+- GET `/api/v1/agents/list` - List all agents
+- GET `/api/v1/agents/{agent_id}` - Get agent details
+- POST `/api/v1/agents/{agent_id}/invoke` - Invoke agent
+- GET `/api/v1/agents/{agent_id}/browse` - Browse history
+- POST `/api/v1/agents/{agent_id}/delete` - Delete records
+- POST `/api/v1/agents/{agent_id}/download` - Download records
+
+---
+
+## Workflows API
+
+**Purpose**: Provides configuration and metadata for multi-agent workflows.
+
+**Key Features**:
+- List all available workflows with their agent configurations
+- Get workflow details including all agent instructions
+- Workflow execution routes remain in their respective modules
+
+**Workflow Registry**:
+The workflow configuration is centralized in `backend/app/modules/workflows/config.py`:
+- `conversation_simulation` - Multi-turn conversation between C1 and C2 agents
+
+**API Endpoints**:
+- GET `/api/v1/workflows/list` - List all workflows
+- GET `/api/v1/workflows/{workflow_id}` - Get workflow details with agent instructions
+
+---
+
 ## Common Features Across All Features
 
 ### Request Features
@@ -252,7 +298,7 @@
 
 ### UI Features
 - Clean, intuitive interface with Ant Design components
-- Tab-based navigation (Generate/History)
+- Tab-based navigation (Generate/Batch/History)
 - Real-time loading states with spinners
 - Error handling with Alert components
 - Toast notifications for success/error
@@ -261,3 +307,6 @@
 - Responsive design
 - Table view for browsing past results with expandable rows
 - Proper accessibility with ARIA labels
+- **Agent instructions display**: All agent pages show the agent's instruction set (collapsible)
+- **Workflow instructions display**: Workflow pages show all agent instructions in collapsible panels
+- **Dynamic navigation**: Sidebar with "Agents" and "Workflows" sections

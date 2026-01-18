@@ -26,6 +26,15 @@
   - `*_service.py`: Business logic
   - `agents.py`: Agent creation logic
   - `instructions.py`: Agent instructions
+- **Unified Agents Module** (`app/modules/agents/`):
+  - `config.py`: Central registry of all agent configurations
+  - `routes.py`: Unified API endpoints for all agents
+  - `agents_service.py`: Generic agent invocation service
+  - `models.py`: API schemas for agent operations
+- **Workflows Module** (`app/modules/workflows/`):
+  - `config.py`: Central registry of workflow configurations
+  - `routes.py`: Workflow listing and details endpoints
+  - `models.py`: API schemas for workflow operations
 - **Shared Resources**:
   - `app/models/shared.py`: Common models (BaseResponse, AgentDetails, etc.)
   - `app/infrastructure/`: Shared infrastructure (DB, AI)
@@ -34,7 +43,8 @@
   - `CosmosDBService`: Database persistence
 - Services are singletons
 - Configuration in core/config.py
-- Agent configuration is defined in modules/instructions.py
+- Agent configuration is centralized in `modules/agents/config.py`
+- Workflow configuration is centralized in `modules/workflows/config.py`
 
 ### Configuration (.env)
 - Backend settings are loaded from `backend/.env` via `app/core/config.py` using an absolute path, so starting the server from the repo root (or other folders) still picks up the correct environment.
