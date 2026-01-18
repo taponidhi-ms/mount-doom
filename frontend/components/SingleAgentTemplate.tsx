@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, ReactNode } from 'react'
+import { useState, useCallback, useEffect, ReactNode } from 'react'
 import {
   Button,
   Card,
@@ -200,6 +200,11 @@ export default function SingleAgentTemplate({ config }: SingleAgentTemplateProps
     }
   }, [config, orderBy, orderDirection, pageSize])
 
+  // Load history on component mount
+  useEffect(() => {
+    loadHistory(1)
+  }, [])
+
   const handleDeleteSelected = async () => {
     if (selectedRowKeys.length === 0) {
       message.warning('Please select items to delete')
@@ -285,10 +290,10 @@ export default function SingleAgentTemplate({ config }: SingleAgentTemplateProps
       dataIndex: 'timestamp',
       key: 'timestamp',
       render: (text: string) => formatTimestamp(text),
-      width: 200,
+      width: 250,
     },
     {
-      title: config.inputLabel,
+      title: 'Input',
       dataIndex: config.inputFieldName,
       key: config.inputFieldName,
       ellipsis: true,
@@ -659,32 +664,22 @@ export default function SingleAgentTemplate({ config }: SingleAgentTemplateProps
               </Button>
             </Space>
 
-            {!historyData && !historyLoading && !historyError && (
-              <div style={{ textAlign: 'center', padding: 40 }}>
-                <Button type="primary" onClick={() => loadHistory(1)}>
-                  Load History
-                </Button>
-              </div>
-            )}
-
-            {(historyData || historyLoading) && (
-              <Table
-                dataSource={historyData?.items || []}
-                columns={historyColumns}
-                rowKey="id"
-                loading={historyLoading}
-                rowSelection={rowSelection}
-                pagination={{
-                  current: historyData?.page || 1,
-                  pageSize: historyData?.page_size || 10,
-                  total: historyData?.total_count || 0,
-                  showSizeChanger: true,
-                  showTotal: (total, range) => `${range[0]}-${range[1]} of ${total}`,
-                  onChange: (page, size) => loadHistory(page, size),
-                }}
-                scroll={{ x: true }}
-              />
-            )}
+            <Table
+              dataSource={historyData?.items || []}
+              columns={historyColumns}
+              rowKey="id"
+              loading={historyLoading}
+              rowSelection={rowSelection}
+              pagination={{
+                current: historyData?.page || 1,
+                pageSize: historyData?.page_size || 10,
+                total: historyData?.total_count || 0,
+                showSizeChanger: true,
+                showTotal: (total, range) => `${range[0]}-${range[1]} of ${total}`,
+                onChange: (page, size) => loadHistory(page, size),
+              }}
+              scroll={{ x: true }}
+            />
           </Card>
         </Space>
       ),

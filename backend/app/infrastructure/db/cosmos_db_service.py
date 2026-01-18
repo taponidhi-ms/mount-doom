@@ -82,9 +82,10 @@ class CosmosDBService:
                 )
                 logger.info("Using Azure Cloud Cosmos DB with DefaultAzureCredential")
             
-            logger.debug("CosmosClient created, getting database client...")
-            self._database = self._client.get_database_client(
-                settings.cosmos_db_database_name
+            logger.debug("CosmosClient created, ensuring database exists...")
+            # Create database if it doesn't exist
+            self._database = self._client.create_database_if_not_exists(
+                id=settings.cosmos_db_database_name
             )
             logger.info("Cosmos DB Client initialized successfully",
                        database=settings.cosmos_db_database_name,
