@@ -10,7 +10,7 @@ This directory contains the "memory banks" for the Mount Doom project - living d
 Memory banks provide critical project context that may not be immediately obvious from reading code alone. They serve as the single source of truth for:
 - Architectural decisions and patterns
 - Development conventions and best practices
-- Use case workflows and requirements
+- Feature workflows and requirements
 
 ## Files
 
@@ -31,14 +31,11 @@ Documents development conventions, including:
 - Database strategies
 - Testing approaches
 
-### use-cases.md
-Documents the four main use cases:
-1. Persona Generation
-2. General Prompt
-3. Prompt Validator
-4. Conversation Simulation
-
-Includes workflows, metrics, and implementation details for each.
+### features.md
+Documents the main features:
+- Agents (persona distribution, persona generator, transcript parser, C2 message generation)
+- Workflows (conversation simulation)
+- Includes workflows, metrics, and implementation details for each
 
 ### antd-context.md
 Documents Ant Design UI library context and usage, including:
@@ -63,7 +60,7 @@ Official llms.txt file from ant.design containing comprehensive links to:
 
 This is the official LLM context file provided by Ant Design for AI assistants and serves as a complete reference index.
 
-## For GitHub Copilot
+## Usage Protocol
 
 ### Before Making Changes
 **ALWAYS read these memory bank files first** before making any changes to the codebase. This ensures:
@@ -74,15 +71,15 @@ This is the official LLM context file provided by Ant Design for AI assistants a
 **Key files to read**:
 - `architecture.md` - Project structure and patterns
 - `conventions.md` - Development standards and best practices
-- `use-cases.md` - Use case workflows and requirements
-- `antd-context.md` - Ant Design component library usage and patterns (read when working on frontend UI)
-- `antd-llms-reference.txt` - Official Ant Design documentation index (comprehensive reference for all components and guides)
+- `features.md` - Feature workflows and requirements
+- `antd-context.md` - Ant Design component library usage (for frontend UI work)
+- `antd-llms-reference.txt` - Official Ant Design documentation index
 
 ### After Making Changes
 **ALWAYS update the relevant memory bank files** when your changes affect:
 - Architecture (new services, components, data flow changes)
 - Conventions (new patterns, naming standards, coding practices)
-- Use cases (new features, workflow changes, metric updates)
+- Features (new features, workflow changes, metric updates)
 
 ## Maintenance
 These files are living documentation and must be updated whenever the codebase evolves. Failing to keep them synchronized makes future development harder and can lead to architectural drift.
@@ -91,6 +88,6 @@ These files are living documentation and must be updated whenever the codebase e
 If you're unsure whether your change requires a memory bank update, ask yourself:
 - Would someone working on this project 6 months from now benefit from knowing about this change?
 - Does this change introduce a new pattern or convention?
-- Does this change affect the overall architecture or a use case workflow?
+- Does this change affect the overall architecture or a feature workflow?
 
 If the answer to any of these is "yes", update the appropriate memory bank file.

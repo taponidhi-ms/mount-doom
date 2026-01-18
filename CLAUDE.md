@@ -250,12 +250,86 @@ COSMOS_DB_KEY=C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbI
 NEXT_PUBLIC_API_URL=http://localhost:8000
 ```
 
+## Memory Banks Protocol
+
+### Before Making Any Changes
+
+**REQUIRED**: Always read the memory banks in the `.memory-banks/` directory before making any changes to the codebase. The memory banks contain critical project context:
+
+1. **Read First**: Always read these files before starting any work:
+   - `.memory-banks/architecture.md` - Project architecture and structure
+   - `.memory-banks/conventions.md` - Development conventions and patterns
+   - `.memory-banks/features.md` - Detailed feature descriptions
+
+2. **Why This Matters**: Memory banks contain:
+   - Architectural decisions and patterns
+   - Coding conventions and best practices
+   - Feature workflows and requirements
+   - Important context that may not be obvious from code alone
+
+### After Making Changes
+
+**REQUIRED**: Always update the memory banks when making changes that affect:
+
+1. **Architecture Changes** → Update `.memory-banks/architecture.md`
+   - New services, components, or modules
+   - Changes to data flow or structure
+   - New integration patterns
+
+2. **Convention Changes** → Update `.memory-banks/conventions.md`
+   - New coding standards or patterns
+   - Changes to naming conventions
+   - New error handling approaches
+   - Updates to testing strategies
+
+3. **Feature Changes** → Update `.memory-banks/features.md`
+   - New features
+   - Changes to existing workflows
+   - New metrics or tracking requirements
+   - Updates to agent/model configurations
+
+### Memory Bank Update Process
+1. Make your code changes
+2. Identify which memory bank files are affected
+3. Update the relevant memory bank files to reflect the changes
+4. Ensure consistency between code and documentation
+5. Include memory bank updates in your commit
+
+**Remember**: Memory banks are living documentation that must stay synchronized with the codebase. Failing to update them makes future work harder and can lead to inconsistencies.
+
+## Feature Change Validation
+
+When making changes to any feature, **ALWAYS validate compatibility between backend and frontend**:
+
+### 1. API Contract Validation
+- Verify request schemas match between `backend/app/modules/[feature]/models.py` and `frontend/lib/api-client.ts`
+- Verify response schemas match between backend Pydantic models and frontend TypeScript types
+- Check that field names, types, and optional/required status are consistent
+
+### 2. Endpoint Validation
+- Confirm route paths in `backend/app/modules/[feature]/routes.py` match API calls in `frontend/lib/api-client.ts`
+- Verify HTTP methods (GET, POST, etc.) are consistent
+- Check query parameters and request body structures
+
+### 3. Type Alignment Checklist
+- Backend Pydantic `BaseModel` ↔ Frontend TypeScript `interface`
+- Backend `Optional[X]` ↔ Frontend `X | null` or `X?`
+- Backend `datetime` ↔ Frontend `string` (ISO format)
+- Backend `List[X]` ↔ Frontend `X[]`
+- Backend `Dict[str, Any]` ↔ Frontend `Record<string, any>`
+
+### 4. Test After Changes
+- Run the backend server and verify endpoints respond correctly
+- Test frontend API calls to ensure no type mismatches or 422 errors
+- Check browser console for any parsing or type errors
+
 ## Important Notes
 
-**Memory Banks:**
-- Always read `.memory-banks/` files before making architectural changes
-- Update memory banks when modifying architecture, conventions, or features
-- Files: `architecture.md`, `conventions.md`, `features.md`
+**Notes Directory Policy:**
+- The `notes/` directory is for personal notes and ad-hoc artifacts
+- Do not read, parse, or reference files in `notes/` for context
+- Do not import or depend on `notes/` contents from application code
+- Only `.memory-banks/` governs project context
 
 **Authentication:**
 - DefaultAzureCredential automatically handles token refresh
