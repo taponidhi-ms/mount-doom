@@ -494,13 +494,11 @@ Each feature service (PersonaDistributionService, TranscriptParserService, etc.)
 - Metrics tracking and data transformation
 
 ### Agent Instructions Storage
-- All agent instructions are stored as Python string constants in `backend/app/instruction_sets/`
-- File naming convention: `{agent_type}.py` (e.g., `persona_distribution.py`)
-- Each module exports a constant: `{AGENT_TYPE}_INSTRUCTIONS` (e.g., `PERSONA_DISTRIBUTION_AGENT_INSTRUCTIONS`)
-- Services import the instruction constants directly from the instruction_sets modules
-- Two agent creation methods available:
-  - `create_agent(agent_name, instructions)` - Direct text with imported instructions (preferred)
-  - `create_agent_from_file(agent_name, instructions_path)` - Loads from text file (legacy support)
+- All agent instructions are stored as Python string constants in `backend/app/modules/agents/instructions.py`
+- Instructions are centralized in a single file for easy management
+- Each instruction is a constant: `{AGENT_TYPE}_INSTRUCTIONS` (e.g., `PERSONA_DISTRIBUTION_AGENT_INSTRUCTIONS`)
+- Services and agent configs import the instruction constants directly from the instructions module
+- Agent creation method: `create_agent(agent_name, instructions, model)` - Creates agent with given instructions string
 
 ### Agent Usage Pattern
 ```python

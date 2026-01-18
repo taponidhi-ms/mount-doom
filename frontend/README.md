@@ -75,11 +75,11 @@ frontend/
 │   │   └── [agentId]/                       # Dynamic route for any agent
 │   ├── workflows/                           # Workflow pages
 │   │   └── conversation_simulation/         # Conversation simulation workflow
-│   ├── c2-message-generation/               # Legacy C2 message generation page
-│   ├── conversation-simulation/             # Legacy conversation simulation page
-│   ├── persona-distribution/                # Legacy persona distribution page
-│   ├── persona-generator/                   # Legacy persona generator page
-│   ├── transcript-parser/                   # Legacy transcript parser page
+│   ├── c2-message-generation/               # C2 message generation page
+│   ├── conversation-simulation/             # Conversation simulation page
+│   ├── persona-distribution/                # Persona distribution page
+│   ├── persona-generator/                   # Persona generator page
+│   ├── transcript-parser/                   # Transcript parser page
 │   ├── layout.tsx                           # Root layout with timezone provider
 │   ├── page.tsx                             # Home page
 │   └── globals.css                          # Global styles

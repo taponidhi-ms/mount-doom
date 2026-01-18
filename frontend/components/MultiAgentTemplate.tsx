@@ -346,11 +346,11 @@ export default function MultiAgentTemplate({ config }: MultiAgentTemplateProps) 
                 border: isSystem ? 'none' : undefined,
                 boxShadow: isSystem ? 'none' : undefined,
               }}
-              bodyStyle={
-                isSystem
+              styles={{
+                body: isSystem
                   ? { padding: '4px 0', fontStyle: 'italic', color: '#888', textAlign: 'center' }
                   : undefined
-              }
+              }}
             >
               {isSystem ? (
                 <Text type="secondary" italic style={{ fontSize: 12 }}>

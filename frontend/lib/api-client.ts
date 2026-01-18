@@ -14,7 +14,7 @@ import type {
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
-// Re-export types from the types module for backward compatibility
+// Re-export types from the types module
 export type {
   SingleAgentResponse,
   SingleAgentHistoryItem,
@@ -26,7 +26,7 @@ export type {
   MultiAgentHistoryItem,
 } from './types'
 
-// Legacy types for backward compatibility
+// Shared types
 export interface AgentDetails {
   agent_name: string;
   agent_version?: string;
@@ -237,14 +237,11 @@ class ApiClient {
 
   // Models API - Removed (GPT-4 is hardcoded in backend)
 
-  // Persona Distribution APIs
+  // Persona Distribution APIs (calls unified agents API)
   async generatePersonaDistribution(
     prompt: string
   ): Promise<ApiResponse<PersonaDistributionResponse>> {
-    return this.request<PersonaDistributionResponse>('/api/v1/persona-distribution/generate', {
-      method: 'POST',
-      body: JSON.stringify({ prompt }),
-    });
+    return this.invokeAgent('persona_distribution', prompt) as Promise<ApiResponse<PersonaDistributionResponse>>;
   }
 
   async browsePersonaDistributions(
@@ -253,36 +250,22 @@ class ApiClient {
     orderBy: string = 'timestamp',
     orderDirection: 'ASC' | 'DESC' = 'DESC'
   ): Promise<ApiResponse<BrowseResponse>> {
-    return this.request<BrowseResponse>(
-      `/api/v1/persona-distribution/browse?page=${page}&page_size=${pageSize}&order_by=${orderBy}&order_direction=${orderDirection}`
-    );
+    return this.browseAgentHistory('persona_distribution', page, pageSize, orderBy, orderDirection);
   }
 
   async deletePersonaDistributions(ids: string[]): Promise<ApiResponse<{ deleted_count: number; failed_count: number; errors: string[] }>> {
-    return this.request('/api/v1/persona-distribution/delete', {
-      method: 'POST',
-      body: JSON.stringify(ids),
-    });
+    return this.deleteAgentRecords('persona_distribution', ids);
   }
 
   async downloadPersonaDistributions(ids: string[]): Promise<ApiResponse<Blob>> {
-    return this.requestBlob(`/api/v1/persona-distribution/download`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(ids),
-    });
+    return this.downloadAgentRecords('persona_distribution', ids);
   }
 
-  // Persona Generator APIs
+  // Persona Generator APIs (calls unified agents API)
   async generatePersonas(
     prompt: string
   ): Promise<ApiResponse<PersonaGeneratorResponse>> {
-    return this.request<PersonaGeneratorResponse>('/api/v1/persona-generator/generate', {
-      method: 'POST',
-      body: JSON.stringify({ prompt }),
-    });
+    return this.invokeAgent('persona_generator', prompt) as Promise<ApiResponse<PersonaGeneratorResponse>>;
   }
 
   async browsePersonaGenerations(
@@ -291,26 +274,18 @@ class ApiClient {
     orderBy: string = 'timestamp',
     orderDirection: 'ASC' | 'DESC' = 'DESC'
   ): Promise<ApiResponse<BrowseResponse>> {
-    return this.request<BrowseResponse>(
-      `/api/v1/persona-generator/browse?page=${page}&page_size=${pageSize}&order_by=${orderBy}&order_direction=${orderDirection}`
-    );
+    return this.browseAgentHistory('persona_generator', page, pageSize, orderBy, orderDirection);
   }
 
   async deletePersonaGenerations(ids: string[]): Promise<ApiResponse<{ deleted_count: number; failed_count: number; errors: string[] }>> {
-    return this.request('/api/v1/persona-generator/delete', {
-      method: 'POST',
-      body: JSON.stringify(ids),
-    });
+    return this.deleteAgentRecords('persona_generator', ids);
   }
 
-  // Transcript Parser APIs
+  // Transcript Parser APIs (calls unified agents API)
   async parseTranscript(
     transcript: string
   ): Promise<ApiResponse<TranscriptParserResponse>> {
-    return this.request<TranscriptParserResponse>('/api/v1/transcript-parser/parse', {
-      method: 'POST',
-      body: JSON.stringify({ transcript }),
-    });
+    return this.invokeAgent('transcript_parser', transcript) as Promise<ApiResponse<TranscriptParserResponse>>;
   }
 
   async browseTranscripts(
@@ -319,16 +294,11 @@ class ApiClient {
     orderBy: string = 'timestamp',
     orderDirection: 'ASC' | 'DESC' = 'DESC'
   ): Promise<ApiResponse<BrowseResponse>> {
-    return this.request<BrowseResponse>(
-      `/api/v1/transcript-parser/browse?page=${page}&page_size=${pageSize}&order_by=${orderBy}&order_direction=${orderDirection}`
-    );
+    return this.browseAgentHistory('transcript_parser', page, pageSize, orderBy, orderDirection);
   }
 
   async deleteTranscripts(ids: string[]): Promise<ApiResponse<{ deleted_count: number; failed_count: number; errors: string[] }>> {
-    return this.request('/api/v1/transcript-parser/delete', {
-      method: 'POST',
-      body: JSON.stringify(ids),
-    });
+    return this.deleteAgentRecords('transcript_parser', ids);
   }
 
   // Conversation Simulation APIs
@@ -381,14 +351,11 @@ class ApiClient {
     });
   }
 
-  // C2 Message Generation APIs
+  // C2 Message Generation APIs (calls unified agents API)
   async generateC2Message(
     prompt: string
   ): Promise<ApiResponse<C2MessageGenerationResponse>> {
-    return this.request<C2MessageGenerationResponse>('/api/v1/c2-message-generation/generate', {
-      method: 'POST',
-      body: JSON.stringify({ prompt }),
-    });
+    return this.invokeAgent('c2_message_generation', prompt) as Promise<ApiResponse<C2MessageGenerationResponse>>;
   }
 
   async browseC2MessageGenerations(
@@ -397,26 +364,15 @@ class ApiClient {
     orderBy: string = 'timestamp',
     orderDirection: 'ASC' | 'DESC' = 'DESC'
   ): Promise<ApiResponse<BrowseResponse>> {
-    return this.request<BrowseResponse>(
-      `/api/v1/c2-message-generation/browse?page=${page}&page_size=${pageSize}&order_by=${orderBy}&order_direction=${orderDirection}`
-    );
+    return this.browseAgentHistory('c2_message_generation', page, pageSize, orderBy, orderDirection);
   }
 
   async deleteC2MessageGenerations(ids: string[]): Promise<ApiResponse<{ deleted_count: number; failed_count: number; errors: string[] }>> {
-    return this.request('/api/v1/c2-message-generation/delete', {
-      method: 'POST',
-      body: JSON.stringify(ids),
-    });
+    return this.deleteAgentRecords('c2_message_generation', ids);
   }
 
   async downloadC2MessageGenerations(ids: string[]): Promise<ApiResponse<Blob>> {
-    return this.requestBlob(`/api/v1/c2-message-generation/download`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(ids),
-    });
+    return this.downloadAgentRecords('c2_message_generation', ids);
   }
 
   // ========================================

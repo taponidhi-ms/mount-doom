@@ -207,21 +207,21 @@ Routes only:
 ```
 frontend/
 ├── app/                        # Next.js App Router pages
-│   ├── agents/                 # Dynamic agents pages (NEW)
+│   ├── agents/                 # Dynamic agents pages
 │   │   └── [agentId]/          # Dynamic route for any agent
 │   │       └── page.tsx
-│   ├── workflows/              # Workflow pages (NEW)
+│   ├── workflows/              # Workflow pages
 │   │   └── conversation_simulation/
 │   │       └── page.tsx
-│   ├── c2-message-generation/  # Legacy pages (kept for backward compatibility)
-│   ├── conversation-simulation/
-│   ├── persona-distribution/
-│   ├── persona-generator/
-│   └── transcript-parser/
+│   ├── c2-message-generation/  # C2 message generation page
+│   ├── conversation-simulation/ # Conversation simulation page
+│   ├── persona-distribution/   # Persona distribution page
+│   ├── persona-generator/      # Persona generator page
+│   └── transcript-parser/      # Transcript parser page
 ├── components/                 # React components
 │   ├── PageLayout.tsx          # Reusable page layout with navigation
-│   ├── SingleAgentTemplate.tsx # Template for single-agent pages (legacy)
-│   └── MultiAgentTemplate.tsx  # Template for multi-agent pages (legacy)
+│   ├── SingleAgentTemplate.tsx # Template for single-agent pages
+│   └── MultiAgentTemplate.tsx  # Template for multi-agent workflows
 └── lib/                        # Utilities and API client
     ├── api-client.ts           # Backend API client (includes agents and workflows APIs)
     ├── types.ts                # Shared TypeScript types

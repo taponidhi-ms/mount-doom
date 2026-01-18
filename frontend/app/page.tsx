@@ -63,13 +63,13 @@ export default function Home() {
             <Link href={feature.href} style={{ textDecoration: 'none' }}>
               <Card 
                 hoverable
-                style={{ 
-                  height: '100%', 
+                style={{
+                  height: '100%',
                   borderColor: colorBorderSecondary,
                   display: 'flex',
                   flexDirection: 'column'
                 }}
-                bodyStyle={{ flex: 1, display: 'flex', flexDirection: 'column' }}
+                styles={{ body: { flex: 1, display: 'flex', flexDirection: 'column' } }}
               >
                 <div style={{ marginBottom: 16 }}>
                   {feature.icon}
