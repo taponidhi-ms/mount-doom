@@ -71,6 +71,7 @@ Simulate complex multi-turn conversations between customer service representativ
 
 ### Backend Setup
 
+1. Create and activate virtual environment:
 ```bash
 cd backend
 python -m venv .venv
@@ -88,27 +89,58 @@ Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser  # One-time
 
 # Windows Git Bash:
 source .venv/Scripts/activate
+```
 
-# Install dependencies
+2. Install dependencies:
+```bash
 pip install -r requirements.txt
+```
+
+3. Configure environment:
+```bash
 cp .env.example .env
 # Edit .env with your Azure credentials
+```
+
+4. Run development server:
+```bash
+# Recommended (with hot reload):
+python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+
+# Alternative:
 python app/main.py
 ```
 
-Backend: http://localhost:8000
+Backend API: http://localhost:8000
+- Swagger docs: http://localhost:8000/docs
+- ReDoc: http://localhost:8000/redoc
 
 ### Frontend Setup
 
+1. Install dependencies:
 ```bash
 cd frontend
 npm install
+```
+
+2. Configure environment:
+```bash
 cp .env.local.example .env.local
-# Edit .env.local with your API URL
+# Edit .env.local with your API URL (default: http://localhost:8000)
+```
+
+3. Run development server:
+```bash
 npm run dev
 ```
 
 Frontend: http://localhost:3000
+
+4. Build for production (optional):
+```bash
+npm run build
+npm start
+```
 
 ## Documentation
 
