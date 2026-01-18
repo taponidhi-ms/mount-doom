@@ -8,6 +8,7 @@ It uses the agent configuration registry to determine which agent to use.
 from datetime import datetime, timezone
 from typing import Optional, Dict, Any
 import json
+import uuid
 import structlog
 
 from app.infrastructure.ai.azure_ai_service import azure_ai_service
@@ -173,31 +174,34 @@ class UnifiedAgentsService:
                    container=container_name)
         
         try:
+            # Generate random UUID for document ID
+            document_id = str(uuid.uuid4())
+
             # Build document - use the input field name from config
+            # Flatten agent_details to root level with agent_ prefix
             document = {
-                "id": conversation_id,
+                "id": document_id,
+                "conversation_id": conversation_id,
                 "timestamp": datetime.now(timezone.utc).isoformat(),
                 config.input_field: input_text,  # Use dynamic field name (prompt or transcript)
                 "response": response,
                 "tokens_used": tokens_used,
                 "time_taken_ms": time_taken_ms,
-                "agent_details": {
-                    "agent_name": agent_details.agent_name,
-                    "agent_version": agent_details.agent_version,
-                    "instructions": agent_details.instructions,
-                    "model_deployment_name": agent_details.model_deployment_name,
-                    "created_at": agent_details.created_at.isoformat() if isinstance(agent_details.created_at, datetime) else agent_details.created_at
-                },
-                "parsed_output": parsed_output
+                "agent_name": agent_details.agent_name,
+                "agent_version": agent_details.agent_version,
+                "agent_instructions": agent_details.instructions,
+                "agent_model": agent_details.model_deployment_name,
+                "agent_created_at": agent_details.created_at.isoformat() if isinstance(agent_details.created_at, datetime) else agent_details.created_at
             }
-            
+
             await cosmos_db_service.save_document(
                 container_name=container_name,
                 document=document
             )
-            
-            logger.info(f"Agent result saved successfully", 
-                       document_id=conversation_id)
+
+            logger.info(f"Agent result saved successfully",
+                       document_id=document_id,
+                       conversation_id=conversation_id)
             
         except Exception as e:
             logger.error(f"Error saving agent result to database", 

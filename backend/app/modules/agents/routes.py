@@ -250,16 +250,21 @@ async def download_agent_records(agent_id: str, ids: list[str]) -> Response:
             try:
                 item = container.read_item(item=record_id, partition_key=record_id)
                 
-                # Build standardized output
+                # Build standardized output with flattened agent fields
                 record = {
-                    "Id": item.get("id"),
+                    "id": item.get("id"),
+                    "conversation_id": item.get("conversation_id"),
                     "scenario_name": f"{agent_id}_generation",
                     config.input_field: item.get(config.input_field, ""),
                     "response": item.get("response", ""),
-                    "parsed_output": item.get("parsed_output"),
                     "tokens_used": item.get("tokens_used"),
                     "time_taken_ms": item.get("time_taken_ms"),
                     "timestamp": item.get("timestamp"),
+                    "agent_name": item.get("agent_name"),
+                    "agent_version": item.get("agent_version"),
+                    "agent_instructions": item.get("agent_instructions"),
+                    "agent_model": item.get("agent_model"),
+                    "agent_created_at": item.get("agent_created_at"),
                 }
                 records.append(record)
                 

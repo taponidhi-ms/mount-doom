@@ -20,6 +20,7 @@ import {
   Modal,
   Collapse,
   Spin,
+  Segmented,
 } from 'antd'
 import {
   ReloadOutlined,
@@ -74,6 +75,9 @@ export default function AgentPage() {
   const [orderDirection, setOrderDirection] = useState<'ASC' | 'DESC'>('DESC')
   const [currentPage, setCurrentPage] = useState(1)
   const [pageSize, setPageSize] = useState(10)
+  const [selectedAgentVersion, setSelectedAgentVersion] = useState<string | null>(null)
+  const [agentVersions, setAgentVersions] = useState<string[]>([])
+  const [selectedVersionInstructions, setSelectedVersionInstructions] = useState<string | null>(null)
 
   // Batch state
   const [batchItems, setBatchItems] = useState<BatchItem[]>([])
@@ -87,6 +91,10 @@ export default function AgentPage() {
   // Detail modal
   const [detailModalVisible, setDetailModalVisible] = useState(false)
   const [selectedRecord, setSelectedRecord] = useState<SingleAgentHistoryItem | null>(null)
+
+  // Response view mode (Plain Text or JSON)
+  const [responseViewMode, setResponseViewMode] = useState<'text' | 'json'>('text')
+  const [modalResponseViewMode, setModalResponseViewMode] = useState<'text' | 'json'>('text')
 
   // Load agent info on mount
   useEffect(() => {
@@ -118,6 +126,15 @@ export default function AgentPage() {
       setSelectedRowKeys([])
       setCurrentPage(page)
       setPageSize(size)
+
+      // Extract unique agent versions from the data
+      const versions = new Set<string>()
+      response.data.items.forEach((item: any) => {
+        if (item.agent_version) {
+          versions.add(item.agent_version)
+        }
+      })
+      setAgentVersions(Array.from(versions).sort())
     } else if (response.error) {
       setHistoryError(response.error)
       message.error('Failed to load history')
@@ -201,6 +218,16 @@ export default function AgentPage() {
   const handleViewDetail = (record: SingleAgentHistoryItem) => {
     setSelectedRecord(record)
     setDetailModalVisible(true)
+    setModalResponseViewMode('text') // Reset to text view when opening modal
+  }
+
+  const tryParseJSON = (text: string): { isValid: boolean; parsed?: any } => {
+    try {
+      const parsed = JSON.parse(text)
+      return { isValid: true, parsed }
+    } catch {
+      return { isValid: false }
+    }
   }
 
   const loadBatchItemsFromText = () => {
@@ -536,38 +563,74 @@ export default function AgentPage() {
             <Card title="Result">
               <Space direction="vertical" size="middle" style={{ width: '100%' }}>
                 <div>
-                  <Text strong>Response:</Text>
-                  <Paragraph
-                    style={{
-                      whiteSpace: 'pre-wrap',
-                      background: '#f5f5f5',
-                      padding: 16,
-                      borderRadius: 8,
-                      marginTop: 8,
-                    }}
-                  >
-                    {result.response_text}
-                  </Paragraph>
-                </div>
-
-                {result.parsed_output && (
-                  <div>
-                    <Text strong>Parsed Output:</Text>
-                    <Paragraph>
-                      <pre
-                        style={{
-                          background: '#e6f7ff',
-                          padding: '12px',
-                          borderRadius: '4px',
-                          whiteSpace: 'pre-wrap',
-                          wordWrap: 'break-word',
-                        }}
-                      >
-                        {JSON.stringify(result.parsed_output, null, 2)}
-                      </pre>
-                    </Paragraph>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                    <Text strong>Response:</Text>
+                    <Segmented
+                      options={['Plain Text', 'JSON']}
+                      value={responseViewMode === 'text' ? 'Plain Text' : 'JSON'}
+                      onChange={(value) => setResponseViewMode(value === 'JSON' ? 'json' : 'text')}
+                      size="small"
+                    />
                   </div>
-                )}
+                  {(() => {
+                    const jsonCheck = tryParseJSON(result.response_text)
+                    if (responseViewMode === 'json') {
+                      if (jsonCheck.isValid) {
+                        return (
+                          <pre
+                            style={{
+                              background: '#e6f7ff',
+                              padding: 16,
+                              borderRadius: 8,
+                              whiteSpace: 'pre-wrap',
+                              wordWrap: 'break-word',
+                              marginTop: 0,
+                            }}
+                          >
+                            {JSON.stringify(jsonCheck.parsed, null, 2)}
+                          </pre>
+                        )
+                      } else {
+                        return (
+                          <>
+                            <Alert
+                              message="Invalid JSON"
+                              description="Response is not valid JSON. Showing as plain text."
+                              type="warning"
+                              showIcon
+                              style={{ marginBottom: 8 }}
+                            />
+                            <Paragraph
+                              style={{
+                                whiteSpace: 'pre-wrap',
+                                background: '#f5f5f5',
+                                padding: 16,
+                                borderRadius: 8,
+                                marginTop: 0,
+                              }}
+                            >
+                              {result.response_text}
+                            </Paragraph>
+                          </>
+                        )
+                      }
+                    } else {
+                      return (
+                        <Paragraph
+                          style={{
+                            whiteSpace: 'pre-wrap',
+                            background: '#f5f5f5',
+                            padding: 16,
+                            borderRadius: 8,
+                            marginTop: 0,
+                          }}
+                        >
+                          {result.response_text}
+                        </Paragraph>
+                      )
+                    }
+                  })()}
+                </div>
 
                 <Space size="large" wrap>
                   <div>
@@ -685,6 +748,29 @@ export default function AgentPage() {
                     loading={historyLoading}
                   />
                 </Tooltip>
+                {agentVersions.length > 0 && (
+                  <Select
+                    value={selectedAgentVersion}
+                    onChange={(val) => {
+                      setSelectedAgentVersion(val)
+                      // Find instructions for this version from history data
+                      if (val && historyData) {
+                        const item = historyData.items.find((i: any) => i.agent_version === val)
+                        if (item && (item as any).agent_instructions) {
+                          setSelectedVersionInstructions((item as any).agent_instructions)
+                        }
+                      } else {
+                        setSelectedVersionInstructions(null)
+                      }
+                    }}
+                    allowClear
+                    placeholder="Filter by version"
+                    style={{ width: 150 }}
+                    options={[
+                      ...agentVersions.map((v) => ({ value: v, label: `Version ${v}` }))
+                    ]}
+                  />
+                )}
                 <Select
                   value={orderBy}
                   onChange={(val) => {
@@ -712,6 +798,25 @@ export default function AgentPage() {
           >
             {historyError && (
               <Alert message="Error" description={historyError} type="error" showIcon style={{ marginBottom: 16 }} />
+            )}
+
+            {selectedVersionInstructions && (
+              <Card
+                size="small"
+                title={`Agent Version ${selectedAgentVersion} Instructions`}
+                style={{ marginBottom: 16, background: '#f9f9f9' }}
+              >
+                <pre style={{
+                  whiteSpace: 'pre-wrap',
+                  wordWrap: 'break-word',
+                  maxHeight: 300,
+                  overflow: 'auto',
+                  fontSize: 12,
+                  margin: 0,
+                }}>
+                  {selectedVersionInstructions}
+                </pre>
+              </Card>
             )}
 
             <Space style={{ marginBottom: 16 }}>
@@ -751,7 +856,11 @@ export default function AgentPage() {
 
             {(historyData || historyLoading) && (
               <Table
-                dataSource={historyData?.items || []}
+                dataSource={
+                  selectedAgentVersion
+                    ? (historyData?.items || []).filter((item: any) => item.agent_version === selectedAgentVersion)
+                    : (historyData?.items || [])
+                }
                 columns={historyColumns}
                 rowKey="id"
                 loading={historyLoading}
@@ -804,19 +913,59 @@ export default function AgentPage() {
               </Paragraph>
             </div>
             <div>
-              <Text strong>Response:</Text>
-              <Paragraph style={{ background: '#f5f5f5', padding: 12, borderRadius: 8, marginTop: 8, whiteSpace: 'pre-wrap' }}>
-                {selectedRecord.response || selectedRecord.response_text || 'N/A'}
-              </Paragraph>
-            </div>
-            {selectedRecord.parsed_output && (
-              <div>
-                <Text strong>Parsed Output:</Text>
-                <pre style={{ background: '#e6f7ff', padding: 12, borderRadius: 8, marginTop: 8, whiteSpace: 'pre-wrap' }}>
-                  {JSON.stringify(selectedRecord.parsed_output, null, 2)}
-                </pre>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                <Text strong>Response:</Text>
+                <Segmented
+                  options={['Plain Text', 'JSON']}
+                  value={modalResponseViewMode === 'text' ? 'Plain Text' : 'JSON'}
+                  onChange={(value) => setModalResponseViewMode(value === 'JSON' ? 'json' : 'text')}
+                  size="small"
+                />
               </div>
-            )}
+              {(() => {
+                const responseText = selectedRecord.response || selectedRecord.response_text || 'N/A'
+                const jsonCheck = tryParseJSON(responseText)
+                if (modalResponseViewMode === 'json') {
+                  if (jsonCheck.isValid) {
+                    return (
+                      <pre
+                        style={{
+                          background: '#e6f7ff',
+                          padding: 12,
+                          borderRadius: 8,
+                          whiteSpace: 'pre-wrap',
+                          wordWrap: 'break-word',
+                          marginTop: 0,
+                        }}
+                      >
+                        {JSON.stringify(jsonCheck.parsed, null, 2)}
+                      </pre>
+                    )
+                  } else {
+                    return (
+                      <>
+                        <Alert
+                          message="Invalid JSON"
+                          description="Response is not valid JSON. Showing as plain text."
+                          type="warning"
+                          showIcon
+                          style={{ marginBottom: 8 }}
+                        />
+                        <Paragraph style={{ background: '#f5f5f5', padding: 12, borderRadius: 8, marginTop: 0, whiteSpace: 'pre-wrap' }}>
+                          {responseText}
+                        </Paragraph>
+                      </>
+                    )
+                  }
+                } else {
+                  return (
+                    <Paragraph style={{ background: '#f5f5f5', padding: 12, borderRadius: 8, marginTop: 0, whiteSpace: 'pre-wrap' }}>
+                      {responseText}
+                    </Paragraph>
+                  )
+                }
+              })()}
+            </div>
             <Space size="large">
               <div>
                 <Text type="secondary">Tokens: </Text>
