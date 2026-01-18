@@ -73,8 +73,23 @@ Simulate complex multi-turn conversations between customer service representativ
 
 ```bash
 cd backend
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+python -m venv .venv
+
+# Activate virtual environment:
+# Linux/Mac:
+source .venv/bin/activate
+
+# Windows PowerShell (requires execution policy):
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser  # One-time setup
+.\.venv\Scripts\Activate.ps1
+
+# Windows CMD:
+.\.venv\Scripts\activate.bat
+
+# Windows Git Bash:
+source .venv/Scripts/activate
+
+# Install dependencies
 pip install -r requirements.txt
 cp .env.example .env
 # Edit .env with your Azure credentials

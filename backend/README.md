@@ -84,8 +84,21 @@ All agent instructions are defined in the `app/modules/*/instructions.py` files:
 1. Create and activate a virtual environment:
 ```bash
 cd backend
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+python -m venv .venv
+
+# Activate virtual environment:
+# Linux/Mac:
+source .venv/bin/activate
+
+# Windows PowerShell (requires execution policy):
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser  # One-time setup
+.\.venv\Scripts\Activate.ps1
+
+# Windows CMD:
+.\.venv\Scripts\activate.bat
+
+# Windows Git Bash:
+source .venv/Scripts/activate
 ```
 
 2. Install dependencies:

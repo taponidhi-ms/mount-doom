@@ -18,8 +18,23 @@ Mount Doom is a fullstack AI agent simulation platform for multi-agent conversat
 ```bash
 # Setup
 cd backend
-python -m venv venv
-source venv/bin/activate  # Windows: venv\Scripts\activate
+python -m venv .venv
+
+# Activate virtual environment:
+# Linux/Mac:
+source .venv/bin/activate
+
+# Windows PowerShell (requires execution policy):
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser  # One-time setup
+.\.venv\Scripts\Activate.ps1
+
+# Windows CMD:
+.\.venv\Scripts\activate.bat
+
+# Windows Git Bash:
+source .venv/Scripts/activate
+
+# Install dependencies and configure
 pip install -r requirements.txt
 cp .env.example .env  # Configure Azure credentials
 
