@@ -1,12 +1,12 @@
 'use client'
 
-import { ReactNode, useState } from 'react'
+import { ReactNode, useState, useEffect } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
-import { 
-  HomeOutlined, 
-  UsergroupAddOutlined, 
-  UserAddOutlined, 
-  MessageOutlined, 
+import {
+  HomeOutlined,
+  UsergroupAddOutlined,
+  UserAddOutlined,
+  MessageOutlined,
   CommentOutlined,
   FileSearchOutlined,
   MenuFoldOutlined,
@@ -18,11 +18,21 @@ import {
 import { Button, Typography, Layout, Menu, theme, Select, Space, Tooltip } from 'antd'
 import type { MenuProps } from 'antd'
 import { useTimezone, type TimezoneOption } from '@/lib/timezone-context'
+import { apiClient, type AgentInfo } from '@/lib/api-client'
 
 const { Title, Text } = Typography
 const { Header, Content, Footer, Sider } = Layout
 
 type MenuItem = Required<MenuProps>['items'][number]
+
+// Icon mapping for agents
+const AGENT_ICON_MAP: Record<string, React.ReactNode> = {
+  persona_distribution: <UsergroupAddOutlined />,
+  persona_generator: <UserAddOutlined />,
+  transcript_parser: <FileSearchOutlined />,
+  c2_message_generation: <MessageOutlined />
+}
+const DEFAULT_AGENT_ICON = <RobotOutlined />
 
 function getItem(
   label: React.ReactNode,
@@ -48,9 +58,9 @@ interface PageLayoutProps {
   extra?: ReactNode
 }
 
-export default function PageLayout({ 
-  title, 
-  description, 
+export default function PageLayout({
+  title,
+  description,
   showBackButton = false,
   children,
   extra
@@ -59,19 +69,53 @@ export default function PageLayout({
   const pathname = usePathname()
   const router = useRouter()
   const { timezone, setTimezone } = useTimezone()
-  
+
   const {
     token: { colorBgContainer, borderRadiusLG },
   } = theme.useToken()
 
+  // Dynamic agents state
+  const [agentsList, setAgentsList] = useState<AgentInfo[]>([])
+  const [agentsLoading, setAgentsLoading] = useState(true)
+
+  // Fetch agents on mount
+  useEffect(() => {
+    const loadAgents = async () => {
+      try {
+        const response = await apiClient.listAgents()
+        if (response.data) {
+          setAgentsList(response.data.agents)
+        }
+      } catch (error) {
+        console.error('Failed to load agents:', error)
+      } finally {
+        setAgentsLoading(false)
+      }
+    }
+
+    loadAgents()
+  }, [])
+
+  // Build dynamic menu items based on fetched agents
+  const agentMenuItems = agentsList.length > 0
+    ? agentsList.map(agent =>
+        getItem(
+          agent.display_name,
+          `/agents/${agent.agent_id}`,
+          AGENT_ICON_MAP[agent.agent_id] || DEFAULT_AGENT_ICON
+        )
+      )
+    : [
+        // Fallback hardcoded menu
+        getItem('Persona Distribution', '/agents/persona_distribution', <UsergroupAddOutlined />),
+        getItem('Persona Generator', '/agents/persona_generator', <UserAddOutlined />),
+        getItem('Transcript Parser', '/agents/transcript_parser', <FileSearchOutlined />),
+        getItem('C2 Message Generator', '/agents/c2_message_generation', <MessageOutlined />),
+      ]
+
   const items: MenuItem[] = [
     getItem('Home', '/', <HomeOutlined />),
-    getItem('Agents', 'agents', <RobotOutlined />, [
-      getItem('Persona Distribution', '/agents/persona_distribution', <UsergroupAddOutlined />),
-      getItem('Persona Generator', '/agents/persona_generator', <UserAddOutlined />),
-      getItem('Transcript Parser', '/agents/transcript_parser', <FileSearchOutlined />),
-      getItem('C2 Message Generator', '/agents/c2_message_generation', <MessageOutlined />),
-    ]),
+    getItem('Agents', 'agents', <RobotOutlined />, agentMenuItems),
     getItem('Workflows', 'workflows', <BranchesOutlined />, [
       getItem('Conversation Simulation', '/workflows/conversation_simulation', <CommentOutlined />),
     ]),

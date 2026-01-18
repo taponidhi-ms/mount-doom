@@ -17,6 +17,7 @@ class AgentInfo(BaseModel):
     input_field: str
     input_label: str
     input_placeholder: str
+    sample_inputs: List[Dict[str, str]] = []
 
 
 class AgentListResponse(BaseModel):

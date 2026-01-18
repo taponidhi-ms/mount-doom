@@ -58,7 +58,8 @@ async def list_agents():
             instructions=config.instructions,
             input_field=config.input_field,
             input_label=config.input_label,
-            input_placeholder=config.input_placeholder
+            input_placeholder=config.input_placeholder,
+            sample_inputs=config.sample_inputs
         )
         for config in agents_dict.values()
     ]
@@ -88,7 +89,8 @@ async def get_agent(agent_id: str):
         instructions=config.instructions,
         input_field=config.input_field,
         input_label=config.input_label,
-        input_placeholder=config.input_placeholder
+        input_placeholder=config.input_placeholder,
+        sample_inputs=config.sample_inputs
     )
 
 

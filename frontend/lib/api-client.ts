@@ -124,6 +124,7 @@ export interface AgentInfo {
   input_field: string;
   input_label: string;
   input_placeholder: string;
+  sample_inputs: Array<{ label?: string; value: string }>;
 }
 
 export interface AgentListResponse {

@@ -22,31 +22,31 @@ export default function Home() {
   const features = [
     {
       title: 'Persona Distribution Generator',
-      href: '/persona-distribution',
+      href: '/agents/persona_distribution',
       icon: <UsergroupAddOutlined style={{ fontSize: '24px', color: colorPrimary }} />,
       description: 'Generate persona distributions from simulation prompts using specialized AI agents. Transform your ideas into structured conversation parameters.',
     },
     {
       title: 'Persona Generator',
-      href: '/persona-generator',
+      href: '/agents/persona_generator',
       icon: <UserAddOutlined style={{ fontSize: '24px', color: colorPrimary }} />,
       description: 'Generate exact customer personas with specific intents, sentiments, subjects, and metadata. Perfect for creating detailed scenarios.',
     },
     {
       title: 'Transcript Parser',
-      href: '/transcript-parser',
+      href: '/agents/transcript_parser',
       icon: <FileSearchOutlined style={{ fontSize: '24px', color: colorPrimary }} />,
       description: 'Parse customer–representative transcripts to extract intent, subject, and sentiment.',
     },
     {
       title: 'Conversation Simulation',
-      href: '/conversation-simulation',
+      href: '/workflows/conversation_simulation',
       icon: <CommentOutlined style={{ fontSize: '24px', color: colorPrimary }} />,
       description: 'Simulate multi-turn conversations between customer service representatives and customers with intelligent orchestration.',
     },
     {
       title: 'C2 Message Generation',
-      href: '/c2-message-generation',
+      href: '/agents/c2_message_generation',
       icon: <MessageOutlined style={{ fontSize: '24px', color: colorPrimary }} />,
       description: 'Generate customer (C2) messages for conversation simulations using AI agents.',
     },

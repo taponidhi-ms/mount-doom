@@ -491,6 +491,32 @@ export default function AgentPage() {
                 />
               </div>
 
+              {/* Sample Inputs Section */}
+              {agentInfo.sample_inputs && agentInfo.sample_inputs.length > 0 && (
+                <div style={{ marginTop: 16 }}>
+                  <Text strong>Sample {agentInfo.input_label}s</Text>
+                  <Space direction="vertical" style={{ width: '100%', marginTop: 8 }}>
+                    {agentInfo.sample_inputs.map((sample, index) => (
+                      <Card key={index} size="small" style={{ background: '#f9f9f9' }}>
+                        <Space align="start" style={{ width: '100%', justifyContent: 'space-between' }}>
+                          <Text style={{ fontSize: 13, color: '#666' }}>
+                            {sample.label || sample.value.substring(0, 80) + '...'}
+                          </Text>
+                          <Button
+                            size="small"
+                            type="link"
+                            onClick={() => setInput(sample.value)}
+                            style={{ padding: 0, marginLeft: 8 }}
+                          >
+                            Try it
+                          </Button>
+                        </Space>
+                      </Card>
+                    ))}
+                  </Space>
+                </div>
+              )}
+
               <Button
                 type="primary"
                 size="large"
@@ -597,9 +623,9 @@ export default function AgentPage() {
                   onChange={setBatchDelay}
                   style={{ width: 180 }}
                   disabled={batchLoading}
-                  options={[5, 10, 15, 20, 30, 45, 60].map((s) => ({
+                  options={Array.from({ length: 60 }, (_, i) => i + 1).map((s) => ({
                     value: s,
-                    label: `${s} second delay`,
+                    label: `${s} second${s !== 1 ? 's' : ''} delay`,
                   }))}
                 />
               </Space>
