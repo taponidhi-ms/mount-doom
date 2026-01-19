@@ -4,6 +4,8 @@ from app.core.config import settings
 from typing import Optional, Dict, Any, Union
 from pydantic import BaseModel
 import structlog
+import warnings
+import urllib3
 
 logger = structlog.get_logger()
 
@@ -54,7 +56,10 @@ class CosmosDBService:
                 logger.info("Initializing Cosmos DB Client for LOCAL EMULATOR...",
                            endpoint=settings.cosmos_db_endpoint,
                            database=settings.cosmos_db_database_name)
-                
+
+                # Suppress SSL warnings for local emulator (uses self-signed certificate)
+                urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
                 # For local emulator, use the provided key (or default emulator key)
                 # Note: The default key below is the standard, well-known Cosmos DB Emulator key
                 # documented by Microsoft. It's safe to use as a fallback because:
@@ -63,12 +68,14 @@ class CosmosDBService:
                 # 3. It's the same for all Cosmos DB Emulator installations
                 # See: https://learn.microsoft.com/en-us/azure/cosmos-db/emulator
                 emulator_key = settings.cosmos_db_key or "C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw=="
-                
+
+                # Disable SSL verification for local emulator (uses self-signed certificate)
                 self._client = CosmosClient(
                     url=settings.cosmos_db_endpoint,
-                    credential=emulator_key
+                    credential=emulator_key,
+                    connection_verify=False
                 )
-                logger.info("Using local Cosmos DB emulator with key authentication")
+                logger.info("Using local Cosmos DB emulator with key authentication (SSL verification disabled)")
             else:
                 # Use Azure Cloud Cosmos DB with DefaultAzureCredential
                 logger.info("Initializing Cosmos DB Client for AZURE CLOUD...",
