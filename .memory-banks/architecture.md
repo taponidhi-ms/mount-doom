@@ -123,7 +123,7 @@ No manual token management required.
 
 ### Azure AI References
 For more details on Azure AI Agent Service and Workflow:
-- [Sample Workflow Multi-Agent](https://raw.githubusercontent.com/Azure/azure-sdk-for-python/refs/tags/azure-ai-projects_2.0.0b2/sdk/ai/azure-ai-projects/samples/agents/sample_workflow_multi_agent.py)
+- [Sample Workflow Multi-Agent](https://raw.githubusercontent.com/Azure/azure-sdk-for-python/refs/tags/azure-ai-projects_2.0.0b3/sdk/ai/azure-ai-projects/samples/agents/sample_workflow_multi_agent.py)
 - [Workflow Concepts](https://raw.githubusercontent.com/MicrosoftDocs/azure-ai-docs/refs/heads/main/articles/ai-foundry/default/agents/concepts/workflow.md)
 - [Azure AI Projects SDK README](https://github.com/Azure/azure-sdk-for-python/blob/main/sdk/ai/azure-ai-projects/README.md)
 - [Azure AI Documentation](https://github.com/MicrosoftDocs/azure-ai-docs/tree/main/articles/ai-foundry/default/agents)
@@ -385,7 +385,7 @@ The C2 (customer) message generation is delegated to a separate module:
 class Agent(NamedTuple):
     instructions: str  # Agent's system instructions
     model_deployment_name: str  # Model to use (e.g., "gpt-4")
-    agent_version_object: AgentVersionObject  # From create_version() - contains agent_id
+    agent_version_object: AgentVersionDetails  # From create_version() - contains agent_id
 ```
 
 ### Conversation API Pattern

@@ -66,6 +66,42 @@ npm start
 npm run lint
 ```
 
+## Python Virtual Environment Usage
+
+**CRITICAL: Always use the virtual environment for backend operations**
+
+When working with the backend, you MUST always use the Python virtual environment located at `backend/.venv/`. This ensures all dependencies are correctly installed and isolated.
+
+### How to Use Virtual Environment in Commands
+
+**Correct approach** - Use the venv Python directly:
+```bash
+# Good: Direct path to venv Python
+cd C:/Users/ttulsi/GithubProjects/mount-doom/backend
+.venv/Scripts/python.exe -m pip install -r requirements.txt
+.venv/Scripts/python.exe -c "import some_module"
+.venv/Scripts/python.exe app/main.py
+```
+
+**Incorrect approach** - Using global Python:
+```bash
+# Bad: Uses global Python installation
+cd backend
+python -m pip install ...
+python -c "import some_module"
+```
+
+### Key Points
+- **Always** prefix Python commands with `.venv/Scripts/python.exe` when running commands from bash
+- **Never** use bare `python` or `pip` commands - they may use the global Python installation
+- When installing dependencies, always use: `.venv/Scripts/python.exe -m pip install -r requirements.txt`
+- When testing imports, always use: `.venv/Scripts/python.exe -c "import ..."`
+- When running the server, always use: `.venv/Scripts/python.exe -m uvicorn app.main:app --reload`
+
+### Path Notes
+- Use forward slashes `/` in paths for bash compatibility
+- The venv path is: `backend/.venv/Scripts/python.exe` (Windows) or `backend/.venv/bin/python` (Linux/Mac)
+
 ## Architecture Overview
 
 ### Backend: Clean Architecture with Vertical Slices
@@ -353,7 +389,7 @@ When making changes to any feature, **ALWAYS validate compatibility between back
 
 **Azure AI References:**
 - [AIProjectClient Documentation](https://learn.microsoft.com/en-us/python/api/azure-ai-projects/azure.ai.projects.aio.aiprojectclient?view=azure-python-preview)
-- [Code Samples](https://github.com/Azure/azure-sdk-for-python/tree/azure-ai-projects_2.0.0b2/sdk/ai/azure-ai-projects/samples/agents)
+- [Code Samples](https://github.com/Azure/azure-sdk-for-python/tree/azure-ai-projects_2.0.0b3/sdk/ai/azure-ai-projects/samples/agents)
 
 **Configuration Loading:**
 - Backend: Settings loaded from `backend/.env` via absolute path (works when starting from repo root)

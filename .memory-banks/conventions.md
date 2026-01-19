@@ -13,6 +13,17 @@
 - Use Pydantic for data validation
 - **IMPORTANT**: Use `datetime.now(timezone.utc)` instead of deprecated `datetime.utcnow()`
 
+### Python Virtual Environment Usage
+**CRITICAL: Always use the virtual environment (`backend/.venv/`) for all backend operations**
+
+When running Python commands, pip operations, or testing imports:
+- **Always** use the venv Python directly: `.venv/Scripts/python.exe` (Windows) or `.venv/bin/python` (Linux/Mac)
+- **Never** use bare `python` or `pip` commands - they may use the global Python installation
+- **Install dependencies**: `.venv/Scripts/python.exe -m pip install -r requirements.txt`
+- **Test imports**: `.venv/Scripts/python.exe -c "import module"`
+- **Run server**: `.venv/Scripts/python.exe -m uvicorn app.main:app --reload`
+- Use forward slashes `/` in paths for bash compatibility
+
 ### Naming Conventions
 - Classes: PascalCase (e.g., `AzureAIService`)
 - Functions/Methods: snake_case (e.g., `get_agent_response`)
@@ -471,7 +482,7 @@ async def save_to_database(self, ...params, conversation_id: str):
 **Important References** - Read these before making changes to Azure AI integration:
 - [AIProjectClient Class Documentation](https://learn.microsoft.com/en-us/python/api/azure-ai-projects/azure.ai.projects.aio.aiprojectclient?view=azure-python-preview)
 - [OpenAIClient Class Documentation](https://learn.microsoft.com/en-us/python/api/azure-ai-projects/azure.ai.projects.aio.openaiclient?view=azure-python-preview)
-- [Azure AI Projects Agents Code Samples](https://github.com/Azure/azure-sdk-for-python/tree/azure-ai-projects_2.0.0b2/sdk/ai/azure-ai-projects/samples/agents)
+- [Azure AI Projects Agents Code Samples](https://github.com/Azure/azure-sdk-for-python/tree/azure-ai-projects_2.0.0b3/sdk/ai/azure-ai-projects/samples/agents)
 
 ### AzureAIService - Client Factory Only
 The AzureAIService is now a **singleton client factory** with minimal responsibility:

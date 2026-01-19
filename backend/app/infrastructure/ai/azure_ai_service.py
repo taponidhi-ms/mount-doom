@@ -1,4 +1,4 @@
-from azure.ai.projects.models import PromptAgentDefinition, AgentVersionObject
+from azure.ai.projects.models import PromptAgentDefinition, AgentVersionDetails
 from azure.identity import DefaultAzureCredential, InteractiveBrowserCredential, AzureCliCredential
 from azure.ai.projects import AIProjectClient
 from openai import OpenAI
@@ -17,7 +17,7 @@ class Agent(NamedTuple):
     """Represents a cached agent with its configuration."""
     instructions: str
     model_deployment_name: str
-    agent_version_object: 'AgentVersionObject'
+    agent_version_object: 'AgentVersionDetails'
     agent_details: 'AgentDetails'
 
 
