@@ -66,6 +66,32 @@ npm start
 npm run lint
 ```
 
+## Server Management Policy
+
+**CRITICAL: Never start servers as background tasks**
+
+- **DO NOT** run backend or frontend servers using background task execution (run_in_background parameter)
+- **DO NOT** use bash commands with `&` to background the server processes
+- The user will start both servers manually in separate terminal windows
+- This allows the user to monitor live logs and have direct control over server processes
+- Only perform dependency installation, code changes, and other non-server tasks
+
+**Examples of what NOT to do:**
+```bash
+# Bad: Starting server in background
+cd backend && .venv/Scripts/python.exe -m uvicorn app.main:app --reload &
+
+# Bad: Using run_in_background parameter
+Bash tool with run_in_background=true to start npm run dev
+```
+
+**What you CAN do:**
+- Install dependencies (`pip install`, `npm install`)
+- Run build commands (`npm run build`)
+- Run tests
+- Make code changes
+- Any other non-server operations
+
 ## Python Virtual Environment Usage
 
 **CRITICAL: Always use the virtual environment for backend operations**
