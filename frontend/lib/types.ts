@@ -116,8 +116,9 @@ export interface BatchItem<TResult = SingleAgentResponse> {
 
 // Multi-agent types
 export interface ConversationMessage {
-  agent_name: string
-  message: string
+  role: string  // "agent" or "customer"
+  content: string
+  tokens_used?: number  // Only populated for agent messages
   timestamp: string
 }
 

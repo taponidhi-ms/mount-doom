@@ -190,40 +190,59 @@ async def browse_agent_history(
 
 @router.post("/{agent_id}/delete")
 async def delete_agent_records(agent_id: str, ids: list[str]):
-    """Delete records for a specific agent by their IDs."""
+    """
+    Delete records for a specific agent by their IDs.
+    Also deletes the corresponding Azure AI conversations.
+    """
     logger.info("Received delete request", agent_id=agent_id, count=len(ids))
-    
+
     config = get_agent_config(agent_id)
     if not config:
         raise HTTPException(status_code=404, detail=f"Agent not found: {agent_id}")
-    
+
     if not ids:
         raise HTTPException(status_code=400, detail="No IDs provided")
-    
+
     try:
         container = await cosmos_db_service.ensure_container(config.container_name)
-        
+
         deleted_count = 0
         errors = []
-        
+
         for record_id in ids:
             try:
+                # First, read the document to get the Azure AI conversation_id
+                item = container.read_item(item=record_id, partition_key=record_id)
+                azure_conversation_id = item.get("conversation_id")
+
+                # Delete from Azure AI if conversation_id exists
+                if azure_conversation_id:
+                    try:
+                        await unified_agents_service.delete_conversation(azure_conversation_id)
+                        logger.debug("Deleted Azure AI conversation", conversation_id=azure_conversation_id)
+                    except Exception as azure_error:
+                        logger.warning("Failed to delete Azure AI conversation",
+                                     conversation_id=azure_conversation_id,
+                                     error=str(azure_error))
+                        # Continue with Cosmos DB deletion even if Azure deletion fails
+
+                # Delete from Cosmos DB
                 container.delete_item(item=record_id, partition_key=record_id)
                 deleted_count += 1
-                logger.debug("Deleted record", record_id=record_id)
+                logger.debug("Deleted Cosmos DB record", record_id=record_id)
             except Exception as e:
                 error_msg = f"Failed to delete {record_id}: {str(e)}"
                 errors.append(error_msg)
                 logger.warning(error_msg)
-        
+
         logger.info("Delete operation completed", deleted=deleted_count, failed=len(errors))
-        
+
         return {
             "deleted_count": deleted_count,
             "failed_count": len(errors),
             "errors": errors
         }
-        
+
     except Exception as e:
         logger.error("Error deleting records", agent_id=agent_id, error=str(e), exc_info=True)
         raise HTTPException(status_code=500, detail=f"Error deleting records: {str(e)}")

@@ -15,8 +15,9 @@ class ConversationProperties(BaseModel):
 
 class ConversationMessage(BaseModel):
     """A single message in a conversation."""
-    agent_name: str
-    message: str
+    role: str  # "agent" for C1, "customer" for C2
+    content: str
+    tokens_used: Optional[int] = None  # Only populated for C1 agent messages
     timestamp: datetime
 
 class ConversationSimulationRequest(BaseRequest):
@@ -32,8 +33,7 @@ class ConversationSimulationResponse(BaseModel):
     total_time_taken_ms: float
     start_time: datetime
     end_time: datetime
-    c1_agent_details: AgentDetails
-    c2_agent_details: AgentDetails
+    agent_details: AgentDetails  # Primary agent (C1) details
     conversation_id: str
 
 class ConversationSimulationResult(BaseModel):
@@ -43,17 +43,19 @@ class ConversationSimulationResult(BaseModel):
     total_time_taken_ms: float
     start_time: datetime
     end_time: datetime
-    c1_agent_details: AgentDetails
-    c2_agent_details: AgentDetails
+    agent_details: AgentDetails  # Primary agent (C1) details
     conversation_id: str
 
 # DB Models
 class ConversationSimulationDocument(BaseDocument):
-    """Document for conversation simulation."""
+    """Document for multi-turn conversation simulation."""
     conversation_properties: Dict[str, Any]
     conversation_history: List[ConversationMessage]
     conversation_status: str
     total_time_taken_ms: float
-    c1_agent_details: AgentDetails
-    c2_agent_details: AgentDetails
-    total_tokens_used: Optional[int] = None
+    # Primary agent (C1) details flattened at root
+    agent_name: str
+    agent_version: str
+    agent_instructions: str
+    agent_model: str
+    agent_created_at: str

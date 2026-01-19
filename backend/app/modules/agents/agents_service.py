@@ -130,17 +130,6 @@ class UnifiedAgentsService:
                 tokens_used = response.usage.total_tokens
                 logger.info("Token usage extracted", tokens_used=tokens_used)
 
-            # Delete conversation to clean up resources
-            try:
-                logger.info("Deleting conversation", conversation_id=conversation_id)
-                azure_ai_service.openai_client.conversations.delete(conversation_id=conversation_id)
-                logger.info("Conversation deleted successfully", conversation_id=conversation_id)
-            except Exception as delete_error:
-                logger.warning("Failed to delete conversation",
-                             conversation_id=conversation_id,
-                             error=str(delete_error))
-                # Continue even if deletion fails - we have the data we need
-
             logger.info("=" * 60)
 
             return {

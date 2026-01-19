@@ -45,31 +45,23 @@ async def simulate_conversation(request: ConversationSimulationRequest):
         end_ms = time.time() * 1000
         total_time_taken_ms = end_ms - start_ms
 
-        logger.info("Simulation completed, preparing for database save", 
+        logger.info("Simulation completed, preparing for database save",
                    status=simulation_result.conversation_status,
                    messages=len(simulation_result.conversation_history))
 
-        c1_agent_details = simulation_result.c1_agent_details
-        c2_agent_details = simulation_result.c2_agent_details
+        agent_details = simulation_result.agent_details
 
         await conversation_simulation_service.save_to_database(
             conversation_properties=conv_props_dict,
             conversation_history=simulation_result.conversation_history,
             conversation_status=simulation_result.conversation_status,
             total_time_taken_ms=total_time_taken_ms,
-            c1_agent_details={
-                "agent_name": c1_agent_details.agent_name,
-                "agent_version": c1_agent_details.agent_version,
-                "instructions": c1_agent_details.instructions,
-                "model_deployment_name": c1_agent_details.model_deployment_name,
-                "created_at": c1_agent_details.created_at
-            },
-            c2_agent_details={
-                "agent_name": c2_agent_details.agent_name,
-                "agent_version": c2_agent_details.agent_version,
-                "instructions": c2_agent_details.instructions,
-                "model_deployment_name": c2_agent_details.model_deployment_name,
-                "created_at": c2_agent_details.created_at
+            agent_details={
+                "agent_name": agent_details.agent_name,
+                "agent_version": agent_details.agent_version,
+                "instructions": agent_details.instructions,
+                "model_deployment_name": agent_details.model_deployment_name,
+                "created_at": agent_details.created_at
             },
             conversation_id=simulation_result.conversation_id
         )
@@ -80,8 +72,7 @@ async def simulate_conversation(request: ConversationSimulationRequest):
             total_time_taken_ms=total_time_taken_ms,
             start_time=simulation_result.start_time,
             end_time=simulation_result.end_time,
-            c1_agent_details=c1_agent_details,
-            c2_agent_details=c2_agent_details,
+            agent_details=agent_details,
             conversation_id=simulation_result.conversation_id
         )
         
@@ -107,7 +98,7 @@ async def browse_conversation_simulations(
 
     try:
         result = await cosmos_db_service.browse_container(
-            container_name=cosmos_db_service.CONVERSATION_SIMULATION_CONTAINER,
+            container_name=cosmos_db_service.MULTI_TURN_CONVERSATIONS_CONTAINER,
             page=page,
             page_size=page_size,
             order_by=order_by,
@@ -125,6 +116,7 @@ async def browse_conversation_simulations(
 async def delete_conversation_simulations(conversation_ids: list[str]):
     """
     Delete conversation simulation records by their IDs.
+    Also deletes the corresponding Azure AI conversations.
     """
     logger.info("Received delete request", count=len(conversation_ids))
 
@@ -132,31 +124,49 @@ async def delete_conversation_simulations(conversation_ids: list[str]):
         raise HTTPException(status_code=400, detail="No conversation IDs provided")
 
     try:
+        from app.modules.agents.agents_service import unified_agents_service
+
         container = await cosmos_db_service.ensure_container(
-            cosmos_db_service.CONVERSATION_SIMULATION_CONTAINER
+            cosmos_db_service.MULTI_TURN_CONVERSATIONS_CONTAINER
         )
-        
+
         deleted_count = 0
         errors = []
-        
+
         for conv_id in conversation_ids:
             try:
+                # First, read the document to get the Azure AI conversation_id
+                item = container.read_item(item=conv_id, partition_key=conv_id)
+                azure_conversation_id = item.get("conversation_id")
+
+                # Delete from Azure AI if conversation_id exists
+                if azure_conversation_id:
+                    try:
+                        await unified_agents_service.delete_conversation(azure_conversation_id)
+                        logger.debug("Deleted Azure AI conversation", conversation_id=azure_conversation_id)
+                    except Exception as azure_error:
+                        logger.warning("Failed to delete Azure AI conversation",
+                                     conversation_id=azure_conversation_id,
+                                     error=str(azure_error))
+                        # Continue with Cosmos DB deletion even if Azure deletion fails
+
+                # Delete from Cosmos DB
                 container.delete_item(item=conv_id, partition_key=conv_id)
                 deleted_count += 1
-                logger.debug("Deleted conversation", conversation_id=conv_id)
+                logger.debug("Deleted Cosmos DB document", document_id=conv_id)
             except Exception as e:
                 error_msg = f"Failed to delete {conv_id}: {str(e)}"
                 errors.append(error_msg)
                 logger.warning(error_msg)
-        
+
         logger.info("Delete operation completed", deleted=deleted_count, failed=len(errors))
-        
+
         return {
             "deleted_count": deleted_count,
             "failed_count": len(errors),
             "errors": errors
         }
-    
+
     except Exception as e:
         logger.error("Error deleting conversation simulations", error=str(e), exc_info=True)
         raise HTTPException(status_code=500, detail=f"Error deleting conversation simulations: {str(e)}")
@@ -175,42 +185,42 @@ async def download_conversation_simulations(conversation_ids: list[str]):
 
     try:
         container = await cosmos_db_service.ensure_container(
-            cosmos_db_service.CONVERSATION_SIMULATION_CONTAINER
+            cosmos_db_service.MULTI_TURN_CONVERSATIONS_CONTAINER
         )
-        
+
         conversations = []
-        
+
         for conv_id in conversation_ids:
             try:
                 item = container.read_item(item=conv_id, partition_key=conv_id)
-                
+
                 # Extract conversation properties
                 conv_props = item.get("conversation_properties", {})
                 customer_intent = conv_props.get("CustomerIntent", "")
                 customer_sentiment = conv_props.get("CustomerSentiment", "")
                 conversation_subject = conv_props.get("ConversationSubject", "")
-                
+
                 # Build conversation messages
                 conversation_messages = []
-                
-                # Add conversation history
+
+                # Add conversation history (using new structure with role and content)
                 conversation_history = item.get("conversation_history", [])
                 for msg in conversation_history:
-                    agent_name = msg.get("agent_name", "")
-                    message_text = msg.get("message", "")
-                    
-                    # C1 is CSR (user), C2 is customer (assistant)
-                    if "C1" in agent_name:
+                    role = msg.get("role", "")
+                    content = msg.get("content", "")
+
+                    # Map role to download format
+                    if role == "agent":
                         conversation_messages.append({
                             "role": "customer_service_representative",
-                            "content": message_text
+                            "content": content
                         })
-                    elif "C2" in agent_name:
+                    elif role == "customer":
                         conversation_messages.append({
                             "role": "customer",
-                            "content": message_text
+                            "content": content
                         })
-                
+
                 conversation = {
                     "Id": item.get("id"),
                     "scenario_name": "conversation_simulation",

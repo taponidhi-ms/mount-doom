@@ -99,8 +99,7 @@ export interface ConversationSimulationResponse {
   total_time_taken_ms: number;
   start_time: string;
   end_time: string;
-  c1_agent_details: AgentDetails;
-  c2_agent_details: AgentDetails;
+  agent_details: AgentDetails;  // Primary agent (C1) details only
   conversation_id: string;
 }
 

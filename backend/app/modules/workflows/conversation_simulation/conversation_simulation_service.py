@@ -87,11 +87,12 @@ class ConversationSimulationService:
 
         conversation_history: List[ConversationMessage] = []
         conversation_status = "Ongoing"
-        
-        # Add initial "Hello" to history as C2 (Customer) message
+
+        # Add initial "Hello" to history as customer message
         conversation_history.append(ConversationMessage(
-            agent_name=C2_MESSAGE_GENERATOR_AGENT_NAME,
-            message="Hello",
+            role="customer",
+            content="Hello",
+            tokens_used=None,
             timestamp=datetime.now(timezone.utc)
         ))
 
@@ -107,11 +108,13 @@ class ConversationSimulationService:
                 agent_name=c1_agent_name
             )
             c1_text = c1_result["response_text"]
-            logger.info("C1 Response", text=c1_text)
+            c1_tokens = c1_result.get("tokens_used")
+            logger.info("C1 Response", text=c1_text, tokens_used=c1_tokens)
 
             conversation_history.append(ConversationMessage(
-                agent_name=C1_MESSAGE_GENERATOR_AGENT_NAME,
-                message=c1_text,
+                role="agent",
+                content=c1_text,
+                tokens_used=c1_tokens,
                 timestamp=datetime.now(timezone.utc)
             ))
 
@@ -124,25 +127,25 @@ class ConversationSimulationService:
             # Construct C2 input
             mapped_msgs = []
             for i, msg in enumerate(conversation_history):
-                role = "agent" if msg.agent_name == C1_MESSAGE_GENERATOR_AGENT_NAME else "customer"
                 mapped_msgs.append({
-                    role: msg.message,
+                    msg.role: msg.content,
                     "Id": i + 1
                 })
-            
+
             c2_payload = {
                 "Properties": conversation_properties,
                 "messages": mapped_msgs
             }
             c2_input_text = f"Ongoing transcript: {json.dumps(c2_payload)}"
-            
+
             logger.debug("Creating C2 response...", input_preview=c2_input_text[:100])
             c2_text = await self._generate_c2_message(c2_input_text)
             logger.info("C2 Response", text=c2_text)
 
             conversation_history.append(ConversationMessage(
-                agent_name=C2_MESSAGE_GENERATOR_AGENT_NAME,
-                message=c2_text,
+                role="customer",
+                content=c2_text,
+                tokens_used=None,  # Don't track C2 tokens
                 timestamp=datetime.now(timezone.utc)
             ))
 
@@ -165,13 +168,11 @@ class ConversationSimulationService:
             total_time_taken_ms=total_time_taken_ms,
             start_time=start_time,
             end_time=datetime.now(timezone.utc),
-            c1_agent_details=c1_agent_details.model_dump(),
-            c2_agent_details=c2_agent_details.model_dump(),
+            agent_details=c1_agent_details,  # Only C1 agent details
             conversation_id=conversation_id
         )
 
-        # Delete C1 conversation via agents_service
-        await unified_agents_service.delete_conversation(conversation_id)
+        # Do NOT auto-delete conversation - only delete when user explicitly deletes from Cosmos DB
 
         logger.info("="*60)
         logger.info("Conversation simulation completed",
@@ -188,8 +189,7 @@ class ConversationSimulationService:
             conversation_history: List[ConversationMessage],
             conversation_status: str,
             total_time_taken_ms: float,
-            c1_agent_details: dict,
-            c2_agent_details: dict,
+            agent_details: dict,
             conversation_id: str
     ):
         """Save simulation result to Cosmos DB."""
@@ -197,10 +197,9 @@ class ConversationSimulationService:
         document_id = str(uuid.uuid4())
 
         # Parse agent details
-        c1_agent = AgentDetails(**c1_agent_details)
-        c2_agent = AgentDetails(**c2_agent_details)
+        agent = AgentDetails(**agent_details)
 
-        # Build document with flattened agent details
+        # Build document with flattened agent details (C1 only)
         document = {
             "id": document_id,
             "conversation_id": conversation_id,
@@ -209,26 +208,19 @@ class ConversationSimulationService:
             "conversation_history": [msg.model_dump(mode='json') for msg in conversation_history],
             "conversation_status": conversation_status,
             "total_time_taken_ms": total_time_taken_ms,
-            "total_tokens_used": None,
-            # Flattened C1 agent details
-            "c1_agent_name": c1_agent.agent_name,
-            "c1_agent_version": c1_agent.agent_version,
-            "c1_agent_instructions": c1_agent.instructions,
-            "c1_agent_model": c1_agent.model_deployment_name,
-            "c1_agent_created_at": c1_agent.created_at.isoformat() if isinstance(c1_agent.created_at, datetime) else c1_agent.created_at,
-            # Flattened C2 agent details
-            "c2_agent_name": c2_agent.agent_name,
-            "c2_agent_version": c2_agent.agent_version,
-            "c2_agent_instructions": c2_agent.instructions,
-            "c2_agent_model": c2_agent.model_deployment_name,
-            "c2_agent_created_at": c2_agent.created_at.isoformat() if isinstance(c2_agent.created_at, datetime) else c2_agent.created_at,
+            # Flattened primary agent (C1) details at root
+            "agent_name": agent.agent_name,
+            "agent_version": agent.agent_version,
+            "agent_instructions": agent.instructions,
+            "agent_model": agent.model_deployment_name,
+            "agent_created_at": agent.created_at.isoformat() if isinstance(agent.created_at, datetime) else agent.created_at,
         }
 
         await cosmos_db_service.save_document(
-            container_name=cosmos_db_service.CONVERSATION_SIMULATION_CONTAINER,
+            container_name=cosmos_db_service.MULTI_TURN_CONVERSATIONS_CONTAINER,
             document=document
         )
-        logger.info("Saved simulation result to database",
+        logger.info("Saved multi-turn conversation to database",
                    document_id=document_id,
                    conversation_id=conversation_id)
 

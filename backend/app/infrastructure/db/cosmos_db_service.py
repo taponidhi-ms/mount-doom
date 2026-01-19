@@ -32,12 +32,8 @@ class CosmosDBService:
     _database: Optional[DatabaseProxy] = None
     
     # Container names for each use case
-    PERSONA_DISTRIBUTION_CONTAINER = "persona_distribution"
-    PERSONA_GENERATOR_CONTAINER = "persona_generator"
-    CONVERSATION_SIMULATION_CONTAINER = "conversation_simulation"
-    TRANSCRIPT_PARSER_CONTAINER = "transcript_parser"
-    C2_MESSAGE_GENERATION_CONTAINER = "c2_message_generation"
-    C1_MESSAGE_GENERATION_CONTAINER = "c1_message_generation"
+    SINGLE_TURN_CONVERSATIONS_CONTAINER = "single_turn_conversations"
+    MULTI_TURN_CONVERSATIONS_CONTAINER = "multi_turn_conversations"
     
     def __new__(cls):
         if cls._instance is None:
