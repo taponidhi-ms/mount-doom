@@ -23,8 +23,6 @@ backend/app/
 │   └── db/              # Database services
 │       └── cosmos_db_service.py
 ├── modules/             # Feature modules (Vertical Slices)
-│   ├── shared/          # Reserved for future shared utilities
-│   │   └── __init__.py
 │   ├── agents/          # Unified agents API
 │   │   ├── __init__.py
 │   │   ├── config.py    # Agent configuration registry
