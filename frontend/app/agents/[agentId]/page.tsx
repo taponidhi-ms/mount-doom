@@ -96,6 +96,10 @@ export default function AgentPage() {
   const [responseViewMode, setResponseViewMode] = useState<'text' | 'json'>('text')
   const [modalResponseViewMode, setModalResponseViewMode] = useState<'text' | 'json'>('text')
 
+  // Tab state
+  const [activeTab, setActiveTab] = useState('generate')
+  const [historyLoadedOnce, setHistoryLoadedOnce] = useState(false)
+
   // Load agent info on mount
   useEffect(() => {
     const loadAgent = async () => {
@@ -229,6 +233,14 @@ export default function AgentPage() {
       return { isValid: false }
     }
   }
+
+  // Auto-load history when History tab is first opened
+  useEffect(() => {
+    if (activeTab === 'history' && !historyLoadedOnce) {
+      loadHistory(1)
+      setHistoryLoadedOnce(true)
+    }
+  }, [activeTab, historyLoadedOnce, loadHistory])
 
   const loadBatchItemsFromText = () => {
     if (!batchJsonInput.trim()) {
@@ -887,7 +899,11 @@ export default function AgentPage() {
       title={agentInfo.display_name}
       description={agentInfo.description}
     >
-      <Tabs defaultActiveKey="generate" items={tabItems} />
+      <Tabs
+        activeKey={activeTab}
+        onChange={setActiveTab}
+        items={tabItems}
+      />
 
       <Modal
         title="Record Details"

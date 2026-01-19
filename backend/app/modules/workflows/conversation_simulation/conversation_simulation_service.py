@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 import structlog
 import json
 import time
+import uuid
 from typing import List, Optional, Dict, Any
 
 from app.infrastructure.ai.azure_ai_service import azure_ai_service
@@ -172,21 +173,44 @@ class ConversationSimulationService:
             conversation_id: str
     ):
         """Save simulation result to Cosmos DB."""
-        document = ConversationSimulationDocument(
-            id=conversation_id,
-            conversation_properties=conversation_properties,
-            conversation_history=conversation_history,
-            conversation_status=conversation_status,
-            total_time_taken_ms=total_time_taken_ms,
-            c1_agent_details=AgentDetails(**c1_agent_details),
-            c2_agent_details=AgentDetails(**c2_agent_details),
-        )
+        # Generate random UUID for document ID
+        document_id = str(uuid.uuid4())
+
+        # Parse agent details
+        c1_agent = AgentDetails(**c1_agent_details)
+        c2_agent = AgentDetails(**c2_agent_details)
+
+        # Build document with flattened agent details
+        document = {
+            "id": document_id,
+            "conversation_id": conversation_id,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "conversation_properties": conversation_properties,
+            "conversation_history": [msg.model_dump(mode='json') for msg in conversation_history],
+            "conversation_status": conversation_status,
+            "total_time_taken_ms": total_time_taken_ms,
+            "total_tokens_used": None,
+            # Flattened C1 agent details
+            "c1_agent_name": c1_agent.agent_name,
+            "c1_agent_version": c1_agent.agent_version,
+            "c1_agent_instructions": c1_agent.instructions,
+            "c1_agent_model": c1_agent.model_deployment_name,
+            "c1_agent_created_at": c1_agent.created_at.isoformat() if isinstance(c1_agent.created_at, datetime) else c1_agent.created_at,
+            # Flattened C2 agent details
+            "c2_agent_name": c2_agent.agent_name,
+            "c2_agent_version": c2_agent.agent_version,
+            "c2_agent_instructions": c2_agent.instructions,
+            "c2_agent_model": c2_agent.model_deployment_name,
+            "c2_agent_created_at": c2_agent.created_at.isoformat() if isinstance(c2_agent.created_at, datetime) else c2_agent.created_at,
+        }
 
         await cosmos_db_service.save_document(
             container_name=cosmos_db_service.CONVERSATION_SIMULATION_CONTAINER,
-            document=document.model_dump(mode='json', by_alias=True)
+            document=document
         )
-        logger.info("Saved simulation result to database", conversation_id=conversation_id)
+        logger.info("Saved simulation result to database",
+                   document_id=document_id,
+                   conversation_id=conversation_id)
 
 
 conversation_simulation_service = ConversationSimulationService()

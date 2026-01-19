@@ -90,6 +90,15 @@ export default function ConversationSimulationPage() {
   const [orderDirection, setOrderDirection] = useState<'ASC' | 'DESC'>('DESC')
   const [currentPage, setCurrentPage] = useState(1)
   const [pageSize, setPageSize] = useState(10)
+  const [selectedC1Version, setSelectedC1Version] = useState<string | null>(null)
+  const [selectedC2Version, setSelectedC2Version] = useState<string | null>(null)
+  const [c1Versions, setC1Versions] = useState<string[]>([])
+  const [c2Versions, setC2Versions] = useState<string[]>([])
+  const [selectedVersionInstructions, setSelectedVersionInstructions] = useState<{ c1?: string; c2?: string }>({})
+
+  // Tab state
+  const [activeTab, setActiveTab] = useState('simulate')
+  const [historyLoadedOnce, setHistoryLoadedOnce] = useState(false)
 
   // Batch state
   const [batchItems, setBatchItems] = useState<BatchItem[]>([])
@@ -152,11 +161,33 @@ export default function ConversationSimulationPage() {
       setSelectedRowKeys([])
       setCurrentPage(page)
       setPageSize(size)
+
+      // Extract unique agent versions from the data
+      const c1VersionsSet = new Set<string>()
+      const c2VersionsSet = new Set<string>()
+      response.data.items.forEach((item: any) => {
+        if (item.c1_agent_version) {
+          c1VersionsSet.add(item.c1_agent_version)
+        }
+        if (item.c2_agent_version) {
+          c2VersionsSet.add(item.c2_agent_version)
+        }
+      })
+      setC1Versions(Array.from(c1VersionsSet).sort())
+      setC2Versions(Array.from(c2VersionsSet).sort())
     } else if (response.error) {
       setHistoryError(response.error)
       message.error('Failed to load history')
     }
   }, [orderBy, orderDirection, pageSize])
+
+  // Auto-load history when History tab is first opened
+  useEffect(() => {
+    if (activeTab === 'history' && !historyLoadedOnce) {
+      loadHistory(1)
+      setHistoryLoadedOnce(true)
+    }
+  }, [activeTab, historyLoadedOnce, loadHistory])
 
   const updateInput = (name: string, value: string) => {
     setInputs((prev) => ({ ...prev, [name]: value }))
@@ -861,6 +892,52 @@ export default function ConversationSimulationPage() {
                     loading={historyLoading}
                   />
                 </Tooltip>
+                {c1Versions.length > 0 && (
+                  <Select
+                    value={selectedC1Version}
+                    onChange={(val) => {
+                      setSelectedC1Version(val)
+                      if (val && historyData) {
+                        const item = historyData.items.find((i: any) => i.c1_agent_version === val)
+                        if (item && (item as any).c1_agent_instructions) {
+                          setSelectedVersionInstructions(prev => ({
+                            ...prev,
+                            c1: (item as any).c1_agent_instructions
+                          }))
+                        }
+                      } else {
+                        setSelectedVersionInstructions(prev => ({ ...prev, c1: undefined }))
+                      }
+                    }}
+                    allowClear
+                    placeholder="C1 Version"
+                    style={{ width: 120 }}
+                    options={c1Versions.map((v) => ({ value: v, label: `C1 v${v}` }))}
+                  />
+                )}
+                {c2Versions.length > 0 && (
+                  <Select
+                    value={selectedC2Version}
+                    onChange={(val) => {
+                      setSelectedC2Version(val)
+                      if (val && historyData) {
+                        const item = historyData.items.find((i: any) => i.c2_agent_version === val)
+                        if (item && (item as any).c2_agent_instructions) {
+                          setSelectedVersionInstructions(prev => ({
+                            ...prev,
+                            c2: (item as any).c2_agent_instructions
+                          }))
+                        }
+                      } else {
+                        setSelectedVersionInstructions(prev => ({ ...prev, c2: undefined }))
+                      }
+                    }}
+                    allowClear
+                    placeholder="C2 Version"
+                    style={{ width: 120 }}
+                    options={c2Versions.map((v) => ({ value: v, label: `C2 v${v}` }))}
+                  />
+                )}
                 <Select
                   value={orderBy}
                   onChange={(val) => {
@@ -902,6 +979,47 @@ export default function ConversationSimulationPage() {
               />
             )}
 
+            {(selectedVersionInstructions.c1 || selectedVersionInstructions.c2) && (
+              <Space direction="vertical" style={{ width: '100%', marginBottom: 16 }} size="small">
+                {selectedVersionInstructions.c1 && (
+                  <Card
+                    size="small"
+                    title={`C1 Agent Version ${selectedC1Version} Instructions`}
+                    style={{ background: '#f9f9f9' }}
+                  >
+                    <pre style={{
+                      whiteSpace: 'pre-wrap',
+                      wordWrap: 'break-word',
+                      maxHeight: 200,
+                      overflow: 'auto',
+                      fontSize: 11,
+                      margin: 0,
+                    }}>
+                      {selectedVersionInstructions.c1}
+                    </pre>
+                  </Card>
+                )}
+                {selectedVersionInstructions.c2 && (
+                  <Card
+                    size="small"
+                    title={`C2 Agent Version ${selectedC2Version} Instructions`}
+                    style={{ background: '#f9f9f9' }}
+                  >
+                    <pre style={{
+                      whiteSpace: 'pre-wrap',
+                      wordWrap: 'break-word',
+                      maxHeight: 200,
+                      overflow: 'auto',
+                      fontSize: 11,
+                      margin: 0,
+                    }}>
+                      {selectedVersionInstructions.c2}
+                    </pre>
+                  </Card>
+                )}
+              </Space>
+            )}
+
             <Space style={{ marginBottom: 16 }}>
               <Popconfirm
                 title="Delete selected items?"
@@ -939,7 +1057,13 @@ export default function ConversationSimulationPage() {
 
             {(historyData || historyLoading) && (
               <Table<MultiAgentHistoryItem>
-                dataSource={historyData?.items || []}
+                dataSource={
+                  (historyData?.items || []).filter((item: any) => {
+                    const c1Match = !selectedC1Version || item.c1_agent_version === selectedC1Version
+                    const c2Match = !selectedC2Version || item.c2_agent_version === selectedC2Version
+                    return c1Match && c2Match
+                  })
+                }
                 columns={historyColumns}
                 rowKey="id"
                 loading={historyLoading}
@@ -974,7 +1098,11 @@ export default function ConversationSimulationPage() {
       title={workflowInfo?.display_name || 'Conversation Simulation'}
       description={workflowInfo?.description || 'Simulate multi-turn conversations between C1 (customer service representative) and C2 (customer) agents.'}
     >
-      <Tabs defaultActiveKey="simulate" items={tabItems} />
+      <Tabs
+        activeKey={activeTab}
+        onChange={setActiveTab}
+        items={tabItems}
+      />
 
       <Modal
         title="Conversation Details"
