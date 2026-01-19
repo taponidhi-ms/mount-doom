@@ -326,16 +326,22 @@ export default function MultiAgentTemplate({ config }: MultiAgentTemplateProps) 
     return (
       <Space direction="vertical" size="small" style={{ width: '100%' }}>
         {history.map((msg, index) => {
-          const isSystem = msg.agent_name === 'System'
-          const isC1 = msg.agent_name === 'C1Agent' || msg.agent_name === 'C1MessageGeneratorAgent'
+          const isAgent = msg.role === 'agent'
+          const isCustomer = msg.role === 'customer'
 
           let bgColor = '#ffffff'
-          if (isC1) bgColor = '#e6f7ff'
-          else if (!isSystem) bgColor = '#f6ffed'
+          if (isAgent) bgColor = '#e6f7ff'  // Blue for agent (C1)
+          else if (isCustomer) bgColor = '#f6ffed'  // Green for customer (C2)
 
           let tagColor = 'default'
-          if (isC1) tagColor = 'blue'
-          else if (!isSystem) tagColor = 'green'
+          let roleLabel = msg.role.charAt(0).toUpperCase() + msg.role.slice(1)
+          if (isAgent) {
+            tagColor = 'blue'
+            roleLabel = 'Service Rep'
+          } else if (isCustomer) {
+            tagColor = 'green'
+            roleLabel = 'Customer'
+          }
 
           return (
             <Card
@@ -343,30 +349,24 @@ export default function MultiAgentTemplate({ config }: MultiAgentTemplateProps) 
               size="small"
               style={{
                 background: bgColor,
-                border: isSystem ? 'none' : undefined,
-                boxShadow: isSystem ? 'none' : undefined,
-              }}
-              styles={{
-                body: isSystem
-                  ? { padding: '4px 0', fontStyle: 'italic', color: '#888', textAlign: 'center' }
-                  : undefined
               }}
             >
-              {isSystem ? (
-                <Text type="secondary" italic style={{ fontSize: 12 }}>
-                  {msg.message}
-                </Text>
-              ) : (
-                <Space direction="vertical" size="small" style={{ width: '100%' }}>
-                  <div>
-                    <Tag color={tagColor}>{msg.agent_name}</Tag>
+              <Space direction="vertical" size="small" style={{ width: '100%' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Space size="small">
+                    <Tag color={tagColor}>{roleLabel}</Tag>
                     <Text type="secondary" style={{ fontSize: 12 }}>
                       {formatTime(msg.timestamp)}
                     </Text>
-                  </div>
-                  <Text>{msg.message}</Text>
-                </Space>
-              )}
+                    {msg.tokens_used !== undefined && msg.tokens_used !== null && (
+                      <Tag color="purple" style={{ fontSize: 11 }}>
+                        {msg.tokens_used} tokens
+                      </Tag>
+                    )}
+                  </Space>
+                </div>
+                <Text>{msg.content}</Text>
+              </Space>
             </Card>
           )
         })}
