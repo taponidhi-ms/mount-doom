@@ -5,7 +5,7 @@ These schemas provide a common interface for all single-agent use cases,
 enabling code reuse while maintaining type safety.
 """
 
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any
 from datetime import datetime
 from pydantic import BaseModel
 from app.models.shared import AgentDetails, BaseDocument
@@ -48,25 +48,10 @@ class SingleAgentResponse(BaseModel):
 
 class SingleAgentDocument(BaseDocument):
     """Base document for single-agent results in Cosmos DB.
-    
+
     All single-agent use cases should use this as their document format.
     """
     prompt: str
-    response: str
-    tokens_used: Optional[int] = None
-    time_taken_ms: float
-    agent_details: AgentDetails
-    parsed_output: Optional[Dict[str, Any]] = None
-
-
-class TranscriptAgentRequest(BaseModel):
-    """Request for transcript-based agent operations."""
-    transcript: str
-
-
-class TranscriptAgentDocument(BaseDocument):
-    """Document for transcript-based agent results in Cosmos DB."""
-    transcript: str
     response: str
     tokens_used: Optional[int] = None
     time_taken_ms: float
