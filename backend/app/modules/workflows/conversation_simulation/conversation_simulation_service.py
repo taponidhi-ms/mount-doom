@@ -30,20 +30,31 @@ class ConversationSimulationService:
     async def _generate_c2_message(self, input_text: str) -> str:
         """Generate a C2 (customer) message using stateless invocation."""
         openai_client = azure_ai_service.openai_client
-        
+
         # Create a fresh conversation for C2
         c2_conversation = openai_client.conversations.create(
             items=[{"type": "message", "role": "user", "content": input_text}]
         )
-        
+
         # Get response from C2 agent
         c2_response = openai_client.responses.create(
             conversation=c2_conversation.id,
             extra_body={"agent": {"name": C2_MESSAGE_GENERATOR_AGENT_NAME, "type": "agent_reference"}},
             input=""
         )
-        
-        return c2_response.output_text
+
+        c2_text = c2_response.output_text
+
+        # Delete C2 conversation to clean up resources
+        try:
+            openai_client.conversations.delete(conversation_id=c2_conversation.id)
+            logger.debug("C2 conversation deleted", conversation_id=c2_conversation.id)
+        except Exception as delete_error:
+            logger.warning("Failed to delete C2 conversation",
+                         conversation_id=c2_conversation.id,
+                         error=str(delete_error))
+
+        return c2_text
 
     async def simulate_conversation(
             self,
@@ -151,7 +162,7 @@ class ConversationSimulationService:
         end_ms = time.time() * 1000
         total_time_taken_ms = end_ms - start_ms
 
-        return ConversationSimulationResult(
+        result = ConversationSimulationResult(
             conversation_history=conversation_history,
             conversation_status=conversation_status,
             total_time_taken_ms=total_time_taken_ms,
@@ -161,6 +172,25 @@ class ConversationSimulationService:
             c2_agent_details=c2_agent.agent_details,
             conversation_id=c1_conversation.id
         )
+
+        # Delete C1 conversation to clean up resources
+        try:
+            logger.info("Deleting C1 conversation", conversation_id=c1_conversation.id)
+            openai_client.conversations.delete(conversation_id=c1_conversation.id)
+            logger.info("C1 conversation deleted successfully", conversation_id=c1_conversation.id)
+        except Exception as delete_error:
+            logger.warning("Failed to delete C1 conversation",
+                         conversation_id=c1_conversation.id,
+                         error=str(delete_error))
+
+        logger.info("="*60)
+        logger.info("Conversation simulation completed",
+                   conversation_id=c1_conversation.id,
+                   status=conversation_status,
+                   total_turns=turn_count)
+        logger.info("="*60)
+
+        return result
 
     async def save_to_database(
             self,
