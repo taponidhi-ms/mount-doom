@@ -26,7 +26,7 @@ class AgentConfig:
     description: str
     instructions: str
     container_name: str
-    input_field: str = "prompt"  # The field name for input (prompt or transcript)
+    input_field: str = "prompt"  # UI field identifier (used for frontend only, DB always uses "prompt")
     input_label: str = "Prompt"  # Display label for the input field
     input_placeholder: str = "Enter your prompt..."  # Placeholder for input
     sample_inputs: List[Dict[str, str]] = field(default_factory=list)  # Sample inputs for the UI

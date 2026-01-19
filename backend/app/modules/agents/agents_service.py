@@ -177,13 +177,13 @@ class UnifiedAgentsService:
             # Generate random UUID for document ID
             document_id = str(uuid.uuid4())
 
-            # Build document - use the input field name from config
+            # Build document - always use "prompt" as the field name per SingleAgentDocument schema
             # Flatten agent_details to root level with agent_ prefix
             document = {
                 "id": document_id,
                 "conversation_id": conversation_id,
                 "timestamp": datetime.now(timezone.utc).isoformat(),
-                config.input_field: input_text,  # Use dynamic field name (prompt or transcript)
+                "prompt": input_text,  # Always use "prompt" field name
                 "response": response,
                 "tokens_used": tokens_used,
                 "time_taken_ms": time_taken_ms,

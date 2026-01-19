@@ -255,7 +255,7 @@ async def download_agent_records(agent_id: str, ids: list[str]) -> Response:
                     "id": item.get("id"),
                     "conversation_id": item.get("conversation_id"),
                     "scenario_name": f"{agent_id}_generation",
-                    config.input_field: item.get(config.input_field, ""),
+                    "prompt": item.get("prompt", ""),
                     "response": item.get("response", ""),
                     "tokens_used": item.get("tokens_used"),
                     "time_taken_ms": item.get("time_taken_ms"),
