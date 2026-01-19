@@ -156,7 +156,191 @@ class UnifiedAgentsService:
         except Exception as e:
             logger.error(f"Error invoking agent {agent_id}", error=str(e), exc_info=True)
             raise
-    
+
+    async def create_conversation(
+        self,
+        agent_id: str,
+        initial_message: str
+    ) -> Dict[str, Any]:
+        """
+        Create a persistent conversation for multi-turn interactions.
+
+        Used by workflows to maintain conversation state across multiple agent invocations.
+
+        Args:
+            agent_id: The agent identifier from the registry
+            initial_message: The first message to add to the conversation
+
+        Returns:
+            Dict containing:
+                - conversation_id: str
+                - agent_details: AgentDetails
+                - timestamp: datetime
+
+        Raises:
+            ValueError: If agent_id is unknown
+        """
+        config = get_agent_config(agent_id)
+        if not config:
+            raise ValueError(f"Unknown agent ID: {agent_id}")
+
+        logger.info(f"Creating persistent conversation for {config.display_name}", agent_id=agent_id)
+
+        try:
+            # Create agent
+            agent = azure_ai_service.create_agent(
+                agent_name=config.agent_name,
+                instructions=config.instructions
+            )
+            logger.info("Agent ready for persistent conversation",
+                       agent_version=agent.agent_version_object.version)
+
+            # Create conversation with initial message
+            conversation = azure_ai_service.openai_client.conversations.create(
+                items=[{"type": "message", "role": "user", "content": initial_message}]
+            )
+            logger.info("Persistent conversation created",
+                       conversation_id=conversation.id,
+                       agent_id=agent_id)
+
+            return {
+                "conversation_id": conversation.id,
+                "agent_details": agent.agent_details,
+                "agent_name": agent.agent_version_object.name,
+                "timestamp": datetime.now(timezone.utc)
+            }
+        except Exception as e:
+            logger.error(f"Error creating persistent conversation for {agent_id}",
+                        error=str(e),
+                        exc_info=True)
+            raise
+
+    async def invoke_agent_on_conversation(
+        self,
+        agent_id: str,
+        conversation_id: str,
+        agent_name: str
+    ) -> Dict[str, Any]:
+        """
+        Invoke an agent on an existing conversation without deleting it.
+
+        Used by workflows to get agent responses within a persistent conversation.
+
+        Args:
+            agent_id: The agent identifier
+            conversation_id: The existing conversation ID
+            agent_name: The Azure AI agent name (from create_conversation result)
+
+        Returns:
+            Dict containing:
+                - response_text: str
+                - tokens_used: Optional[int]
+                - timestamp: datetime
+
+        Raises:
+            ValueError: If agent_id is unknown
+        """
+        config = get_agent_config(agent_id)
+        if not config:
+            raise ValueError(f"Unknown agent ID: {agent_id}")
+
+        logger.info(f"Invoking {config.display_name} on persistent conversation",
+                   agent_id=agent_id,
+                   conversation_id=conversation_id)
+
+        try:
+            # Create response using the existing conversation
+            response = azure_ai_service.openai_client.responses.create(
+                conversation=conversation_id,
+                extra_body={"agent": {"name": agent_name, "type": "agent_reference"}},
+                input=""
+            )
+
+            response_text = response.output_text
+            if response_text is None:
+                logger.error("No response text found in persistent conversation")
+                raise ValueError("No response found")
+
+            logger.info(f"Agent response generated on persistent conversation",
+                       response_length=len(response_text),
+                       conversation_id=conversation_id)
+
+            # Extract token usage
+            tokens_used = None
+            if hasattr(response, 'usage') and response.usage:
+                tokens_used = response.usage.total_tokens
+
+            return {
+                "response_text": response_text,
+                "tokens_used": tokens_used,
+                "timestamp": datetime.now(timezone.utc)
+            }
+        except Exception as e:
+            logger.error(f"Error invoking agent on persistent conversation",
+                        agent_id=agent_id,
+                        conversation_id=conversation_id,
+                        error=str(e),
+                        exc_info=True)
+            raise
+
+    async def add_message_to_conversation(
+        self,
+        conversation_id: str,
+        message: str,
+        role: str = "user"
+    ):
+        """
+        Add a message to an existing conversation.
+
+        Used by workflows to add messages between agent invocations.
+
+        Args:
+            conversation_id: The conversation ID
+            message: The message content to add
+            role: The role of the message sender (default: "user")
+        """
+        logger.debug("Adding message to persistent conversation",
+                    conversation_id=conversation_id,
+                    message_length=len(message))
+
+        try:
+            azure_ai_service.openai_client.conversations.items.create(
+                conversation_id=conversation_id,
+                items=[{"type": "message", "role": role, "content": message}]
+            )
+            logger.debug("Message added to persistent conversation",
+                        conversation_id=conversation_id)
+        except Exception as e:
+            logger.error("Error adding message to persistent conversation",
+                        conversation_id=conversation_id,
+                        error=str(e),
+                        exc_info=True)
+            raise
+
+    async def delete_conversation(
+        self,
+        conversation_id: str
+    ):
+        """
+        Delete a conversation to clean up resources.
+
+        Used by workflows after completing multi-turn conversations.
+
+        Args:
+            conversation_id: The conversation ID to delete
+        """
+        logger.info("Deleting persistent conversation", conversation_id=conversation_id)
+
+        try:
+            azure_ai_service.openai_client.conversations.delete(conversation_id=conversation_id)
+            logger.info("Persistent conversation deleted successfully",
+                       conversation_id=conversation_id)
+        except Exception as delete_error:
+            logger.warning("Failed to delete persistent conversation",
+                         conversation_id=conversation_id,
+                         error=str(delete_error))
+            # Don't raise - deletion failures should not block workflow completion
+
     async def save_to_database(
         self,
         agent_id: str,

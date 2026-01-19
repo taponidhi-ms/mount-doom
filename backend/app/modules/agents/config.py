@@ -14,6 +14,7 @@ from .instructions import (
     PERSONA_GENERATOR_AGENT_INSTRUCTIONS,
     TRANSCRIPT_PARSER_AGENT_INSTRUCTIONS,
     C2_MESSAGE_GENERATOR_AGENT_INSTRUCTIONS,
+    C1_AGENT_INSTRUCTIONS,
 )
 
 
@@ -131,6 +132,35 @@ AGENT_REGISTRY: Dict[str, AgentConfig] = {
             {
                 "label": "Confused customer needing technical help",
                 "value": "Generate a customer message from someone confused about how to set up their new device. They should be patient but clearly need step-by-step guidance.",
+            },
+        ],
+    ),
+    "c1_message_generation": AgentConfig(
+        agent_id="c1_message_generation",
+        agent_name="C1MessageGeneratorAgent",
+        display_name="C1 Message Generator",
+        description="Generate customer service representative (C1) messages for conversation simulations. Simulates professional, empathetic service responses.",
+        instructions=C1_AGENT_INSTRUCTIONS,
+        container_name="c1_message_generation",
+        input_field="prompt",
+        input_label="Context Prompt",
+        input_placeholder="Enter the conversation context for generating a service representative response...",
+        sample_inputs=[
+            {
+                "label": "Professional greeting and assistance offer",
+                "value": "Generate an opening message from a customer service representative greeting a customer and offering assistance.",
+            },
+            {
+                "label": "Empathetic response to billing complaint",
+                "value": "Generate a service representative's response to a customer complaining about an incorrect charge. Show empathy and offer to investigate.",
+            },
+            {
+                "label": "Technical support guidance",
+                "value": "Generate a representative's response helping a customer troubleshoot their internet connection. Be patient and provide clear guidance.",
+            },
+            {
+                "label": "Resolution confirmation",
+                "value": "Generate a representative's message confirming that a customer's issue has been resolved and asking if there's anything else they can help with.",
             },
         ],
     ),

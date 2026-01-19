@@ -30,7 +30,8 @@ const AGENT_ICON_MAP: Record<string, React.ReactNode> = {
   persona_distribution: <UsergroupAddOutlined />,
   persona_generator: <UserAddOutlined />,
   transcript_parser: <FileSearchOutlined />,
-  c2_message_generation: <MessageOutlined />
+  c2_message_generation: <MessageOutlined />,
+  c1_message_generation: <CommentOutlined />
 }
 const DEFAULT_AGENT_ICON = <RobotOutlined />
 
@@ -111,6 +112,7 @@ export default function PageLayout({
         getItem('Persona Generator', '/agents/persona_generator', <UserAddOutlined />),
         getItem('Transcript Parser', '/agents/transcript_parser', <FileSearchOutlined />),
         getItem('C2 Message Generator', '/agents/c2_message_generation', <MessageOutlined />),
+        getItem('C1 Message Generator', '/agents/c1_message_generation', <CommentOutlined />),
       ]
 
   const items: MenuItem[] = [

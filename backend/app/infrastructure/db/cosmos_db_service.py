@@ -37,6 +37,7 @@ class CosmosDBService:
     CONVERSATION_SIMULATION_CONTAINER = "conversation_simulation"
     TRANSCRIPT_PARSER_CONTAINER = "transcript_parser"
     C2_MESSAGE_GENERATION_CONTAINER = "c2_message_generation"
+    C1_MESSAGE_GENERATION_CONTAINER = "c1_message_generation"
     
     def __new__(cls):
         if cls._instance is None:
