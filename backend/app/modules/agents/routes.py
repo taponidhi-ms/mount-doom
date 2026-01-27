@@ -221,57 +221,58 @@ async def delete_agent_records(agent_id: str, ids: list[str]):
 
 @router.post("/{agent_id}/download")
 async def download_agent_records(agent_id: str, ids: list[str]) -> Response:
-    """Download records for a specific agent as JSON."""
+    """Download records for a specific agent in eval format."""
     logger.info("Received download request", agent_id=agent_id, count=len(ids))
-    
+
     config = get_agent_config(agent_id)
     if not config:
         raise HTTPException(status_code=404, detail=f"Agent not found: {agent_id}")
-    
+
     if not ids:
         raise HTTPException(status_code=400, detail="No IDs provided")
-    
+
     try:
         container = await cosmos_db_service.ensure_container(config.container_name)
-        
-        records = []
-        
+
+        conversations = []
+
         for record_id in ids:
             try:
                 item = container.read_item(item=record_id, partition_key=record_id)
-                
-                # Build standardized output with flattened agent fields
+
+                # Extract fields
+                document_id = item.get("id", "")
+                instructions = item.get("agent_instructions", "")
+                prompt = item.get("prompt", "")
+                response = item.get("response", "")
+                scenario_name = config.scenario_name or config.agent_name
+
+                # Build eval format record
+                # agent_prompt is a literal template string - eval framework will substitute values
                 record = {
-                    "id": item.get("id"),
-                    "conversation_id": item.get("conversation_id"),
-                    "scenario_name": f"{agent_id}_generation",
-                    "prompt": item.get("prompt", ""),
-                    "response": item.get("response", ""),
-                    "tokens_used": item.get("tokens_used"),
-                    "time_taken_ms": item.get("time_taken_ms"),
-                    "timestamp": item.get("timestamp"),
-                    "agent_name": item.get("agent_name"),
-                    "agent_version": item.get("agent_version"),
-                    "agent_instructions": item.get("agent_instructions"),
-                    "agent_model": item.get("agent_model"),
-                    "agent_created_at": item.get("agent_created_at"),
+                    "Id": document_id,
+                    "instructions": instructions,
+                    "prompt": prompt,
+                    "agent_prompt": "[SYSTEM]\n{{instructions}}\n\n[USER]\n{{prompt}}",
+                    "agent_response": response,
+                    "scenario_name": scenario_name
                 }
-                records.append(record)
-                
+                conversations.append(record)
+
             except Exception as e:
                 logger.warning("Failed to retrieve record", record_id=record_id, error=str(e))
                 continue
-        
-        result = {"conversations": records}
+
+        result = {"conversations": conversations}
         json_str = json.dumps(result, indent=2)
-        
-        logger.info("Returning download data", record_count=len(records))
+
+        logger.info("Returning download data in eval format", record_count=len(conversations))
         return Response(
             content=json_str,
             media_type="application/json",
-            headers={"Content-Disposition": f'attachment; filename="{agent_id}_records.json"'}
+            headers={"Content-Disposition": f'attachment; filename="{agent_id}_evals.json"'}
         )
-        
+
     except Exception as e:
         logger.error("Error downloading records", agent_id=agent_id, error=str(e), exc_info=True)
         raise HTTPException(status_code=500, detail=f"Error downloading: {str(e)}")

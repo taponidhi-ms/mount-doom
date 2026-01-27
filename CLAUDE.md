@@ -239,6 +239,54 @@ response = openai_client.responses.create(
 - Supports Cosmos DB Emulator (set `COSMOS_DB_USE_EMULATOR=true`)
 - No Azure authentication needed for emulator (uses emulator key)
 
+## Download Feature (Eval Format)
+
+**Purpose**: All single-agent features support downloading conversations in a standardized format optimized for evaluation (evals) purposes.
+
+**API Endpoint**: `POST /api/v1/agents/{agent_id}/download`
+- Request body: Array of document IDs to download
+- Response: JSON file with conversations in eval format
+
+**Download Format**:
+```json
+{
+  "conversations": [
+    {
+      "Id": "document-uuid",
+      "instructions": "Full agent instruction set",
+      "prompt": "User's input prompt",
+      "agent_prompt": "[SYSTEM]\n{instructions}\n\n[USER]\n{prompt}",
+      "agent_response": "Agent's generated response",
+      "scenario_name": "AgentName"
+    }
+  ]
+}
+```
+
+**Field Descriptions**:
+- `Id`: Document ID from Cosmos DB (UUID)
+- `instructions`: Complete agent instruction set used for generation
+- `prompt`: Original user input prompt
+- `agent_prompt`: Literal template string `"[SYSTEM]\n{{instructions}}\n\n[USER]\n{{prompt}}"`
+  - This is a fixed template string that the eval framework will process
+  - The eval framework substitutes `{{instructions}}` and `{{prompt}}` with values from sibling fields
+  - Do NOT format this string - always use the literal template
+- `agent_response`: Agent's generated response text
+- `scenario_name`: Agent's scenario identifier (from agent config, defaults to agent_name)
+
+**Agent Configuration**:
+Each agent in `AGENT_REGISTRY` includes a `scenario_name` field for eval downloads:
+- `persona_distribution` → `PersonaDistributionGeneratorAgent`
+- `persona_generator` → `PersonaGeneratorAgent`
+- `transcript_parser` → `TranscriptParserAgent`
+- `c2_message_generation` → `C2MessageGeneratorAgent`
+- `c1_message_generation` → `C1MessageGeneratorAgent`
+
+**Frontend Integration**:
+- SingleAgentTemplate automatically includes download functionality
+- Users select conversations from history table and click "Download"
+- Downloaded file named: `{agent_id}_evals.json`
+
 ## Key Conventions
 
 ### Backend Code Style

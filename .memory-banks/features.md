@@ -266,7 +266,42 @@ The agent configuration is centralized in `backend/app/modules/agents/config.py`
 - POST `/api/v1/agents/{agent_id}/invoke` - Invoke agent
 - GET `/api/v1/agents/{agent_id}/browse` - Browse history
 - POST `/api/v1/agents/{agent_id}/delete` - Delete records
-- POST `/api/v1/agents/{agent_id}/download` - Download records
+- POST `/api/v1/agents/{agent_id}/download` - Download records in eval format
+
+**Download Feature (Eval Format)**:
+All single agents support downloading conversations in a standardized eval format for evaluation purposes.
+
+**Download Format**:
+```json
+{
+  "conversations": [
+    {
+      "Id": "document-uuid",
+      "instructions": "Full agent instruction set",
+      "prompt": "User's input prompt",
+      "agent_prompt": "[SYSTEM]\n{instructions}\n\n[USER]\n{prompt}",
+      "agent_response": "Agent's generated response",
+      "scenario_name": "AgentName"
+    }
+  ]
+}
+```
+
+**Field Descriptions**:
+- `Id`: Document ID from Cosmos DB (UUID)
+- `instructions`: Complete agent instruction set used for generation
+- `prompt`: Original user input prompt
+- `agent_prompt`: Literal template string `"[SYSTEM]\n{{instructions}}\n\n[USER]\n{{prompt}}"` (eval framework substitutes values from sibling fields)
+- `agent_response`: Agent's generated response text
+- `scenario_name`: Agent's scenario identifier (from agent config, defaults to agent_name)
+
+**Agent Configuration**:
+Each agent config now includes a `scenario_name` field for eval downloads:
+- `persona_distribution` → `PersonaDistributionGeneratorAgent`
+- `persona_generator` → `PersonaGeneratorAgent`
+- `transcript_parser` → `TranscriptParserAgent`
+- `c2_message_generation` → `C2MessageGeneratorAgent`
+- `c1_message_generation` → `C1MessageGeneratorAgent`
 
 ---
 

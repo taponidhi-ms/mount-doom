@@ -27,6 +27,7 @@ class AgentConfig:
     description: str
     instructions: str
     container_name: str
+    scenario_name: str = ""  # Scenario name for eval downloads (defaults to agent_name if not set)
     input_field: str = "prompt"  # UI field identifier (used for frontend only, DB always uses "prompt")
     input_label: str = "Prompt"  # Display label for the input field
     input_placeholder: str = "Enter your prompt..."  # Placeholder for input
@@ -42,6 +43,7 @@ AGENT_REGISTRY: Dict[str, AgentConfig] = {
         description="Generate persona distributions from simulation prompts. Outputs structured JSON with conversation counts, intents, sentiments, and proportions.",
         instructions=PERSONA_DISTRIBUTION_AGENT_INSTRUCTIONS,
         container_name="single_turn_conversations",
+        scenario_name="PersonaDistributionGeneratorAgent",
         input_field="prompt",
         input_label="Simulation Prompt",
         input_placeholder="Describe the persona distribution you want to generate (e.g., number of calls, intents, sentiments)...",
@@ -67,6 +69,7 @@ AGENT_REGISTRY: Dict[str, AgentConfig] = {
         description="Generate exact customer personas with specific intents, sentiments, subjects, and metadata for conversation simulations.",
         instructions=PERSONA_GENERATOR_AGENT_INSTRUCTIONS,
         container_name="single_turn_conversations",
+        scenario_name="PersonaGeneratorAgent",
         input_field="prompt",
         input_label="Prompt",
         input_placeholder="Describe the personas you want to generate (e.g., 'Generate 5 personas for technical support')...",
@@ -92,6 +95,7 @@ AGENT_REGISTRY: Dict[str, AgentConfig] = {
         description="Parse customer-representative transcripts to extract intent, subject, and sentiment from conversations.",
         instructions=TRANSCRIPT_PARSER_AGENT_INSTRUCTIONS,
         container_name="single_turn_conversations",
+        scenario_name="TranscriptParserAgent",
         input_field="transcript",
         input_label="Transcript",
         input_placeholder="Paste the customer-representative conversation transcript to analyze...",
@@ -117,6 +121,7 @@ AGENT_REGISTRY: Dict[str, AgentConfig] = {
         description="Generate customer (C2) messages for use in conversation simulations. Simulates realistic customer responses.",
         instructions=C2_MESSAGE_GENERATOR_AGENT_INSTRUCTIONS,
         container_name="single_turn_conversations",
+        scenario_name="C2MessageGeneratorAgent",
         input_field="prompt",
         input_label="Context Prompt",
         input_placeholder="Enter the conversation context for generating a customer message...",
@@ -142,6 +147,7 @@ AGENT_REGISTRY: Dict[str, AgentConfig] = {
         description="Generate customer service representative (C1) messages for conversation simulations. Simulates professional, empathetic service responses.",
         instructions=C1_AGENT_INSTRUCTIONS,
         container_name="single_turn_conversations",
+        scenario_name="C1MessageGeneratorAgent",
         input_field="prompt",
         input_label="Context Prompt",
         input_placeholder="Enter the conversation context for generating a service representative response...",

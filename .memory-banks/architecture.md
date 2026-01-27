@@ -57,7 +57,8 @@ All agent instructions are consolidated in a single file:
 
 #### Agent Configuration Registry (config.py)
 - Maintains `AGENT_REGISTRY` dictionary with all agent configurations
-- Each `AgentConfig` contains: agent_id, agent_name, display_name, description, instructions, container_name, input_field, input_label, input_placeholder
+- Each `AgentConfig` contains: agent_id, agent_name, display_name, description, instructions, container_name, scenario_name, input_field, input_label, input_placeholder
+- `scenario_name`: Used for eval downloads, defaults to agent_name if not specified
 - Imports instructions from centralized `instructions.py`
 - Provides helper functions: `get_agent_config()`, `get_all_agents()`, `list_agent_ids()`
 
@@ -75,7 +76,7 @@ All agent instructions are consolidated in a single file:
 - `POST /api/v1/agents/{agent_id}/invoke` - Invoke agent with input
 - `GET /api/v1/agents/{agent_id}/browse` - Browse agent history
 - `POST /api/v1/agents/{agent_id}/delete` - Delete agent records
-- `POST /api/v1/agents/{agent_id}/download` - Download agent records
+- `POST /api/v1/agents/{agent_id}/download` - Download agent records in eval format (see Features documentation)
 
 ### Workflows Module (modules/workflows/)
 A module for multi-agent workflow configurations:
@@ -182,7 +183,7 @@ Does NOT contain:
   - POST `/{agent_id}/invoke` - Invoke agent with input
   - GET `/{agent_id}/browse` - Browse agent history
   - POST `/{agent_id}/delete` - Delete agent records
-  - POST `/{agent_id}/download` - Download agent records
+  - POST `/{agent_id}/download` - Download agent records in standardized eval format
 
 #### Workflows API
 - `/api/v1/workflows/*` - Workflow configurations

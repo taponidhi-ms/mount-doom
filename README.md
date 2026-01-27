@@ -59,6 +59,33 @@ Generate customer (C2) messages for use in conversation simulations. Simulates r
 #### 5. Conversation Simulation
 Simulate complex multi-turn conversations between customer service representatives (C1) and customers (C2) with intelligent orchestration.
 
+### Download for Evals
+
+All single-agent features support downloading conversations in a standardized evaluation format:
+
+**Download Format**:
+```json
+{
+  "conversations": [
+    {
+      "Id": "document-uuid",
+      "instructions": "Full agent instruction set",
+      "prompt": "User's input prompt",
+      "agent_prompt": "[SYSTEM]\n{instructions}\n\n[USER]\n{prompt}",
+      "agent_response": "Agent's generated response",
+      "scenario_name": "AgentName"
+    }
+  ]
+}
+```
+
+**How to Use**:
+1. Navigate to any single-agent feature (Persona Distribution, Persona Generator, Transcript Parser, C2 Message Generator)
+2. Go to the History tab
+3. Select conversations using checkboxes
+4. Click the "Download" button
+5. Save the JSON file for evaluation purposes
+
 ## Quick Start
 
 ### Prerequisites
