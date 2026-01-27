@@ -169,19 +169,26 @@
 
 **Workflow**:
 1. User provides a prompt with conversation context
-2. Backend sends prompt to C2MessageGeneratorAgent via Azure AI Projects
+2. Backend sends prompt to C2MessageGeneratorAgent via unified agents service
 3. Agent generates a customer message based on the context
-4. Response stored in Cosmos DB `c2_message_generation` container
+4. **Response stored in Cosmos DB** `c2_message_generation` container with full metrics
 5. Frontend displays the generated message
 
 **Agent**:
 - C2MessageGeneratorAgent (fixed agent name)
-- Instructions defined in `app/modules/c2_message_generation/instructions.py`
+- Instructions defined in `app/modules/agents/instructions.py`
 - Model: gpt-4 (default from settings)
+- **Accessed via**: Unified agents API (`/api/v1/agents/c2_message_generation/invoke`)
 
 **Database Schema**:
 - Document ID: conversation_id from Azure AI
-- Fields: prompt, response, tokens_used, time_taken_ms, agent_details, timestamp
+- Fields: prompt, response, tokens_used, time_taken_ms, agent_details, timestamp, conversation_id
+
+**Metrics Tracked**:
+- Tokens used (for both standalone and simulation use)
+- Time taken
+- Conversation ID from Azure AI
+- Start/end timestamps
 
 ---
 
@@ -197,29 +204,38 @@
 1. User provides customer configuration (Manual entry of Intent, Sentiment, Subject).
 2. Max turns is hardcoded to 15 in backend.
 3. Simulation starts:
-   - System initiates conversation with "Hello" from customer perspective to trigger C1.
+   - **Empty conversation created** (no initial customer message)
+   - **C1 checks for empty conversation** and greets the customer on first turn
    - Loop:
      - **C1 Turn**: C1MessageGeneratorAgent generates response to conversation history.
      - **C1 Termination Check**: If C1 says "end this call now" or "transfer...", loop ends.
-     - **C2 Turn**: 
-       - Backend constructs JSON transcript of conversation + properties.
-       - C2MessageGeneratorAgent generates response using this transcript as input.
+     - **C2 Turn**:
+       - Backend constructs prompt: "Generate a next message as a customer for the following ongoing conversation where ConversationProperties: {...} Messages: [...]"
+       - **C2 via unified agents service**: Uses `invoke_agent('c2_message_generation', prompt, persist=True)`
+       - **C2 conversation persisted**: Tokens, conversation_id, and full metrics saved to database
        - C2 response is added to the conversation history.
-     - Repeat until 15 turns.
+     - Repeat until 15 turns or completion.
 4. Full conversation stored in Cosmos DB `conversation_simulation` container.
-5. Frontend displays conversation history.
+5. Frontend displays conversation history with tokens for both C1 and C2 messages.
 
 **Agents**:
-- Instructions defined in `app/modules/conversation_simulation/instructions.py`
-- **C1 Instructions**: Standard CSR instructions, unaware of hidden conversation properties.
-- **C2 Instructions**: Customer instructions (in c2_message_generation module), explicitly aware of properties via JSON input.
+- Instructions defined in `app/modules/agents/instructions.py`
+- **C1 Instructions**:
+  - Standard CSR instructions, unaware of hidden conversation properties
+  - **Greeting behavior**: Explicitly instructed to greet customer when conversation is empty
+  - Example: "Hi there, how can I help you today?"
+- **C2 Instructions**: Customer instructions, explicitly aware of properties via structured prompt input.
 
 **Key Features**:
+- **C1 greeting on empty conversation**: C1 checks if conversation is empty and greets customer
 - C1 is unaware of conversation properties (properties removed from C1 context).
-- C2 receives context via "Ongoing transcript" JSON input string.
-- C2 message generation delegated to `c2_message_generation` module.
+- **C2 receives context via structured prompt**: "Generate a next message as a customer for the following ongoing conversation where ConversationProperties: {...} Messages: [...]"
+- **C2 via unified agents service**: Uses `invoke_agent()` with `persist=True` for database storage
+- **C2 metrics tracked**: tokens_used and conversation_id for every C2 message
 - Orchestration is done via explicit Python loop + individual Agent API calls.
-- Data stored in `conversation_simulation` container.
+- **Two database containers**:
+  - `conversation_simulation` - Full multi-turn conversations
+  - `c2_message_generation` - Individual C2 message generations
 
 **Browse API**:
 - GET `/api/v1/conversation-simulation/browse`
@@ -310,3 +326,12 @@ The workflow configuration is centralized in `backend/app/modules/workflows/conf
 - **Agent instructions display**: All agent pages show the agent's instruction set (collapsible)
 - **Workflow instructions display**: Workflow pages show all agent instructions in collapsible panels
 - **Dynamic navigation**: Sidebar with "Agents" and "Workflows" sections
+
+### History Table Enhancements
+- **Column visibility controls**: Settings dropdown (⚙️) to show/hide columns
+- **Document ID column**: Hidden by default, shows Cosmos DB document ID (copyable)
+- **Conversation ID column**: Hidden by default, shows Azure AI conversation ID (copyable)
+- **Fixed column widths**: 200-300px to prevent horizontal scroll
+- **Tooltips on hover**: View full text for long content
+- **Ellipsis for overflow**: Prevents text breaking table layout
+- **Consistent across all pages**: SingleAgentTemplate and custom agent pages

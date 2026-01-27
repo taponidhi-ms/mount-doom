@@ -65,7 +65,9 @@ All agent instructions are consolidated in a single file:
 - Generic service that can invoke any agent by agent_id
 - Uses agent config to determine instructions and container
 - Handles conversation creation, response extraction, JSON parsing
-- Saves results to the appropriate Cosmos DB container
+- **Internal persistence**: `invoke_agent()` method handles timing, metrics, and database persistence internally
+- **Returns Result models**: Service methods return `*Result` models (e.g., `AgentInvokeResult`) for internal use
+- **Saves results to database**: Calls `CosmosDBService.save_document()` internally when `persist=True`
 
 #### Unified Agents Routes (routes.py)
 - `GET /api/v1/agents/list` - List all available agents with configurations
@@ -162,6 +164,7 @@ Methods:
 - `save_document()` - Generic method to save any document to a container
 - `browse_container()` - Browse container with pagination and ordering
   - Supports custom ordering by field (default: timestamp DESC)
+  - **Supports filtering by agent_name** - Optional parameter to filter results by specific agent
   - Returns paginated results with total count and page info
   - Used by all browse endpoints
 
@@ -195,9 +198,11 @@ Does NOT contain:
 
 Routes only:
 1. Extract request parameters
-2. Call appropriate service method
-3. Save results via service's save_to_database() method
-4. Return formatted response
+2. Call appropriate service method (which returns `*Result` models)
+3. Transform Result to Response model for API response
+4. Return formatted `*Response` to client
+
+**Note**: Persistence logic is now handled internally by service methods, not by routes.
 
 ## Frontend Architecture
 
@@ -253,7 +258,13 @@ The navigation sidebar organizes pages into two main sections:
 Reusable template for single-agent features with three tabs:
 - **Generate Tab**: Form for creating single requests with sample inputs
 - **Batch Tab**: Process multiple inputs with configurable delay
-- **History Tab**: Paginated view of past results with filter, sort, download, multi-select, delete
+- **History Tab**: Paginated view of past results with:
+  - Filter, sort, download, multi-select, delete
+  - **Column visibility controls**: Settings dropdown to show/hide columns
+  - **Document ID and Conversation ID columns**: Hidden by default, can be toggled
+  - **Fixed column widths**: Prevents horizontal scroll issues
+  - **Tooltips**: Hover to see full text for long content
+  - **Copyable IDs**: Document ID and Conversation ID are copyable
 
 Configuration via `SingleAgentConfig`:
 - `title`, `description`, `pageKey`
@@ -368,10 +379,11 @@ The conversation simulation uses a shared conversation multi-agent workflow wher
 4. Each agent turn builds upon the complete conversation history
 
 ### Conversation Simulation Architecture
-The C2 (customer) message generation is delegated to a separate module:
+The C2 (customer) message generation uses the unified agents service:
 - **C1 Agent**: Managed by `conversation_simulation` module
-- **C2 Agent**: Managed by `c2_message_generation` module
-- The `conversation_simulation_service` imports and uses `c2_message_generation_service.generate_message_stateless()` for C2 responses
+- **C2 Agent**: Uses unified agents service (`invoke_agent('c2_message_generation', ...)`)
+- **C2 message persistence**: C2 messages are now persisted to the database with `persist=True`
+- **C2 prompt format**: "Generate a next message as a customer for the following ongoing conversation where ConversationProperties: {...} Messages: [...]"
 - This allows C2 message generation to be used independently (standalone API) or as part of conversation simulation
 
 ### Agent Naming Convention
@@ -409,20 +421,27 @@ response = openai_client.responses.create(
 ```
 
 ### Workflow Pattern
-For each conversation turn:
-1. **C1 Agent** (service representative): Generates response based on conversation context
-2. **C2 Agent** (customer): Generates customer response
-3. If completed or max turns reached: End conversation
+Conversation flow:
+1. **Conversation initialization**: Empty conversation created (no initial customer message)
+2. **C1 Agent greeting**: C1 agent checks if conversation is empty and greets the customer
+3. For each conversation turn:
+   - **C1 Agent** (service representative): Generates response based on conversation context
+   - **C2 Agent** (customer): Generates customer response using unified agents service with persistence
+   - If completed or max turns reached: End conversation
 
 ### ConversationSimulationService Methods
 - `simulate_conversation()`: Main orchestration method that runs full conversation
-  - Creates both agents
-  - Manages shared conversation lifecycle
+  - Creates C1 agent
+  - Creates empty conversation (no initial message)
   - Runs conversation turns until completion or max_turns
+  - C1 checks if conversation is empty and greets customer on first turn
+  - C2 messages generated via unified agents service with persistence
   - Returns complete results with all metrics
 
-- `_invoke_c1_agent()`: Helper to invoke C1 agent on shared conversation
-- `_invoke_c2_agent()`: Helper to invoke C2 agent on shared conversation
+### ConversationMessage Model
+- **Fields**: role, content, tokens_used, timestamp, conversation_id
+- **tokens_used**: Populated for both C1 and C2 messages
+- **conversation_id**: Azure AI conversation ID for message tracking
 
 ### Benefits
 - Shared context across all turns and agents

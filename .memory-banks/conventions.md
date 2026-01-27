@@ -30,11 +30,43 @@ When running Python commands, pip operations, or testing imports:
 - Constants: UPPER_SNAKE_CASE (e.g., `API_BASE_URL`)
 - Private methods: prefix with underscore (e.g., `_initialize_client`)
 
+### Model Naming Pattern (Result vs Response)
+**Service Layer Models** - Use `*Result` suffix:
+- Returned by service methods for internal use
+- Contains all data needed by routes
+- Example: `AgentInvokeResult`, `ConversationSimulationResult`
+
+**API Layer Models** - Use `*Response` suffix:
+- Returned by API endpoints to clients
+- Public-facing schema
+- Example: `AgentInvokeResponse`, `ConversationSimulationResponse`
+
+**Pattern**:
+```python
+# Service layer
+class AgentInvokeResult(BaseModel):
+    response_text: str
+    tokens_used: Optional[int] = None
+    # ... other fields
+
+# API layer
+class AgentInvokeResponse(BaseModel):
+    response_text: str
+    tokens_used: Optional[int] = None
+    # ... same fields as Result
+
+# Route transforms Result → Response
+@router.post("/invoke")
+async def invoke_agent(...) -> AgentInvokeResponse:
+    result = await service.invoke_agent(...)
+    return AgentInvokeResponse(**result.model_dump())
+```
+
 ### File Organization
 - **Full Vertical Slices**: Each module in `app/modules/` contains all code for a feature:
-  - `routes.py`: API endpoints
-  - `models.py`: API schemas and Database models
-  - `*_service.py`: Business logic
+  - `routes.py`: API endpoints (transform Result → Response)
+  - `models.py`: API schemas (Result models for service layer, Response models for API layer)
+  - `*_service.py`: Business logic and persistence
   - `agents.py`: Agent creation logic
   - `instructions.py`: Agent instructions
 - **Unified Agents Module** (`app/modules/agents/`):
