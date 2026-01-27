@@ -18,6 +18,7 @@ import {
   Popconfirm,
   Tooltip,
   Modal,
+  Dropdown,
 } from 'antd'
 import {
   ReloadOutlined,
@@ -26,6 +27,7 @@ import {
   FilterOutlined,
   SortAscendingOutlined,
   SortDescendingOutlined,
+  SettingOutlined,
 } from '@ant-design/icons'
 import { useTimezone } from '@/lib/timezone-context'
 import type {
@@ -62,6 +64,16 @@ export default function SingleAgentTemplate({ config }: SingleAgentTemplateProps
   const [orderDirection, setOrderDirection] = useState<'ASC' | 'DESC'>('DESC')
   const [currentPage, setCurrentPage] = useState(1)
   const [pageSize, setPageSize] = useState(10)
+  const [visibleColumns, setVisibleColumns] = useState<Record<string, boolean>>({
+    timestamp: true,
+    document_id: false,
+    conversation_id: false,
+    input: true,
+    response: true,
+    tokens: true,
+    time: true,
+    actions: true,
+  })
 
   // Batch state
   const [batchItems, setBatchItems] = useState<BatchItem[]>([])
@@ -284,27 +296,88 @@ export default function SingleAgentTemplate({ config }: SingleAgentTemplateProps
     setDetailModalVisible(true)
   }
 
-  const defaultHistoryColumns = [
+  const allHistoryColumns = [
     {
       title: 'Timestamp',
       dataIndex: 'timestamp',
       key: 'timestamp',
       render: (text: string) => formatTimestamp(text),
-      width: 250,
+      width: 200,
+      visible: visibleColumns.timestamp,
+    },
+    {
+      title: 'Document ID',
+      dataIndex: 'id',
+      key: 'document_id',
+      width: 120,
+      ellipsis: {
+        showTitle: false,
+      },
+      render: (text: string) => (
+        <Tooltip title={text}>
+          <span>{text?.substring(0, 8)}...</span>
+        </Tooltip>
+      ),
+      visible: visibleColumns.document_id,
+    },
+    {
+      title: 'Conversation ID',
+      dataIndex: 'conversation_id',
+      key: 'conversation_id',
+      width: 150,
+      ellipsis: {
+        showTitle: false,
+      },
+      render: (text: string) => (
+        <Tooltip title={text}>
+          <span>{text?.substring(0, 12)}...</span>
+        </Tooltip>
+      ),
+      visible: visibleColumns.conversation_id,
     },
     {
       title: 'Input',
       dataIndex: config.inputFieldName,
-      key: config.inputFieldName,
-      ellipsis: true,
-      render: (text: string) => text || 'N/A',
+      key: 'input',
+      width: 300,
+      ellipsis: {
+        showTitle: false,
+      },
+      render: (text: string) => (
+        <Tooltip title={text} overlayStyle={{ maxWidth: 500 }}>
+          <div style={{
+            maxWidth: '100%',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap'
+          }}>
+            {text || 'N/A'}
+          </div>
+        </Tooltip>
+      ),
+      visible: visibleColumns.input,
     },
     {
-      title: 'Response Preview',
+      title: 'Response',
       dataIndex: 'response',
       key: 'response',
-      ellipsis: true,
-      render: (text: string) => (text ? text.substring(0, 100) + (text.length > 100 ? '...' : '') : 'N/A'),
+      width: 400,
+      ellipsis: {
+        showTitle: false,
+      },
+      render: (text: string) => (
+        <Tooltip title={text} overlayStyle={{ maxWidth: 500 }}>
+          <div style={{
+            maxWidth: '100%',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap'
+          }}>
+            {text || 'N/A'}
+          </div>
+        </Tooltip>
+      ),
+      visible: visibleColumns.response,
     },
     {
       title: 'Tokens',
@@ -312,6 +385,7 @@ export default function SingleAgentTemplate({ config }: SingleAgentTemplateProps
       key: 'tokens',
       width: 100,
       render: (value: number) => value || 'N/A',
+      visible: visibleColumns.tokens,
     },
     {
       title: 'Time (ms)',
@@ -319,20 +393,23 @@ export default function SingleAgentTemplate({ config }: SingleAgentTemplateProps
       key: 'time',
       width: 120,
       render: (value: number) => (value ? Math.round(value) : 'N/A'),
+      visible: visibleColumns.time,
     },
     {
       title: 'Actions',
       key: 'actions',
       width: 100,
+      fixed: 'right' as const,
       render: (_: unknown, record: SingleAgentHistoryItem) => (
         <Button type="link" size="small" onClick={() => handleViewDetail(record)}>
           View
         </Button>
       ),
+      visible: visibleColumns.actions,
     },
   ]
 
-  const historyColumns = config.historyColumns || defaultHistoryColumns
+  const historyColumns = (config.historyColumns || allHistoryColumns).filter((col: any) => col.visible !== false)
 
   const batchColumns = [
     {
@@ -630,6 +707,94 @@ export default function SingleAgentTemplate({ config }: SingleAgentTemplateProps
                     }}
                   />
                 </Tooltip>
+                <Dropdown
+                  menu={{
+                    items: [
+                      {
+                        key: 'timestamp',
+                        label: (
+                          <Checkbox
+                            checked={visibleColumns.timestamp}
+                            onChange={(e) => setVisibleColumns({ ...visibleColumns, timestamp: e.target.checked })}
+                          >
+                            Timestamp
+                          </Checkbox>
+                        ),
+                      },
+                      {
+                        key: 'document_id',
+                        label: (
+                          <Checkbox
+                            checked={visibleColumns.document_id}
+                            onChange={(e) => setVisibleColumns({ ...visibleColumns, document_id: e.target.checked })}
+                          >
+                            Document ID
+                          </Checkbox>
+                        ),
+                      },
+                      {
+                        key: 'conversation_id',
+                        label: (
+                          <Checkbox
+                            checked={visibleColumns.conversation_id}
+                            onChange={(e) => setVisibleColumns({ ...visibleColumns, conversation_id: e.target.checked })}
+                          >
+                            Conversation ID
+                          </Checkbox>
+                        ),
+                      },
+                      {
+                        key: 'input',
+                        label: (
+                          <Checkbox
+                            checked={visibleColumns.input}
+                            onChange={(e) => setVisibleColumns({ ...visibleColumns, input: e.target.checked })}
+                          >
+                            Input
+                          </Checkbox>
+                        ),
+                      },
+                      {
+                        key: 'response',
+                        label: (
+                          <Checkbox
+                            checked={visibleColumns.response}
+                            onChange={(e) => setVisibleColumns({ ...visibleColumns, response: e.target.checked })}
+                          >
+                            Response
+                          </Checkbox>
+                        ),
+                      },
+                      {
+                        key: 'tokens',
+                        label: (
+                          <Checkbox
+                            checked={visibleColumns.tokens}
+                            onChange={(e) => setVisibleColumns({ ...visibleColumns, tokens: e.target.checked })}
+                          >
+                            Tokens
+                          </Checkbox>
+                        ),
+                      },
+                      {
+                        key: 'time',
+                        label: (
+                          <Checkbox
+                            checked={visibleColumns.time}
+                            onChange={(e) => setVisibleColumns({ ...visibleColumns, time: e.target.checked })}
+                          >
+                            Time (ms)
+                          </Checkbox>
+                        ),
+                      },
+                    ],
+                  }}
+                  trigger={['click']}
+                >
+                  <Tooltip title="Column Settings">
+                    <Button icon={<SettingOutlined />} />
+                  </Tooltip>
+                </Dropdown>
               </Space>
             }
           >
@@ -678,7 +843,7 @@ export default function SingleAgentTemplate({ config }: SingleAgentTemplateProps
                 showTotal: (total, range) => `${range[0]}-${range[1]} of ${total}`,
                 onChange: (page, size) => loadHistory(page, size),
               }}
-              scroll={{ x: true }}
+              scroll={{ x: 'max-content' }}
             />
           </Card>
         </Space>
@@ -698,10 +863,14 @@ export default function SingleAgentTemplate({ config }: SingleAgentTemplateProps
         width={800}
       >
         {selectedRecord && (
-          <Space direction="vertical" style={{ width: '100%' }}>
+          <Space direction="vertical" style={{ width: '100%' }} size="middle">
             <div>
-              <Text strong>ID:</Text>
+              <Text strong>Document ID:</Text>
               <Text copyable style={{ marginLeft: 8 }}>{selectedRecord.id}</Text>
+            </div>
+            <div>
+              <Text strong>Conversation ID:</Text>
+              <Text copyable style={{ marginLeft: 8 }}>{selectedRecord.conversation_id || 'N/A'}</Text>
             </div>
             <div>
               <Text strong>Timestamp:</Text>
@@ -709,20 +878,20 @@ export default function SingleAgentTemplate({ config }: SingleAgentTemplateProps
             </div>
             <div>
               <Text strong>{config.inputLabel}:</Text>
-              <Paragraph style={{ background: '#f5f5f5', padding: 12, borderRadius: 8, marginTop: 8 }}>
+              <Paragraph style={{ background: '#f5f5f5', padding: 12, borderRadius: 8, marginTop: 8, whiteSpace: 'pre-wrap', maxHeight: 200, overflow: 'auto' }}>
                 {selectedRecord[config.inputFieldName as keyof SingleAgentHistoryItem] as string || 'N/A'}
               </Paragraph>
             </div>
             <div>
               <Text strong>Response:</Text>
-              <Paragraph style={{ background: '#f5f5f5', padding: 12, borderRadius: 8, marginTop: 8, whiteSpace: 'pre-wrap' }}>
+              <Paragraph style={{ background: '#f5f5f5', padding: 12, borderRadius: 8, marginTop: 8, whiteSpace: 'pre-wrap', maxHeight: 300, overflow: 'auto' }}>
                 {selectedRecord.response || selectedRecord.response_text || 'N/A'}
               </Paragraph>
             </div>
             {selectedRecord.parsed_output && (
               <div>
                 <Text strong>Parsed Output:</Text>
-                <pre style={{ background: '#e6f7ff', padding: 12, borderRadius: 8, marginTop: 8, whiteSpace: 'pre-wrap' }}>
+                <pre style={{ background: '#e6f7ff', padding: 12, borderRadius: 8, marginTop: 8, whiteSpace: 'pre-wrap', maxHeight: 300, overflow: 'auto' }}>
                   {JSON.stringify(selectedRecord.parsed_output, null, 2)}
                 </pre>
               </div>

@@ -17,8 +17,9 @@ class ConversationMessage(BaseModel):
     """A single message in a conversation."""
     role: str  # "agent" for C1, "customer" for C2
     content: str
-    tokens_used: Optional[int] = None  # Only populated for C1 agent messages
+    tokens_used: Optional[int] = None  # Populated for both C1 and C2 messages
     timestamp: datetime
+    conversation_id: Optional[str] = None  # Azure AI conversation_id for the message
 
 class ConversationSimulationRequest(BaseRequest):
     """Request for conversation simulation feature."""
@@ -33,7 +34,7 @@ class ConversationSimulationResponse(BaseModel):
     total_time_taken_ms: float
     start_time: datetime
     end_time: datetime
-    agent_details: AgentDetails  # Primary agent (C1) details
+    agent_details: Dict[str, Any]  # Primary agent (C1) details as dict
     conversation_id: str
 
 class ConversationSimulationResult(BaseModel):
@@ -43,7 +44,7 @@ class ConversationSimulationResult(BaseModel):
     total_time_taken_ms: float
     start_time: datetime
     end_time: datetime
-    agent_details: AgentDetails  # Primary agent (C1) details
+    agent_details: Dict[str, Any]  # Primary agent (C1) details as dict
     conversation_id: str
 
 # DB Models

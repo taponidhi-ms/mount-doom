@@ -10,6 +10,7 @@ import type {
   DeleteResponse,
   ConversationMessage,
   MultiAgentHistoryItem,
+  AgentDetails,
 } from './types'
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
@@ -24,16 +25,10 @@ export type {
   ConversationMessage,
   MultiAgentResponse,
   MultiAgentHistoryItem,
+  AgentDetails,
 } from './types'
 
 // Shared types
-export interface AgentDetails {
-  agent_name: string;
-  agent_version?: string;
-  instructions: string;
-  model_deployment_name: string;
-  created_at: string;
-}
 
 export interface BaseResponse {
   response_text: string;
@@ -136,7 +131,8 @@ export interface AgentInvokeResponse {
   time_taken_ms: number;
   start_time: string;
   end_time: string;
-  agent_details: Record<string, unknown>;
+  agent_details: AgentDetails;
+  conversation_id: string;
   parsed_output?: Record<string, unknown>;
 }
 

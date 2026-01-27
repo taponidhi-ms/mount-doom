@@ -26,16 +26,44 @@ class AgentListResponse(BaseModel):
 
 
 class AgentInvokeRequest(BaseModel):
-    """Request to invoke an agent."""
+    """Request to invoke an agent (API layer)."""
     input: str  # The input text (prompt or transcript depending on agent)
 
 
 class AgentInvokeResponse(BaseModel):
-    """Response from invoking an agent."""
+    """Response from invoking an agent (API layer)."""
     response_text: str
     tokens_used: Optional[int] = None
     time_taken_ms: float
     start_time: datetime
     end_time: datetime
     agent_details: Dict[str, Any]
-    parsed_output: Optional[Dict[str, Any]] = None
+    conversation_id: str
+
+
+# Service layer models (used internally by agents_service)
+
+class AgentInvokeResult(BaseModel):
+    """Result from invoking an agent (service layer)."""
+    response_text: str
+    tokens_used: Optional[int] = None
+    time_taken_ms: float
+    start_time: datetime
+    end_time: datetime
+    agent_details: Dict[str, Any]
+    conversation_id: str
+
+
+class CreateConversationResult(BaseModel):
+    """Result from creating a persistent conversation (service layer)."""
+    conversation_id: str
+    agent_details: Dict[str, Any]
+    agent_name: str
+    timestamp: datetime
+
+
+class InvokeOnConversationResult(BaseModel):
+    """Result from invoking an agent on an existing conversation (service layer)."""
+    response_text: str
+    tokens_used: Optional[int] = None
+    timestamp: datetime

@@ -28,21 +28,6 @@ class ConversationSimulationService:
     def __init__(self):
         pass
 
-    async def _generate_c2_message(self, input_text: str) -> str:
-        """Generate a C2 (customer) message using agents_service."""
-        logger.debug("Generating C2 message via agents_service")
-
-        # Use unified agents service for C2 (stateless invocation)
-        result = await unified_agents_service.invoke_agent(
-            agent_id="c2_message_generation",
-            input_text=input_text
-        )
-
-        c2_text = result["response_text"]
-        logger.debug("C2 message generated", text_length=len(c2_text))
-
-        return c2_text
-
     async def simulate_conversation(
             self,
             conversation_properties: dict,
@@ -67,14 +52,16 @@ class ConversationSimulationService:
         c2_config = get_agent_config("c2_message_generation")
 
         # Create persistent C1 conversation via agents_service
+        # Empty initial_message creates conversation without any initial items
+        # C1 will greet first when invoked on the empty conversation
         logger.info("Creating persistent C1 conversation via agents_service")
         c1_conversation_result = await unified_agents_service.create_conversation(
             agent_id="c1_message_generation",
-            initial_message="Hello"
+            initial_message=""  # Empty = no initial message, C1 greets first
         )
-        conversation_id = c1_conversation_result["conversation_id"]
-        c1_agent_details = c1_conversation_result["agent_details"]
-        c1_agent_name = c1_conversation_result["agent_name"]
+        conversation_id = c1_conversation_result.conversation_id
+        c1_agent_details = c1_conversation_result.agent_details
+        c1_agent_name = c1_conversation_result.agent_name
 
         # Get C2 agent details (create temporarily to get details)
         c2_agent = create_c2_agent()
@@ -85,16 +72,9 @@ class ConversationSimulationService:
                    c2_agent=C2_MESSAGE_GENERATOR_AGENT_NAME,
                    conversation_id=conversation_id)
 
+        # Start with empty conversation history - C1 will greet first
         conversation_history: List[ConversationMessage] = []
         conversation_status = "Ongoing"
-
-        # Add initial "Hello" to history as customer message
-        conversation_history.append(ConversationMessage(
-            role="customer",
-            content="Hello",
-            tokens_used=None,
-            timestamp=datetime.now(timezone.utc)
-        ))
 
         turn_count = 0
         while turn_count < max_turns and conversation_status == "Ongoing":
@@ -102,20 +82,28 @@ class ConversationSimulationService:
 
             # --- C1 (Agent) Turn ---
             logger.debug("Creating C1 response via agents_service...")
+
+            # On first turn (empty conversation), provide a prompt to trigger greeting
+            # On subsequent turns, empty input is fine as conversation has history
+            is_first_turn = len(conversation_history) == 0
+            input_prompt = "Begin the conversation" if is_first_turn else ""
+
             c1_result = await unified_agents_service.invoke_agent_on_conversation(
                 agent_id="c1_message_generation",
                 conversation_id=conversation_id,
-                agent_name=c1_agent_name
+                agent_name=c1_agent_name,
+                input_message=input_prompt
             )
-            c1_text = c1_result["response_text"]
-            c1_tokens = c1_result.get("tokens_used")
+            c1_text = c1_result.response_text
+            c1_tokens = c1_result.tokens_used
             logger.info("C1 Response", text=c1_text, tokens_used=c1_tokens)
 
             conversation_history.append(ConversationMessage(
                 role="agent",
                 content=c1_text,
                 tokens_used=c1_tokens,
-                timestamp=datetime.now(timezone.utc)
+                timestamp=datetime.now(timezone.utc),
+                conversation_id=conversation_id
             ))
 
             # Check termination by C1
@@ -124,35 +112,52 @@ class ConversationSimulationService:
                 break
 
             # --- C2 (Customer) Turn ---
-            # Construct C2 input
+            # Construct C2 input with new format
             mapped_msgs = []
             for i, msg in enumerate(conversation_history):
+                # Capitalize role to match expected format (Agent/Customer)
+                role_key = "Agent" if msg.role == "agent" else "Customer"
                 mapped_msgs.append({
-                    msg.role: msg.content,
+                    role_key: msg.content,
                     "Id": i + 1
                 })
 
-            c2_payload = {
-                "Properties": conversation_properties,
-                "messages": mapped_msgs
-            }
-            c2_input_text = f"Ongoing transcript: {json.dumps(c2_payload)}"
+            # Build prompt in the required format
+            conversation_props_str = json.dumps({
+                "CustomerIntent": conversation_properties.get("CustomerIntent"),
+                "CustomerSentiment": conversation_properties.get("CustomerSentiment"),
+                "ConversationSubject": conversation_properties.get("ConversationSubject")
+            })
+            messages_str = json.dumps(mapped_msgs)
+            c2_input_text = f"Generate a next message as a customer for the following ongoing conversation where ConversationProperties: {conversation_props_str} Messages: {messages_str}"
 
             logger.debug("Creating C2 response...", input_preview=c2_input_text[:100])
-            c2_text = await self._generate_c2_message(c2_input_text)
-            logger.info("C2 Response", text=c2_text)
+
+            # Use invoke_agent directly with persist=True to save C2 conversations
+            c2_result = await unified_agents_service.invoke_agent(
+                agent_id="c2_message_generation",
+                input_text=c2_input_text,
+                persist=True
+            )
+
+            c2_text = c2_result.response_text
+            c2_tokens = c2_result.tokens_used
+            c2_conversation_id = c2_result.conversation_id
+            logger.info("C2 Response", text=c2_text, tokens_used=c2_tokens, conversation_id=c2_conversation_id)
 
             conversation_history.append(ConversationMessage(
                 role="customer",
                 content=c2_text,
-                tokens_used=None,  # Don't track C2 tokens
-                timestamp=datetime.now(timezone.utc)
+                tokens_used=c2_tokens,
+                timestamp=datetime.now(timezone.utc),
+                conversation_id=c2_conversation_id  # Track C2's conversation_id
             ))
 
             # Add C2 message to C1's conversation via agents_service
             await unified_agents_service.add_message_to_conversation(
                 conversation_id=conversation_id,
-                message=c2_text
+                message=c2_text,
+                role="user"
             )
 
             turn_count += 1
@@ -196,10 +201,12 @@ class ConversationSimulationService:
         # Generate random UUID for document ID
         document_id = str(uuid.uuid4())
 
-        # Parse agent details
-        agent = AgentDetails(**agent_details)
-
         # Build document with flattened agent details (C1 only)
+        # agent_details is already a dict with agent_name, agent_version, etc.
+        created_at = agent_details.get("created_at", "")
+        if isinstance(created_at, datetime):
+            created_at = created_at.isoformat()
+
         document = {
             "id": document_id,
             "conversation_id": conversation_id,
@@ -209,11 +216,11 @@ class ConversationSimulationService:
             "conversation_status": conversation_status,
             "total_time_taken_ms": total_time_taken_ms,
             # Flattened primary agent (C1) details at root
-            "agent_name": agent.agent_name,
-            "agent_version": agent.agent_version,
-            "agent_instructions": agent.instructions,
-            "agent_model": agent.model_deployment_name,
-            "agent_created_at": agent.created_at.isoformat() if isinstance(agent.created_at, datetime) else agent.created_at,
+            "agent_name": agent_details.get("agent_name"),
+            "agent_version": agent_details.get("agent_version"),
+            "agent_instructions": agent_details.get("instructions"),
+            "agent_model": agent_details.get("model_deployment_name"),
+            "agent_created_at": created_at,
         }
 
         await cosmos_db_service.save_document(

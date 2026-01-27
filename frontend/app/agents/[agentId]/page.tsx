@@ -21,6 +21,8 @@ import {
   Collapse,
   Spin,
   Segmented,
+  Dropdown,
+  Checkbox,
 } from 'antd'
 import {
   ReloadOutlined,
@@ -29,6 +31,7 @@ import {
   SortAscendingOutlined,
   SortDescendingOutlined,
   InfoCircleOutlined,
+  SettingOutlined,
 } from '@ant-design/icons'
 import PageLayout from '@/components/PageLayout'
 import { apiClient } from '@/lib/api-client'
@@ -78,6 +81,18 @@ export default function AgentPage() {
   const [selectedAgentVersion, setSelectedAgentVersion] = useState<string | null>(null)
   const [agentVersions, setAgentVersions] = useState<string[]>([])
   const [selectedVersionInstructions, setSelectedVersionInstructions] = useState<string | null>(null)
+
+  // Column visibility state
+  const [visibleColumns, setVisibleColumns] = useState<Record<string, boolean>>({
+    timestamp: true,
+    document_id: false,
+    conversation_id: false,
+    input: true,
+    response: true,
+    tokens: true,
+    time: true,
+    actions: true,
+  })
 
   // Batch state
   const [batchItems, setBatchItems] = useState<BatchItem[]>([])
@@ -372,33 +387,83 @@ export default function AgentPage() {
     )
   }
 
-  const historyColumns = [
+  // Define all columns with visibility controls
+  const allHistoryColumns = [
     {
       title: 'Timestamp',
       dataIndex: 'timestamp',
       key: 'timestamp',
       render: (text: string) => formatTimestamp(text),
       width: 200,
+      visible: visibleColumns.timestamp,
+    },
+    {
+      title: 'Document ID',
+      dataIndex: 'id',
+      key: 'document_id',
+      width: 220,
+      ellipsis: { showTitle: false },
+      visible: visibleColumns.document_id,
+      render: (text: string) => (
+        <Tooltip title={text} overlayStyle={{ maxWidth: 500 }}>
+          <Text copyable={{ text }}>{text}</Text>
+        </Tooltip>
+      ),
+    },
+    {
+      title: 'Conversation ID',
+      dataIndex: 'conversation_id',
+      key: 'conversation_id',
+      width: 220,
+      ellipsis: { showTitle: false },
+      visible: visibleColumns.conversation_id,
+      render: (text: string) => (
+        text ? (
+          <Tooltip title={text} overlayStyle={{ maxWidth: 500 }}>
+            <Text copyable={{ text }}>{text}</Text>
+          </Tooltip>
+        ) : 'N/A'
+      ),
     },
     {
       title: agentInfo.input_label,
       dataIndex: agentInfo.input_field,
-      key: agentInfo.input_field,
-      ellipsis: true,
-      render: (text: string) => text || 'N/A',
+      key: 'input',
+      width: 300,
+      ellipsis: { showTitle: false },
+      visible: visibleColumns.input,
+      render: (text: string) => (
+        <Tooltip title={text} overlayStyle={{ maxWidth: 500 }}>
+          <div style={{ maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            {text || 'N/A'}
+          </div>
+        </Tooltip>
+      ),
     },
     {
       title: 'Response Preview',
       dataIndex: 'response',
       key: 'response',
-      ellipsis: true,
-      render: (text: string) => (text ? text.substring(0, 100) + (text.length > 100 ? '...' : '') : 'N/A'),
+      width: 300,
+      ellipsis: { showTitle: false },
+      visible: visibleColumns.response,
+      render: (text: string) => {
+        const displayText = text ? (text.length > 100 ? text.substring(0, 100) + '...' : text) : 'N/A'
+        return (
+          <Tooltip title={text} overlayStyle={{ maxWidth: 500 }}>
+            <div style={{ maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {displayText}
+            </div>
+          </Tooltip>
+        )
+      },
     },
     {
       title: 'Tokens',
       dataIndex: 'tokens_used',
       key: 'tokens',
       width: 100,
+      visible: visibleColumns.tokens,
       render: (value: number) => value || 'N/A',
     },
     {
@@ -406,12 +471,14 @@ export default function AgentPage() {
       dataIndex: 'time_taken_ms',
       key: 'time',
       width: 120,
+      visible: visibleColumns.time,
       render: (value: number) => (value ? Math.round(value) : 'N/A'),
     },
     {
       title: 'Actions',
       key: 'actions',
       width: 100,
+      visible: visibleColumns.actions,
       render: (_: unknown, record: SingleAgentHistoryItem) => (
         <Button type="link" size="small" onClick={() => handleViewDetail(record)}>
           View
@@ -419,6 +486,9 @@ export default function AgentPage() {
       ),
     },
   ]
+
+  // Filter to only visible columns
+  const historyColumns = allHistoryColumns.filter((col) => col.visible)
 
   const batchColumns = [
     {
@@ -655,11 +725,11 @@ export default function AgentPage() {
                   </div>
                   <div>
                     <Text type="secondary">Model: </Text>
-                    <Text strong>{(result.agent_details as Record<string, unknown>)?.model_deployment_name as string || 'N/A'}</Text>
+                    <Text strong>{result.agent_details?.model_deployment_name || 'N/A'}</Text>
                   </div>
                   <div>
                     <Text type="secondary">Agent: </Text>
-                    <Text strong>{(result.agent_details as Record<string, unknown>)?.agent_name as string || 'N/A'}</Text>
+                    <Text strong>{result.agent_details?.agent_name || 'N/A'}</Text>
                   </div>
                 </Space>
               </Space>
@@ -805,6 +875,105 @@ export default function AgentPage() {
                     }}
                   />
                 </Tooltip>
+                <Dropdown
+                  menu={{
+                    items: [
+                      {
+                        key: 'timestamp',
+                        label: (
+                          <Checkbox
+                            checked={visibleColumns.timestamp}
+                            onChange={(e) => setVisibleColumns({ ...visibleColumns, timestamp: e.target.checked })}
+                          >
+                            Timestamp
+                          </Checkbox>
+                        ),
+                      },
+                      {
+                        key: 'document_id',
+                        label: (
+                          <Checkbox
+                            checked={visibleColumns.document_id}
+                            onChange={(e) => setVisibleColumns({ ...visibleColumns, document_id: e.target.checked })}
+                          >
+                            Document ID
+                          </Checkbox>
+                        ),
+                      },
+                      {
+                        key: 'conversation_id',
+                        label: (
+                          <Checkbox
+                            checked={visibleColumns.conversation_id}
+                            onChange={(e) => setVisibleColumns({ ...visibleColumns, conversation_id: e.target.checked })}
+                          >
+                            Conversation ID
+                          </Checkbox>
+                        ),
+                      },
+                      {
+                        key: 'input',
+                        label: (
+                          <Checkbox
+                            checked={visibleColumns.input}
+                            onChange={(e) => setVisibleColumns({ ...visibleColumns, input: e.target.checked })}
+                          >
+                            {agentInfo.input_label}
+                          </Checkbox>
+                        ),
+                      },
+                      {
+                        key: 'response',
+                        label: (
+                          <Checkbox
+                            checked={visibleColumns.response}
+                            onChange={(e) => setVisibleColumns({ ...visibleColumns, response: e.target.checked })}
+                          >
+                            Response Preview
+                          </Checkbox>
+                        ),
+                      },
+                      {
+                        key: 'tokens',
+                        label: (
+                          <Checkbox
+                            checked={visibleColumns.tokens}
+                            onChange={(e) => setVisibleColumns({ ...visibleColumns, tokens: e.target.checked })}
+                          >
+                            Tokens
+                          </Checkbox>
+                        ),
+                      },
+                      {
+                        key: 'time',
+                        label: (
+                          <Checkbox
+                            checked={visibleColumns.time}
+                            onChange={(e) => setVisibleColumns({ ...visibleColumns, time: e.target.checked })}
+                          >
+                            Time (ms)
+                          </Checkbox>
+                        ),
+                      },
+                      {
+                        key: 'actions',
+                        label: (
+                          <Checkbox
+                            checked={visibleColumns.actions}
+                            onChange={(e) => setVisibleColumns({ ...visibleColumns, actions: e.target.checked })}
+                          >
+                            Actions
+                          </Checkbox>
+                        ),
+                      },
+                    ],
+                  }}
+                  trigger={['click']}
+                >
+                  <Tooltip title="Column Settings">
+                    <Button icon={<SettingOutlined />} />
+                  </Tooltip>
+                </Dropdown>
               </Space>
             }
           >

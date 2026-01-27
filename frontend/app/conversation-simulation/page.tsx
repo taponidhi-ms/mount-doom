@@ -137,8 +137,7 @@ function ConversationSimulationContent() {
             start_time: response.data.start_time,
             end_time: response.data.end_time,
             conversation_id: response.data.conversation_id,
-            c1_agent_details: response.data.c1_agent_details,
-            c2_agent_details: response.data.c2_agent_details,
+            agent_details: response.data.agent_details,
           },
         }
       }
@@ -163,16 +162,22 @@ function ConversationSimulationContent() {
       return (
         <Space direction="vertical" size="small" style={{ width: '100%' }}>
           {history.map((msg, index) => {
-            const isSystem = msg.agent_name === 'System'
-            const isC1 = msg.agent_name === 'C1Agent' || msg.agent_name === 'C1MessageGeneratorAgent'
+            const isAgent = msg.role === 'agent'
+            const isCustomer = msg.role === 'customer'
 
             let bgColor = '#ffffff'
-            if (isC1) bgColor = '#e6f7ff'
-            else if (!isSystem) bgColor = '#f6ffed'
+            if (isAgent) bgColor = '#e6f7ff'
+            else if (isCustomer) bgColor = '#f6ffed'
 
             let tagColor = 'default'
-            if (isC1) tagColor = 'blue'
-            else if (!isSystem) tagColor = 'green'
+            let tagLabel = msg.role
+            if (isAgent) {
+              tagColor = 'blue'
+              tagLabel = 'Agent'
+            } else if (isCustomer) {
+              tagColor = 'green'
+              tagLabel = 'Customer'
+            }
 
             return (
               <Card
@@ -180,30 +185,22 @@ function ConversationSimulationContent() {
                 size="small"
                 style={{
                   background: bgColor,
-                  border: isSystem ? 'none' : undefined,
-                  boxShadow: isSystem ? 'none' : undefined,
-                }}
-                styles={{
-                  body: isSystem
-                    ? { padding: '4px 0', fontStyle: 'italic', color: '#888', textAlign: 'center' }
-                    : undefined,
                 }}
               >
-                {isSystem ? (
-                  <Text type="secondary" italic style={{ fontSize: 12 }}>
-                    {msg.message}
-                  </Text>
-                ) : (
-                  <Space direction="vertical" size="small" style={{ width: '100%' }}>
-                    <div>
-                      <Tag color={tagColor}>{msg.agent_name}</Tag>
-                      <Text type="secondary" style={{ fontSize: 12 }}>
-                        {formatTime(msg.timestamp)}
+                <Space direction="vertical" size="small" style={{ width: '100%' }}>
+                  <div>
+                    <Tag color={tagColor}>{tagLabel}</Tag>
+                    <Text type="secondary" style={{ fontSize: 12 }}>
+                      {formatTime(msg.timestamp)}
+                    </Text>
+                    {msg.tokens_used && (
+                      <Text type="secondary" style={{ fontSize: 12, marginLeft: 8 }}>
+                        ({msg.tokens_used} tokens)
                       </Text>
-                    </div>
-                    <Text>{msg.message}</Text>
-                  </Space>
-                )}
+                    )}
+                  </div>
+                  <Text style={{ whiteSpace: 'pre-wrap' }}>{msg.content}</Text>
+                </Space>
               </Card>
             )
           })}

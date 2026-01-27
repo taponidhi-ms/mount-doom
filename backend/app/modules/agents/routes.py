@@ -6,37 +6,19 @@ This module provides a single consolidated API for all single-agent operations.
 
 from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import Response
-from datetime import datetime, timezone
-from typing import Dict, Any
-import time
 import json
 import structlog
 
-from app.models.shared import BrowseResponse, AgentDetails
+from app.models.shared import BrowseResponse
 from app.infrastructure.db.cosmos_db_service import cosmos_db_service
 
-from .config import get_agent_config, get_all_agents, AgentConfig
+from .config import get_agent_config, get_all_agents
 from .models import AgentInfo, AgentListResponse, AgentInvokeRequest, AgentInvokeResponse
 from .agents_service import unified_agents_service
 
 logger = structlog.get_logger()
 
 router = APIRouter(prefix="/agents", tags=["Agents"])
-
-
-def _format_agent_details(agent_details: AgentDetails) -> Dict[str, Any]:
-    """Transform AgentDetails to a dictionary for API response."""
-    created_at = agent_details.created_at
-    if isinstance(created_at, datetime):
-        created_at = created_at.isoformat()
-    
-    return {
-        "agent_name": agent_details.agent_name,
-        "agent_version": agent_details.agent_version,
-        "instructions": agent_details.instructions,
-        "model_deployment_name": agent_details.model_deployment_name,
-        "created_at": created_at
-    }
 
 
 @router.get("/list", response_model=AgentListResponse)
@@ -98,56 +80,42 @@ async def get_agent(agent_id: str):
 async def invoke_agent(agent_id: str, request: AgentInvokeRequest):
     """
     Invoke an agent with the given input.
-    
+
     This is a unified endpoint that works for all single agents.
+    The service layer handles timing, persistence, and all business logic.
     """
-    logger.info("Received agent invocation request", 
-               agent_id=agent_id, 
+    logger.info("Received agent invocation request",
+               agent_id=agent_id,
                input_length=len(request.input))
-    
+
     config = get_agent_config(agent_id)
     if not config:
         raise HTTPException(status_code=404, detail=f"Agent not found: {agent_id}")
-    
-    start_time = datetime.now(timezone.utc)
-    start_ms = time.time() * 1000
-    
+
     try:
-        # Invoke the agent
-        result = await unified_agents_service.invoke_agent(agent_id, request.input)
-        
-        end_time = datetime.now(timezone.utc)
-        end_ms = time.time() * 1000
-        time_taken_ms = end_ms - start_ms
-        
-        logger.info("Agent invocation completed, saving to database",
-                   agent_id=agent_id,
-                   tokens=result.get("tokens_used"),
-                   time_ms=round(time_taken_ms, 2))
-        
-        # Save to database
-        await unified_agents_service.save_to_database(
+        # Invoke the agent (service handles timing and persistence)
+        result = await unified_agents_service.invoke_agent(
             agent_id=agent_id,
             input_text=request.input,
-            response=result["response_text"],
-            tokens_used=result.get("tokens_used"),
-            time_taken_ms=time_taken_ms,
-            agent_details=result["agent_details"],
-            conversation_id=result["conversation_id"],
-            parsed_output=result.get("parsed_output")
+            persist=True
         )
-        
-        logger.info("Returning successful agent invocation response")
+
+        logger.info("Agent invocation completed successfully",
+                   agent_id=agent_id,
+                   tokens=result.tokens_used,
+                   time_ms=round(result.time_taken_ms, 2))
+
+        # Convert service layer Result to API layer Response
         return AgentInvokeResponse(
-            response_text=result["response_text"],
-            tokens_used=result.get("tokens_used"),
-            time_taken_ms=time_taken_ms,
-            start_time=start_time,
-            end_time=end_time,
-            agent_details=_format_agent_details(result["agent_details"]),
-            parsed_output=result.get("parsed_output")
+            response_text=result.response_text,
+            tokens_used=result.tokens_used,
+            time_taken_ms=result.time_taken_ms,
+            start_time=result.start_time,
+            end_time=result.end_time,
+            agent_details=result.agent_details,
+            conversation_id=result.conversation_id
         )
-        
+
     except Exception as e:
         logger.error("Error in agent invocation", agent_id=agent_id, error=str(e), exc_info=True)
         raise HTTPException(status_code=500, detail=f"Error invoking agent: {str(e)}")
@@ -162,27 +130,30 @@ async def browse_agent_history(
     order_direction: str = Query(default="DESC", pattern="^(ASC|DESC)$", description="Order direction")
 ):
     """Browse history for a specific agent."""
-    logger.info("Browsing agent history", 
+    logger.info("Browsing agent history",
                agent_id=agent_id,
-               page=page, 
+               page=page,
                page_size=page_size)
-    
+
     config = get_agent_config(agent_id)
     if not config:
         raise HTTPException(status_code=404, detail=f"Agent not found: {agent_id}")
-    
+
     try:
         result = await cosmos_db_service.browse_container(
             container_name=config.container_name,
             page=page,
             page_size=page_size,
             order_by=order_by,
-            order_direction=order_direction
+            order_direction=order_direction,
+            agent_name=config.agent_name
         )
-        
-        logger.info("Returning browse results", total_count=result["total_count"])
+
+        logger.info("Returning browse results",
+                   agent_name=config.agent_name,
+                   total_count=result["total_count"])
         return result
-        
+
     except Exception as e:
         logger.error("Error browsing agent history", agent_id=agent_id, error=str(e), exc_info=True)
         raise HTTPException(status_code=500, detail=f"Error browsing history: {str(e)}")

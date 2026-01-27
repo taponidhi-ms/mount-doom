@@ -49,20 +49,13 @@ async def simulate_conversation(request: ConversationSimulationRequest):
                    status=simulation_result.conversation_status,
                    messages=len(simulation_result.conversation_history))
 
-        agent_details = simulation_result.agent_details
-
+        # agent_details is already a dict from the service
         await conversation_simulation_service.save_to_database(
             conversation_properties=conv_props_dict,
             conversation_history=simulation_result.conversation_history,
             conversation_status=simulation_result.conversation_status,
             total_time_taken_ms=total_time_taken_ms,
-            agent_details={
-                "agent_name": agent_details.agent_name,
-                "agent_version": agent_details.agent_version,
-                "instructions": agent_details.instructions,
-                "model_deployment_name": agent_details.model_deployment_name,
-                "created_at": agent_details.created_at
-            },
+            agent_details=simulation_result.agent_details,
             conversation_id=simulation_result.conversation_id
         )
 
@@ -72,7 +65,7 @@ async def simulate_conversation(request: ConversationSimulationRequest):
             total_time_taken_ms=total_time_taken_ms,
             start_time=simulation_result.start_time,
             end_time=simulation_result.end_time,
-            agent_details=agent_details,
+            agent_details=simulation_result.agent_details,
             conversation_id=simulation_result.conversation_id
         )
         

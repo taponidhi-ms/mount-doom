@@ -7,7 +7,8 @@ It uses the agent configuration registry to determine which agent to use.
 
 from datetime import datetime, timezone
 from typing import Optional, Dict, Any
-import json
+import time
+from typing_extensions import Literal
 import uuid
 import structlog
 
@@ -17,6 +18,7 @@ from app.models.shared import AgentDetails
 from app.models.single_agent import SingleAgentDocument
 
 from .config import get_agent_config, AgentConfig
+from .models import AgentInvokeResult, CreateConversationResult, InvokeOnConversationResult
 
 logger = structlog.get_logger()
 
@@ -38,52 +40,39 @@ class UnifiedAgentsService:
     def __init__(self):
         pass
     
-    def _parse_json_output(self, response_text: str, agent_id: str) -> Optional[Dict[str, Any]]:
-        """
-        Attempt to parse JSON from agent response.
-        
-        Args:
-            response_text: The raw response text from the agent
-            agent_id: The agent identifier for logging
-            
-        Returns:
-            Parsed JSON dict or None if parsing fails
-        """
-        try:
-            parsed = json.loads(response_text)
-            logger.info(f"Agent {agent_id}: Successfully parsed JSON output", 
-                       keys=list(parsed.keys()) if isinstance(parsed, dict) else "not a dict")
-            return parsed
-        except json.JSONDecodeError as e:
-            logger.warning(f"Agent {agent_id}: Failed to parse JSON output", 
-                          error=str(e), 
-                          response_preview=response_text[:200])
-            return None
-    
     async def invoke_agent(
         self,
         agent_id: str,
-        input_text: str
-    ) -> Dict[str, Any]:
+        input_text: str,
+        persist: bool = True
+    ) -> AgentInvokeResult:
         """
         Invoke an agent by its ID.
-        
+
         Args:
             agent_id: The agent identifier from the registry
             input_text: The input text to send to the agent
-            
+            persist: Whether to save the result to database (default: True)
+
         Returns:
-            Dict containing response_text, tokens_used, agent_details, etc.
+            AgentInvokeResult with response_text, tokens, timing, and agent details
+
+        Raises:
+            ValueError: If agent_id is unknown
         """
         config = get_agent_config(agent_id)
         if not config:
             raise ValueError(f"Unknown agent ID: {agent_id}")
-        
+
         logger.info("=" * 60)
-        logger.info(f"Invoking agent: {config.display_name}", 
+        logger.info(f"Invoking agent: {config.display_name}",
                    agent_id=agent_id,
-                   input_length=len(input_text))
-        
+                   input_length=len(input_text),
+                   persist=persist)
+
+        start_time = datetime.now(timezone.utc)
+        start_ms = time.time() * 1000
+
         try:
             # Create agent
             logger.info(f"Creating agent: {config.agent_name}")
@@ -92,16 +81,15 @@ class UnifiedAgentsService:
                 instructions=config.instructions
             )
             logger.info("Agent ready", agent_version=agent.agent_version_object.version)
-            
+
             # Create conversation with initial message
-            timestamp = datetime.now(timezone.utc)
             logger.info("Creating conversation...")
             conversation = azure_ai_service.openai_client.conversations.create(
                 items=[{"type": "message", "role": "user", "content": input_text}]
             )
             conversation_id = conversation.id
             logger.info("Conversation created", conversation_id=conversation_id)
-            
+
             # Create response using the agent
             logger.info("Requesting response from agent...")
             response = azure_ai_service.openai_client.responses.create(
@@ -110,38 +98,56 @@ class UnifiedAgentsService:
                 input=""
             )
             logger.info("Response received", conversation_id=conversation_id)
-            
+
             # Get response text
             response_text = response.output_text
             if response_text is None:
                 logger.error("No response text found")
                 raise ValueError("No response found")
-            
-            logger.info(f"Agent response generated", 
+
+            logger.info(f"Agent response generated",
                        response_length=len(response_text),
                        response_preview=response_text[:150] + "..." if len(response_text) > 150 else response_text)
-            
-            # Parse JSON output
-            parsed_output = self._parse_json_output(response_text, agent_id)
-            
+
             # Extract token usage
             tokens_used = None
             if hasattr(response, 'usage') and response.usage:
                 tokens_used = response.usage.total_tokens
                 logger.info("Token usage extracted", tokens_used=tokens_used)
 
+            # Calculate timing
+            end_time = datetime.now(timezone.utc)
+            end_ms = time.time() * 1000
+            time_taken_ms = end_ms - start_ms
+
+            # Persist to database if requested
+            if persist:
+                logger.info("Persisting agent result to database",
+                           agent_id=agent_id,
+                           conversation_id=conversation_id)
+                await self._save_agent_result(
+                    agent_id=agent_id,
+                    input_text=input_text,
+                    response=response_text,
+                    tokens_used=tokens_used,
+                    time_taken_ms=time_taken_ms,
+                    agent_details=agent.agent_details,
+                    conversation_id=conversation_id
+                )
+
             logger.info("=" * 60)
 
-            return {
-                "response_text": response_text,
-                "tokens_used": tokens_used,
-                "agent_details": agent.agent_details,
-                "timestamp": timestamp,
-                "conversation_id": conversation_id,
-                "parsed_output": parsed_output,
-                "config": config
-            }
-            
+            # Return AgentInvokeResult instance
+            return AgentInvokeResult(
+                response_text=response_text,
+                tokens_used=tokens_used,
+                time_taken_ms=time_taken_ms,
+                start_time=start_time,
+                end_time=end_time,
+                agent_details=agent.agent_details.model_dump(),
+                conversation_id=conversation_id
+            )
+
         except Exception as e:
             logger.error(f"Error invoking agent {agent_id}", error=str(e), exc_info=True)
             raise
@@ -150,7 +156,7 @@ class UnifiedAgentsService:
         self,
         agent_id: str,
         initial_message: str
-    ) -> Dict[str, Any]:
+    ) -> CreateConversationResult:
         """
         Create a persistent conversation for multi-turn interactions.
 
@@ -158,13 +164,10 @@ class UnifiedAgentsService:
 
         Args:
             agent_id: The agent identifier from the registry
-            initial_message: The first message to add to the conversation
+            initial_message: The first message to add to the conversation (empty string creates conversation without initial message)
 
         Returns:
-            Dict containing:
-                - conversation_id: str
-                - agent_details: AgentDetails
-                - timestamp: datetime
+            CreateConversationResult with conversation_id, agent_details, agent_name, and timestamp
 
         Raises:
             ValueError: If agent_id is unknown
@@ -184,20 +187,26 @@ class UnifiedAgentsService:
             logger.info("Agent ready for persistent conversation",
                        agent_version=agent.agent_version_object.version)
 
-            # Create conversation with initial message
-            conversation = azure_ai_service.openai_client.conversations.create(
-                items=[{"type": "message", "role": "user", "content": initial_message}]
-            )
-            logger.info("Persistent conversation created",
-                       conversation_id=conversation.id,
-                       agent_id=agent_id)
+            # Create conversation with or without initial message
+            if initial_message:
+                conversation = azure_ai_service.openai_client.conversations.create(
+                    items=[{"type": "message", "role": "user", "content": initial_message}]
+                )
+                logger.info("Persistent conversation created with initial message",
+                           conversation_id=conversation.id,
+                           agent_id=agent_id)
+            else:
+                conversation = azure_ai_service.openai_client.conversations.create()
+                logger.info("Persistent conversation created without initial message",
+                           conversation_id=conversation.id,
+                           agent_id=agent_id)
 
-            return {
-                "conversation_id": conversation.id,
-                "agent_details": agent.agent_details,
-                "agent_name": agent.agent_version_object.name,
-                "timestamp": datetime.now(timezone.utc)
-            }
+            return CreateConversationResult(
+                conversation_id=conversation.id,
+                agent_details=agent.agent_details.model_dump(),
+                agent_name=agent.agent_version_object.name,
+                timestamp=datetime.now(timezone.utc)
+            )
         except Exception as e:
             logger.error(f"Error creating persistent conversation for {agent_id}",
                         error=str(e),
@@ -208,8 +217,9 @@ class UnifiedAgentsService:
         self,
         agent_id: str,
         conversation_id: str,
-        agent_name: str
-    ) -> Dict[str, Any]:
+        agent_name: str,
+        input_message: str = ""
+    ) -> InvokeOnConversationResult:
         """
         Invoke an agent on an existing conversation without deleting it.
 
@@ -219,12 +229,10 @@ class UnifiedAgentsService:
             agent_id: The agent identifier
             conversation_id: The existing conversation ID
             agent_name: The Azure AI agent name (from create_conversation result)
+            input_message: Optional input/prompt to provide (required for first turn on empty conversations)
 
         Returns:
-            Dict containing:
-                - response_text: str
-                - tokens_used: Optional[int]
-                - timestamp: datetime
+            InvokeOnConversationResult with response_text, tokens_used, and timestamp
 
         Raises:
             ValueError: If agent_id is unknown
@@ -235,14 +243,15 @@ class UnifiedAgentsService:
 
         logger.info(f"Invoking {config.display_name} on persistent conversation",
                    agent_id=agent_id,
-                   conversation_id=conversation_id)
+                   conversation_id=conversation_id,
+                   input_provided=bool(input_message))
 
         try:
             # Create response using the existing conversation
             response = azure_ai_service.openai_client.responses.create(
                 conversation=conversation_id,
                 extra_body={"agent": {"name": agent_name, "type": "agent_reference"}},
-                input=""
+                input=input_message
             )
 
             response_text = response.output_text
@@ -259,11 +268,11 @@ class UnifiedAgentsService:
             if hasattr(response, 'usage') and response.usage:
                 tokens_used = response.usage.total_tokens
 
-            return {
-                "response_text": response_text,
-                "tokens_used": tokens_used,
-                "timestamp": datetime.now(timezone.utc)
-            }
+            return InvokeOnConversationResult(
+                response_text=response_text,
+                tokens_used=tokens_used,
+                timestamp=datetime.now(timezone.utc)
+            )
         except Exception as e:
             logger.error(f"Error invoking agent on persistent conversation",
                         agent_id=agent_id,
@@ -276,7 +285,7 @@ class UnifiedAgentsService:
         self,
         conversation_id: str,
         message: str,
-        role: str = "user"
+        role: Literal["user", "assistant", "system", "developer"] = "user"
     ):
         """
         Add a message to an existing conversation.
@@ -330,7 +339,7 @@ class UnifiedAgentsService:
                          error=str(delete_error))
             # Don't raise - deletion failures should not block workflow completion
 
-    async def save_to_database(
+    async def _save_agent_result(
         self,
         agent_id: str,
         input_text: str,
@@ -338,25 +347,24 @@ class UnifiedAgentsService:
         tokens_used: Optional[int],
         time_taken_ms: float,
         agent_details: AgentDetails,
-        conversation_id: str,
-        parsed_output: Optional[Dict[str, Any]] = None
+        conversation_id: str
     ):
         """
-        Save the agent invocation result to Cosmos DB.
-        
+        Private method to save the agent invocation result to Cosmos DB.
+
         Uses the container name from the agent configuration.
         """
         config = get_agent_config(agent_id)
         if not config:
             raise ValueError(f"Unknown agent ID: {agent_id}")
-        
+
         container_name = config.container_name
-        
-        logger.info(f"Saving agent result to database", 
+
+        logger.info(f"Saving agent result to database",
                    agent_id=agent_id,
                    conversation_id=conversation_id,
                    container=container_name)
-        
+
         try:
             # Generate random UUID for document ID
             document_id = str(uuid.uuid4())
@@ -386,10 +394,10 @@ class UnifiedAgentsService:
             logger.info(f"Agent result saved successfully",
                        document_id=document_id,
                        conversation_id=conversation_id)
-            
+
         except Exception as e:
-            logger.error(f"Error saving agent result to database", 
-                        error=str(e), 
+            logger.error(f"Error saving agent result to database",
+                        error=str(e),
                         exc_info=True)
             raise
 

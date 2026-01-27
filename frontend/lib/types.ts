@@ -4,6 +4,15 @@
 
 import { ReactNode } from 'react'
 
+// Agent details type (shared across responses)
+export interface AgentDetails {
+  agent_name: string
+  agent_version?: string
+  instructions: string
+  model_deployment_name: string
+  created_at: string
+}
+
 // Base response for single agent operations
 export interface SingleAgentResponse {
   response_text: string
@@ -11,19 +20,15 @@ export interface SingleAgentResponse {
   time_taken_ms: number
   start_time: string
   end_time: string
-  agent_details: {
-    agent_name: string
-    agent_version?: string
-    instructions: string
-    model_deployment_name: string
-    created_at: string
-  }
+  agent_details: AgentDetails
+  conversation_id: string
   parsed_output?: Record<string, unknown>
 }
 
 // History item for single agent (from Cosmos DB)
 export interface SingleAgentHistoryItem {
   id: string
+  conversation_id?: string
   timestamp: string
   prompt?: string
   transcript?: string
@@ -118,8 +123,9 @@ export interface BatchItem<TResult = SingleAgentResponse> {
 export interface ConversationMessage {
   role: string  // "agent" or "customer"
   content: string
-  tokens_used?: number  // Only populated for agent messages
+  tokens_used?: number  // Populated for both agent and customer messages
   timestamp: string
+  conversation_id?: string  // Azure AI conversation_id for the message
 }
 
 export interface MultiAgentResponse {
@@ -129,6 +135,7 @@ export interface MultiAgentResponse {
   start_time: string
   end_time: string
   conversation_id: string
+  agent_details?: AgentDetails // Primary agent (C1) details
   [key: string]: unknown // Allow additional agent-specific fields
 }
 

@@ -188,18 +188,20 @@ class CosmosDBService:
         page: int = 1,
         page_size: int = 10,
         order_by: str = "timestamp",
-        order_direction: str = "DESC"
+        order_direction: str = "DESC",
+        agent_name: Optional[str] = None
     ) -> Dict[str, Any]:
         """
         Browse records in a container with pagination and ordering.
-        
+
         Args:
             container_name: Name of the container
             page: Page number (1-indexed)
             page_size: Number of items per page
             order_by: Field to order by (default: timestamp)
             order_direction: ASC or DESC (default: DESC)
-            
+            agent_name: Optional agent name to filter by
+
         Returns:
             Dict with items, total_count, page, page_size, total_pages
         """
@@ -209,36 +211,46 @@ class CosmosDBService:
                        page=page,
                        page_size=page_size,
                        order_by=order_by,
-                       order_direction=order_direction)
-            
+                       order_direction=order_direction,
+                       agent_name=agent_name)
+
             container = await self.ensure_container(container_name)
-            
-            # Build query with ordering
-            order_clause = f"ORDER BY c.{order_by} {order_direction}"
-            query = f"SELECT * FROM c {order_clause}"
-            
+
+            # Build query with optional filtering and ordering
+            if agent_name:
+                where_clause = "WHERE c.agent_name = @agent_name"
+                order_clause = f"ORDER BY c.{order_by} {order_direction}"
+                query = f"SELECT * FROM c {where_clause} {order_clause}"
+                parameters = [{"name": "@agent_name", "value": agent_name}]
+            else:
+                order_clause = f"ORDER BY c.{order_by} {order_direction}"
+                query = f"SELECT * FROM c {order_clause}"
+                parameters = None
+
             # Get all items (Cosmos DB SDK doesn't support OFFSET/LIMIT in query)
             items = list(container.query_items(
                 query=query,
+                parameters=parameters,
                 enable_cross_partition_query=True
             ))
-            
+
             total_count = len(items)
             total_pages = (total_count + page_size - 1) // page_size if total_count > 0 else 0
-            
+
             # Calculate pagination offsets
             start_idx = (page - 1) * page_size
             end_idx = start_idx + page_size
-            
+
             # Get page items
             page_items = items[start_idx:end_idx]
-            
+
             logger.info("Container browsed successfully",
                        container=container_name,
                        total_count=total_count,
                        page_items=len(page_items),
-                       total_pages=total_pages)
-            
+                       total_pages=total_pages,
+                       filtered_by_agent=agent_name)
+
             return {
                 "items": page_items,
                 "total_count": total_count,
@@ -248,7 +260,7 @@ class CosmosDBService:
                 "has_next": page < total_pages,
                 "has_previous": page > 1
             }
-            
+
         except Exception as e:
             logger.error("Error browsing container",
                         container=container_name,
