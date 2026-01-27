@@ -88,6 +88,10 @@ export default function SingleAgentTemplate({ config }: SingleAgentTemplateProps
   const [detailModalVisible, setDetailModalVisible] = useState(false)
   const [selectedRecord, setSelectedRecord] = useState<SingleAgentHistoryItem | null>(null)
 
+  // Batch detail modal
+  const [batchDetailModalVisible, setBatchDetailModalVisible] = useState(false)
+  const [selectedBatchItem, setSelectedBatchItem] = useState<BatchItem | null>(null)
+
   const loadBatchItemsFromText = () => {
     if (!batchJsonInput.trim()) {
       message.warning('Paste JSON to load batch items.')
@@ -296,6 +300,11 @@ export default function SingleAgentTemplate({ config }: SingleAgentTemplateProps
     setDetailModalVisible(true)
   }
 
+  const handleViewBatchDetail = (item: BatchItem) => {
+    setSelectedBatchItem(item)
+    setBatchDetailModalVisible(true)
+  }
+
   const allHistoryColumns = [
     {
       title: 'Timestamp',
@@ -457,6 +466,21 @@ export default function SingleAgentTemplate({ config }: SingleAgentTemplateProps
         }
         return '-'
       },
+    },
+    {
+      title: 'Actions',
+      key: 'actions',
+      width: 100,
+      render: (_: unknown, record: BatchItem) => (
+        <Button
+          type="link"
+          size="small"
+          onClick={() => handleViewBatchDetail(record)}
+          disabled={record.status !== 'completed' && record.status !== 'failed'}
+        >
+          View
+        </Button>
+      ),
     },
   ]
 
@@ -906,6 +930,82 @@ export default function SingleAgentTemplate({ config }: SingleAgentTemplateProps
                 <Text strong>{selectedRecord.time_taken_ms ? Math.round(selectedRecord.time_taken_ms) + ' ms' : 'N/A'}</Text>
               </div>
             </Space>
+          </Space>
+        )}
+      </Modal>
+
+      <Modal
+        title="Batch Item Details"
+        open={batchDetailModalVisible}
+        onCancel={() => setBatchDetailModalVisible(false)}
+        footer={null}
+        width={800}
+      >
+        {selectedBatchItem && (
+          <Space direction="vertical" style={{ width: '100%' }} size="middle">
+            <div>
+              <Text strong>Status:</Text>
+              <Tag
+                color={
+                  selectedBatchItem.status === 'completed' ? 'success' :
+                  selectedBatchItem.status === 'failed' ? 'error' :
+                  selectedBatchItem.status === 'running' ? 'processing' : 'default'
+                }
+                style={{ marginLeft: 8 }}
+              >
+                {selectedBatchItem.status.toUpperCase()}
+              </Tag>
+            </div>
+            <div>
+              <Text strong>{config.inputLabel}:</Text>
+              <Paragraph style={{ background: '#f5f5f5', padding: 12, borderRadius: 8, marginTop: 8, whiteSpace: 'pre-wrap', maxHeight: 200, overflow: 'auto' }}>
+                {selectedBatchItem.input || 'N/A'}
+              </Paragraph>
+            </div>
+            {selectedBatchItem.status === 'completed' && selectedBatchItem.result && (
+              <>
+                <div>
+                  <Text strong>Response:</Text>
+                  <Paragraph style={{ background: '#f5f5f5', padding: 12, borderRadius: 8, marginTop: 8, whiteSpace: 'pre-wrap', maxHeight: 300, overflow: 'auto' }}>
+                    {selectedBatchItem.result.response_text || 'N/A'}
+                  </Paragraph>
+                </div>
+                {selectedBatchItem.result.parsed_output && (
+                  <div>
+                    <Text strong>Parsed Output:</Text>
+                    <pre style={{ background: '#e6f7ff', padding: 12, borderRadius: 8, marginTop: 8, whiteSpace: 'pre-wrap', maxHeight: 300, overflow: 'auto' }}>
+                      {JSON.stringify(selectedBatchItem.result.parsed_output, null, 2)}
+                    </pre>
+                  </div>
+                )}
+                <Space size="large">
+                  <div>
+                    <Text type="secondary">Tokens: </Text>
+                    <Text strong>{selectedBatchItem.result.tokens_used || 'N/A'}</Text>
+                  </div>
+                  <div>
+                    <Text type="secondary">Time: </Text>
+                    <Text strong>{Math.round(selectedBatchItem.result.time_taken_ms)} ms</Text>
+                  </div>
+                  <div>
+                    <Text type="secondary">Model: </Text>
+                    <Text strong>{selectedBatchItem.result.agent_details.model_deployment_name}</Text>
+                  </div>
+                  <div>
+                    <Text type="secondary">Agent: </Text>
+                    <Text strong>{selectedBatchItem.result.agent_details.agent_name}</Text>
+                  </div>
+                </Space>
+              </>
+            )}
+            {selectedBatchItem.status === 'failed' && (
+              <div>
+                <Text strong>Error:</Text>
+                <Paragraph style={{ background: '#fff2f0', padding: 12, borderRadius: 8, marginTop: 8, whiteSpace: 'pre-wrap', maxHeight: 200, overflow: 'auto', color: '#ff4d4f' }}>
+                  {selectedBatchItem.error || 'Unknown error'}
+                </Paragraph>
+              </div>
+            )}
           </Space>
         )}
       </Modal>
