@@ -1,8 +1,16 @@
 /**
- * Shared types for single agent and multi-agent templates
+ * Shared types for agents and workflows.
+ *
+ * Naming conventions:
+ * - Agent types: For individual agent operations (invoke, browse, delete)
+ * - Workflow types: For multi-agent workflows with custom logic
  */
 
 import { ReactNode } from 'react'
+
+// ============================================================================
+// Common Types
+// ============================================================================
 
 // Agent details type (shared across responses)
 export interface AgentDetails {
@@ -13,83 +21,12 @@ export interface AgentDetails {
   created_at: string
 }
 
-// Base response for single agent operations
-export interface SingleAgentResponse {
-  response_text: string
-  tokens_used?: number
-  time_taken_ms: number
-  start_time: string
-  end_time: string
-  agent_details: AgentDetails
-  conversation_id: string
-  parsed_output?: Record<string, unknown>
+export interface ApiResponse<T> {
+  data?: T
+  error?: string
 }
 
-// History item for single agent (from Cosmos DB)
-export interface SingleAgentHistoryItem {
-  id: string
-  conversation_id?: string
-  timestamp: string
-  prompt?: string
-  transcript?: string
-  response?: string
-  response_text?: string
-  tokens_used?: number
-  time_taken_ms?: number
-  parsed_output?: Record<string, unknown>
-  agent_details?: {
-    agent_name: string
-    agent_version?: string
-    model_deployment_name: string
-  }
-}
-
-// Configuration for a single agent page
-export interface SingleAgentConfig {
-  // Page metadata
-  title: string
-  description: string
-  pageKey: string
-  
-  // Input configuration
-  inputLabel: string
-  inputPlaceholder: string
-  inputFieldName: 'prompt' | 'transcript' // What field name is sent to API
-  
-  // Sample prompts/inputs
-  sampleInputs: SampleInput[]
-  
-  // API functions
-  generateFn: (input: string) => Promise<ApiResponse<SingleAgentResponse>>
-  browseFn: (page: number, pageSize: number, orderBy: string, orderDirection: 'ASC' | 'DESC') => Promise<ApiResponse<BrowseResponse>>
-  deleteFn: (ids: string[]) => Promise<ApiResponse<DeleteResponse>>
-  downloadFn: (ids: string[]) => Promise<ApiResponse<Blob>>
-  
-  // History table column customization
-  historyColumns?: HistoryColumnConfig[]
-  
-  // Result display customization
-  renderParsedOutput?: (parsedOutput: Record<string, unknown>) => ReactNode
-}
-
-export interface SampleInput {
-  label?: string
-  value: string
-}
-
-export interface HistoryColumnConfig<T = SingleAgentHistoryItem> {
-  title: string
-  dataIndex: string | string[]
-  key: string
-  width?: number
-  ellipsis?: boolean
-  render?: (value: unknown, record: T) => ReactNode
-}
-
-// Alias for multi-agent history columns
-export type MultiAgentHistoryColumnConfig = HistoryColumnConfig<MultiAgentHistoryItem>
-
-export interface BrowseResponse<T = SingleAgentHistoryItem> {
+export interface BrowseResponse<T = any> {
   items: T[]
   total_count: number
   page: number
@@ -105,21 +42,88 @@ export interface DeleteResponse {
   errors: string[]
 }
 
-export interface ApiResponse<T> {
-  data?: T
-  error?: string
+// ============================================================================
+// Agent Types (for individual agent operations)
+// ============================================================================
+
+/**
+ * Response from agent invoke operation
+ * Matches backend: SingleAgentResponse
+ */
+export interface AgentInvokeResponse {
+  response_text: string
+  tokens_used?: number
+  time_taken_ms: number
+  start_time: string
+  end_time: string
+  agent_details: AgentDetails
+  conversation_id: string
+  parsed_output?: Record<string, unknown>
 }
 
-// Batch processing types
-export interface BatchItem<TResult = SingleAgentResponse> {
+/**
+ * History item for agent operations (from Cosmos DB)
+ * Matches backend: SingleAgentDocument with additional fields
+ */
+export interface AgentHistoryItem {
+  id: string
+  conversation_id?: string
+  timestamp: string
+  prompt?: string
+  transcript?: string
+  response?: string
+  response_text?: string
+  tokens_used?: number
+  time_taken_ms?: number
+  parsed_output?: Record<string, unknown>
+  agent_details?: {
+    agent_name: string
+    agent_version?: string
+    model_deployment_name: string
+  }
+  agent_version?: string
+  agent_instructions?: string
+}
+
+/**
+ * Agent info returned from get/list agents endpoint
+ * Matches backend agent registry configuration
+ */
+export interface AgentInfo {
+  agent_id: string
+  agent_name: string
+  display_name: string
+  description: string
+  instructions: string
+  input_field: string
+  input_label: string
+  input_placeholder: string
+  sample_inputs: SampleInput[]
+}
+
+export interface SampleInput {
+  label?: string
+  value: string
+}
+
+export interface HistoryColumnConfig<T = AgentHistoryItem> {
+  title: string
+  dataIndex: string | string[]
   key: string
-  input: string
-  status: 'pending' | 'running' | 'completed' | 'failed'
-  result?: TResult
-  error?: string
+  width?: number
+  ellipsis?: boolean | { showTitle: boolean }
+  render?: (value: unknown, record: T) => ReactNode
+  visible?: boolean
 }
 
-// Multi-agent types
+// ============================================================================
+// Workflow Types (for multi-agent workflows)
+// ============================================================================
+
+/**
+ * A single message in a conversation workflow
+ * Matches backend: ConversationMessage
+ */
 export interface ConversationMessage {
   role: string  // "agent" or "customer"
   content: string
@@ -128,7 +132,11 @@ export interface ConversationMessage {
   conversation_id?: string  // Azure AI conversation_id for the message
 }
 
-export interface MultiAgentResponse {
+/**
+ * Response from conversation simulation workflow
+ * Matches backend: ConversationSimulationResponse
+ */
+export interface ConversationSimulationResponse {
   conversation_history: ConversationMessage[]
   conversation_status: string
   total_time_taken_ms: number
@@ -136,10 +144,14 @@ export interface MultiAgentResponse {
   end_time: string
   conversation_id: string
   agent_details?: AgentDetails // Primary agent (C1) details
-  [key: string]: unknown // Allow additional agent-specific fields
+  [key: string]: unknown // Allow additional workflow-specific fields
 }
 
-export interface MultiAgentHistoryItem {
+/**
+ * History item for workflow operations (from Cosmos DB)
+ * Matches backend: ConversationSimulationDocument with additional fields
+ */
+export interface WorkflowHistoryItem {
   id: string
   timestamp: string
   conversation_id: string
@@ -150,34 +162,18 @@ export interface MultiAgentHistoryItem {
   total_time_taken_ms?: number
 }
 
-export interface MultiAgentConfig {
-  title: string
-  description: string
-  pageKey: string
-  
-  // Input fields configuration
-  inputFields: InputFieldConfig[]
-  
-  // Sample configurations
-  sampleConfigs: Record<string, string>[]
-  
-  // API functions
-  simulateFn: (inputs: Record<string, string>) => Promise<ApiResponse<MultiAgentResponse>>
-  browseFn: (page: number, pageSize: number, orderBy: string, orderDirection: 'ASC' | 'DESC') => Promise<ApiResponse<BrowseResponse<MultiAgentHistoryItem>>>
-  deleteFn: (ids: string[]) => Promise<ApiResponse<DeleteResponse>>
-  downloadFn: (ids: string[]) => Promise<ApiResponse<Blob>>
-  
-  // History table columns
-  historyColumns?: MultiAgentHistoryColumnConfig[]
-  
-  // Conversation display customization
-  renderConversation?: (history: ConversationMessage[]) => ReactNode
-}
+// ============================================================================
+// Legacy Type Aliases (for backward compatibility during migration)
+// ============================================================================
 
-export interface InputFieldConfig {
-  name: string
-  label: string
-  placeholder: string
-  type?: 'text' | 'textarea'
-  required?: boolean
-}
+/** @deprecated Use AgentInvokeResponse instead */
+export type SingleAgentResponse = AgentInvokeResponse
+
+/** @deprecated Use AgentHistoryItem instead */
+export type SingleAgentHistoryItem = AgentHistoryItem
+
+/** @deprecated Use ConversationSimulationResponse instead */
+export type MultiAgentResponse = ConversationSimulationResponse
+
+/** @deprecated Use WorkflowHistoryItem instead */
+export type MultiAgentHistoryItem = WorkflowHistoryItem

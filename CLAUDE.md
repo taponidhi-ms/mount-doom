@@ -142,17 +142,19 @@ The backend uses **lazy initialization** for Azure AI and Cosmos DB clients (ini
 
 **Unified API Architecture:**
 
-1. **Single Agents API** (`app/modules/agents/`)
+1. **Agents API** (`app/modules/agents/`)
    - **Centralized registry**: All agent configurations in `config.py` (AGENT_REGISTRY)
    - **Centralized instructions**: All agent instructions in `instructions.py`
    - **Unified endpoints**: Single API for all agents (`/api/v1/agents/{agent_id}/invoke`)
    - **Generic service**: `agents_service.py` handles any agent by agent_id
    - Four agents: persona_distribution, persona_generator, transcript_parser, c2_message_generation
+   - Each agent operates independently and returns results immediately
 
 2. **Workflows API** (`app/modules/workflows/`)
-   - Multi-agent workflows with configuration registry in `config.py`
+   - Workflows orchestrate multiple agents with custom logic
+   - Configuration registry in `config.py`
    - Workflow listing endpoints (`/api/v1/workflows/list`)
-   - Example: conversation_simulation workflow (C1 + C2 agents)
+   - Example: conversation_simulation workflow (C1 service rep + C2 customer agents interact)
 
 **Infrastructure Services (Singletons):**
 - **AzureAIService** - Client factory only. Creates agents with `create_agent(name, instructions, model)`. No business logic.
@@ -171,13 +173,18 @@ The backend uses **lazy initialization** for Azure AI and Cosmos DB clients (ini
 
 ### Frontend: Next.js with App Router
 
-**Template-Based UI:**
-- **SingleAgentTemplate** - For single-agent features (persona generation, parsing)
-  - Three tabs: Generate, Batch Processing, History
-  - Configured via `SingleAgentConfig` object
-- **MultiAgentTemplate** - For multi-agent workflows (conversation simulation)
-  - Three tabs: Simulate, Batch Processing, History
-  - Configured via `MultiAgentConfig` object
+**Modular Architecture with Nested Routes:**
+- Agent pages use nested routes (`/agents/[agentId]/`, `/agents/[agentId]/batch`, `/agents/[agentId]/history`)
+- Agent info loaded once in layout, shared via React Context (`AgentContext`)
+- Reusable components extracted for maintainability:
+  - `AgentResultModal` - View result details with JSON/Plain Text toggle
+  - `AgentResultCard` - Inline result display
+  - `AgentInstructionsCard` - Collapsible instructions display
+  - `BatchProcessingSection` - Complete batch processing UI
+  - `AgentHistoryTable` - Full-featured history table with sorting, filtering, bulk operations
+  - `AgentTabs` - Tab-like navigation using Next.js Link
+- Workflow pages (e.g., `/workflows/conversation_simulation`) have custom implementations
+- URL-based navigation with browser back/forward support
 
 **Global Timezone Support:**
 - Context provider: `TimezoneProvider` in layout.tsx
@@ -186,19 +193,24 @@ The backend uses **lazy initialization** for Azure AI and Cosmos DB clients (ini
 - Persisted to localStorage
 
 **Key Files:**
-- `app/` - Next.js pages (App Router)
-- `components/` - Reusable components (PageLayout, templates)
+- `app/agents/[agentId]/` - Nested route structure for agent pages
+  - `layout.tsx` - Loads agent info, provides context
+  - `page.tsx` - Generate page
+  - `batch/page.tsx` - Batch processing page
+  - `history/page.tsx` - History page
+- `components/agents/` - Reusable agent components organized by feature
 - `lib/api-client.ts` - Type-safe API client
 - `lib/types.ts` - Shared TypeScript types
 - `lib/timezone-context.tsx` - Global timezone management
 
-## Multi-Agent Conversation Pattern
+## Workflow Pattern (Multi-Agent Orchestration)
 
 **Shared Conversation Workflow:**
+Workflows orchestrate multiple agents that communicate through a shared conversation:
 1. Single conversation created at start
 2. Conversation reused across all agent invocations for context continuity
 3. Agents operate sequentially by adding messages and creating responses
-4. Pattern: C1 (service rep) → C2 (customer) → check completion → repeat
+4. Example pattern: C1 (service rep) → C2 (customer) → check completion → repeat
 
 **Conversation API Usage:**
 ```python
@@ -241,7 +253,7 @@ response = openai_client.responses.create(
 
 ## Download Feature (Eval Format)
 
-**Purpose**: All single-agent features support downloading conversations in a standardized format optimized for evaluation (evals) purposes.
+**Purpose**: All agent features support downloading conversations in a standardized format optimized for evaluation (evals) purposes.
 
 **API Endpoint**: `POST /api/v1/agents/{agent_id}/download`
 - Request body: Array of document IDs to download
@@ -283,7 +295,7 @@ Each agent in `AGENT_REGISTRY` includes a `scenario_name` field for eval downloa
 - `c1_message_generation` → `C1MessageGeneratorAgent`
 
 **Frontend Integration**:
-- SingleAgentTemplate automatically includes download functionality
+- AgentHistoryTable component includes download functionality
 - Users select conversations from history table and click "Download"
 - Downloaded file named: `{agent_id}_evals.json`
 
@@ -306,22 +318,24 @@ Each agent in `AGENT_REGISTRY` includes a `scenario_name` field for eval downloa
 
 ### Adding New Features
 
-**Single Agent:**
+**New Agent:**
 1. Add instructions to `backend/app/modules/agents/instructions.py`
 2. Register in `AGENT_REGISTRY` in `backend/app/modules/agents/config.py`
 3. Add container constant to `cosmos_db_service.py`
 4. Update frontend navigation in `PageLayout.tsx`
 5. Frontend will automatically work via unified agents API
+6. Agents operate independently and return results immediately
 
-**Multi-Agent Workflow:**
+**New Workflow:**
 1. Create directory: `backend/app/modules/workflows/{workflow_name}/`
-2. Add agent instructions to `modules/agents/instructions.py`
+2. Add agent instructions to `modules/agents/instructions.py` (if new agents needed)
 3. Create `agents.py` (agent factories), `models.py` (schemas), `{workflow}_service.py` (orchestration), `routes.py`
 4. Register router in `main.py`
 5. Add container constant to `cosmos_db_service.py`
 6. Register in `modules/workflows/config.py`
-7. Create frontend page in `app/workflows/{workflow_id}/page.tsx`
+7. Create frontend page in `app/workflows/{workflow_id}/page.tsx` with custom UI
 8. Update frontend navigation
+9. Workflows orchestrate multiple agents with custom logic and conversation management
 
 ### Response Metrics to Track
 All API responses should include:

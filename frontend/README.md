@@ -4,14 +4,16 @@ Next.js frontend for the Mount Doom AI Agent Simulation platform. Built with Typ
 
 ## Features
 
-### Single Agents
+### Agents
+Individual agents that operate independently and return results immediately:
 - **Persona Distribution Generator** - Generate persona distributions from simulation prompts
 - **Persona Generator** - Generate exact customer personas with metadata
 - **Transcript Parser** - Parse transcripts to extract intent, subject, and sentiment
 - **C2 Message Generator** - Generate customer messages for conversation simulations
 
-### Multi-Agent Workflows
-- **Conversation Simulation** - Complex multi-agent conversation simulation with real-time tracking
+### Workflows
+Multi-agent orchestration with custom logic and stateful conversations:
+- **Conversation Simulation** - Orchestrates multiple agents (C1/C2) for realistic conversation simulations with real-time tracking
 
 ## Tech Stack
 
@@ -71,22 +73,34 @@ npm start
 ```
 frontend/
 ├── app/                                     # Next.js App Router pages
-│   ├── agents/                              # Dynamic agent pages
-│   │   └── [agentId]/                       # Dynamic route for any agent
-│   ├── workflows/                           # Workflow pages
-│   │   └── conversation_simulation/         # Conversation simulation workflow
-│   ├── c2-message-generation/               # C2 message generation page
-│   ├── conversation-simulation/             # Conversation simulation page
-│   ├── persona-distribution/                # Persona distribution page
-│   ├── persona-generator/                   # Persona generator page
-│   ├── transcript-parser/                   # Transcript parser page
+│   ├── agents/                              # Nested routes for agents
+│   │   └── [agentId]/                       # Dynamic agent routes
+│   │       ├── layout.tsx                   # Agent layout (loads info, provides context)
+│   │       ├── page.tsx                     # Generate page (default)
+│   │       ├── batch/
+│   │       │   └── page.tsx                 # Batch processing page
+│   │       └── history/
+│   │           └── page.tsx                 # History page
+│   ├── conversation-simulation/             # Conversation simulation workflow
+│   │   └── page.tsx                         # Custom workflow page
 │   ├── layout.tsx                           # Root layout with timezone provider
 │   ├── page.tsx                             # Home page
 │   └── globals.css                          # Global styles
 ├── components/                               # React components
 │   ├── PageLayout.tsx                       # Shared page layout with navigation
-│   ├── SingleAgentTemplate.tsx              # Template for single-agent pages
-│   └── MultiAgentTemplate.tsx               # Template for multi-agent workflows
+│   └── agents/                              # Modular agent components
+│       ├── shared/
+│       │   ├── AgentContext.tsx             # React Context for agent info
+│       │   └── AgentTabs.tsx                # Tab navigation
+│       ├── result/
+│       │   ├── AgentResultModal.tsx         # Modal for viewing results
+│       │   └── AgentResultCard.tsx          # Inline result display
+│       ├── instructions/
+│       │   └── AgentInstructionsCard.tsx    # Collapsible instructions
+│       ├── batch/
+│       │   └── BatchProcessingSection.tsx   # Complete batch UI
+│       └── history/
+│           └── AgentHistoryTable.tsx        # Full-featured history table
 ├── lib/                                     # Utility libraries
 │   ├── api-client.ts                        # Type-safe API client
 │   ├── types.ts                             # Shared TypeScript types
@@ -96,23 +110,31 @@ frontend/
 
 ## Features Detail
 
-### Template-Based Pages
+### Modular Agent Pages
 
-The application uses reusable templates for consistency:
+Agent pages use nested routes with reusable components:
 
-**SingleAgentTemplate**: Used for single-agent features
-- Three tabs: Generate, Batch Processing, History
-- Form input with sample prompts
-- Real-time results display
-- Batch processing with configurable delays
-- Paginated history with filtering and sorting
+**Nested Route Structure:**
+- `/agents/[agentId]` - Generate page (default)
+- `/agents/[agentId]/batch` - Batch processing page
+- `/agents/[agentId]/history` - History page
+- Agent info loaded once in layout, shared via React Context
+- URL-based navigation with browser back/forward support
 
-**MultiAgentTemplate**: Used for multi-agent workflows
+**Reusable Components:**
+- **AgentContext** - Share agent info across pages
+- **AgentTabs** - Tab-like navigation using Next.js Link
+- **AgentResultModal** - View result details with JSON/Plain Text toggle
+- **AgentResultCard** - Inline result display
+- **AgentInstructionsCard** - Collapsible instructions display
+- **BatchProcessingSection** - Complete batch processing UI
+- **AgentHistoryTable** - Full-featured history table
+
+**Workflow Pages:**
+- Custom implementations for each workflow (e.g., conversation simulation)
 - Three tabs: Simulate, Batch Processing, History
-- Multi-field configuration forms
-- Conversation history with expandable turns
-- Batch simulation support
-- Paginated results with detailed metrics
+- Custom conversation rendering and history columns
+- Expandable rows for viewing conversation details
 
 ### Global Timezone Support
 

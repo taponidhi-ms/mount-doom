@@ -203,82 +203,148 @@ logger.info("="*60)
 - Server components by default
 - Proper error boundaries
 
-### Template-Based Pages Pattern
-Pages now use reusable templates configured via config objects:
+### Modular Component Pattern
+Agent pages use a modular architecture with nested routes and reusable components:
 
-#### SingleAgentTemplate Usage
-For single-agent features (Persona Distribution, Persona Generator, Transcript Parser, C2 Message Generation):
+#### Agent Pages Structure
+Agent pages use Next.js nested routes with a shared layout:
 
+**Layout** (`/agents/[agentId]/layout.tsx`):
+- Loads agent info once via `apiClient.getAgent(agentId)`
+- Provides agent info to children via `AgentContext`
+- Renders `AgentTabs` navigation
+- Handles loading and error states
+
+**Generate Page** (`/agents/[agentId]/page.tsx`):
 ```typescript
 'use client'
 
-import PageLayout from '@/components/PageLayout'
-import SingleAgentTemplate from '@/components/SingleAgentTemplate'
+import { useState } from 'react'
+import { useParams } from 'next/navigation'
+import { useAgentContext } from '@/components/agents/shared/AgentContext'
+import AgentInstructionsCard from '@/components/agents/instructions/AgentInstructionsCard'
+import AgentResultCard from '@/components/agents/result/AgentResultCard'
 import { apiClient } from '@/lib/api-client'
-import type { SingleAgentConfig } from '@/lib/types'
 
-const config: SingleAgentConfig = {
-  title: 'Page Title',
-  description: 'Description',
-  pageKey: 'page-key',
-  inputLabel: 'Input Label',
-  inputPlaceholder: 'Placeholder',
-  inputFieldName: 'prompt', // or 'transcript'
-  sampleInputs: [
-    { label: 'Sample 1', value: 'Sample prompt 1' },
-  ],
-  generateFn: (input) => apiClient.generateXxx(input),
-  browseFn: (page, pageSize, orderBy, orderDirection) => 
-    apiClient.browseXxx(page, pageSize, orderBy, orderDirection),
-  deleteFn: (ids) => apiClient.deleteXxx(ids),
-  downloadFn: (ids) => apiClient.downloadXxx(ids),
-}
+export default function AgentGeneratePage() {
+  const params = useParams()
+  const agentId = params.agentId as string
+  const { agentInfo } = useAgentContext()
 
-export default function XxxPage() {
+  // State and handlers...
+
   return (
-    <PageLayout>
-      <SingleAgentTemplate config={config} />
+    <Space direction="vertical" size="large" style={{ width: '100%' }}>
+      <AgentInstructionsCard instructions={agentInfo.instructions} />
+      {/* Form and input fields */}
+      {result && <AgentResultCard result={result} />}
+    </Space>
+  )
+}
+```
+
+**Batch Page** (`/agents/[agentId]/batch/page.tsx`):
+```typescript
+'use client'
+
+import { useParams } from 'next/navigation'
+import { useAgentContext } from '@/components/agents/shared/AgentContext'
+import BatchProcessingSection from '@/components/agents/batch/BatchProcessingSection'
+
+export default function AgentBatchPage() {
+  const params = useParams()
+  const agentId = params.agentId as string
+  const { agentInfo } = useAgentContext()
+
+  return (
+    <BatchProcessingSection
+      agentId={agentId}
+      inputLabel={agentInfo.input_label}
+      inputField={agentInfo.input_field}
+    />
+  )
+}
+```
+
+**History Page** (`/agents/[agentId]/history/page.tsx`):
+```typescript
+'use client'
+
+import { useParams } from 'next/navigation'
+import { useAgentContext } from '@/components/agents/shared/AgentContext'
+import AgentHistoryTable from '@/components/agents/history/AgentHistoryTable'
+
+export default function AgentHistoryPage() {
+  const params = useParams()
+  const agentId = params.agentId as string
+  const { agentInfo } = useAgentContext()
+
+  return (
+    <AgentHistoryTable
+      agentId={agentId}
+      inputLabel={agentInfo.input_label}
+      inputField={agentInfo.input_field}
+    />
+  )
+}
+```
+
+#### Reusable Components
+**AgentContext** - Share agent info across pages:
+```typescript
+import { useAgentContext } from '@/components/agents/shared/AgentContext'
+const { agentInfo, loadingAgent, agentError } = useAgentContext()
+```
+
+**Component imports**:
+- `AgentInstructionsCard` - Collapsible instructions display
+- `AgentResultCard` - Inline result display with JSON/Plain Text toggle
+- `AgentResultModal` - Modal for viewing result details
+- `BatchProcessingSection` - Complete batch processing UI
+- `AgentHistoryTable` - Full-featured history table with auto-load
+- `AgentTabs` - Tab-like navigation
+
+#### Workflow Pages Pattern
+For workflows that orchestrate multiple agents (e.g., Conversation Simulation), implement custom pages with:
+
+**Structure:**
+- Three tabs: Simulate, Batch Processing, History
+- All state management within the page component
+- Custom rendering for conversation display
+- Custom history columns specific to workflow needs
+
+**Key Components:**
+```typescript
+'use client'
+
+import { useState, useCallback, useEffect } from 'react'
+import { Tabs, Card, Table, ... } from 'antd'
+import PageLayout from '@/components/PageLayout'
+import { apiClient } from '@/lib/api-client'
+import { useTimezone } from '@/lib/timezone-context'
+
+export default function WorkflowPage() {
+  const { formatTimestamp, formatTime } = useTimezone()
+
+  // State for simulate, batch, and history tabs
+  // Custom handlers for each workflow's specific needs
+  // Custom rendering functions
+
+  const tabItems = [
+    { key: 'simulate', label: 'Simulate', children: <SimulateTab /> },
+    { key: 'batch', label: 'Batch Processing', children: <BatchTab /> },
+    { key: 'history', label: 'History', children: <HistoryTab /> },
+  ]
+
+  return (
+    <PageLayout title="..." description="...">
+      <Tabs defaultActiveKey="simulate" items={tabItems} />
     </PageLayout>
   )
 }
 ```
 
-#### MultiAgentTemplate Usage
-For multi-agent features (Conversation Simulation):
-
-```typescript
-'use client'
-
-import PageLayout from '@/components/PageLayout'
-import MultiAgentTemplate from '@/components/MultiAgentTemplate'
-import { apiClient } from '@/lib/api-client'
-import type { MultiAgentConfig } from '@/lib/types'
-
-const config: MultiAgentConfig = {
-  title: 'Page Title',
-  description: 'Description',
-  pageKey: 'page-key',
-  inputFields: [
-    { name: 'field1', label: 'Field 1', placeholder: 'Enter...', required: true },
-  ],
-  sampleConfigs: [
-    { field1: 'value1', field2: 'value2' },
-  ],
-  simulateFn: (inputs) => apiClient.simulateXxx(...),
-  browseFn: (page, pageSize, orderBy, orderDirection) => 
-    apiClient.browseXxx(page, pageSize, orderBy, orderDirection),
-  deleteFn: (ids) => apiClient.deleteXxx(ids),
-  downloadFn: (ids) => apiClient.downloadXxx(ids),
-}
-
-export default function XxxPage() {
-  return (
-    <PageLayout>
-      <MultiAgentTemplate config={config} />
-    </PageLayout>
-  )
-}
-```
+**Rationale**: Workflows have unique requirements, so custom implementations provide more flexibility than a shared template.
 
 ### Timezone Handling
 - Always use `useTimezone()` hook to access `formatTimestamp()` and `formatTime()` functions
@@ -533,7 +599,7 @@ The AzureAIService is now a **singleton client factory** with minimal responsibi
 Each feature service (PersonaDistributionService, TranscriptParserService, etc.) contains:
 - Fixed `agent_name` and `instructions` (imported from instruction_sets module) for that feature
 - Agent creation logic by calling `azure_ai_service.create_agent()` with instruction string
-- Workflow-specific logic (conversation management, multi-agent orchestration, etc.)
+- Workflow-specific logic (conversation management, agent orchestration, etc.)
 - Metrics tracking and data transformation
 
 ### Agent Instructions Storage
@@ -577,9 +643,9 @@ async def your_method(self, prompt: str):
 - Add messages: `openai_client.conversations.items.create(conversation_id, items=[...])`
 - Create responses: `openai_client.responses.create(conversation=conversation_id, extra_body={...})`
 - Each conversation maintains full context across all interactions
-- Reuse conversation_id across multiple agent invocations for multi-agent workflows
+- Reuse conversation_id across multiple agent invocations for workflows
 
-### Multi-Agent Workflow (ConversationSimulationService)
+### Workflow Pattern (ConversationSimulationService)
 For conversation simulation with multiple agents:
 - Single conversation per simulation maintained across all turns
 - All agents (C1, C2) operate on same conversation for context continuity

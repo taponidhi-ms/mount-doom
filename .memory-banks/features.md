@@ -245,7 +245,7 @@
 
 ## Unified Agents API
 
-**Purpose**: Provides a single consolidated API for all single-agent operations, replacing the need for separate endpoints per agent.
+**Purpose**: Provides a unified consolidated API for all agent operations, eliminating the need for separate endpoints per agent.
 
 **Key Features**:
 - List all available agents with their configurations and instructions
@@ -269,7 +269,7 @@ The agent configuration is centralized in `backend/app/modules/agents/config.py`
 - POST `/api/v1/agents/{agent_id}/download` - Download records in eval format
 
 **Download Feature (Eval Format)**:
-All single agents support downloading conversations in a standardized eval format for evaluation purposes.
+All agents support downloading conversations in a standardized eval format for evaluation purposes.
 
 **Download Format**:
 ```json
@@ -307,7 +307,7 @@ Each agent config now includes a `scenario_name` field for eval downloads:
 
 ## Workflows API
 
-**Purpose**: Provides configuration and metadata for multi-agent workflows.
+**Purpose**: Provides configuration and metadata for workflows that orchestrate multiple agents.
 
 **Key Features**:
 - List all available workflows with their agent configurations
@@ -366,7 +366,7 @@ The workflow configuration is centralized in `backend/app/modules/workflows/conf
 - **Column visibility controls**: Settings dropdown (⚙️) to show/hide columns
 - **Document ID column**: Hidden by default, shows Cosmos DB document ID (copyable)
 - **Conversation ID column**: Hidden by default, shows Azure AI conversation ID (copyable)
-- **Fixed column widths**: 200-300px to prevent horizontal scroll
+- **Fixed column widths**: 250px for timestamp, 250px for input/response to prevent horizontal scroll
 - **Tooltips on hover**: View full text for long content
 - **Ellipsis for overflow**: Prevents text breaking table layout
-- **Consistent across all pages**: SingleAgentTemplate and custom agent pages
+- **Consistent across all agent pages**: AgentHistoryTable component used by all agents

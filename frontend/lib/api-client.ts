@@ -9,23 +9,28 @@ import type {
   BrowseResponse,
   DeleteResponse,
   ConversationMessage,
-  MultiAgentHistoryItem,
+  WorkflowHistoryItem,
   AgentDetails,
+  AgentInvokeResponse,
+  AgentHistoryItem,
+  AgentInfo,
+  ConversationSimulationResponse,
 } from './types'
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
 // Re-export types from the types module
 export type {
-  SingleAgentResponse,
-  SingleAgentHistoryItem,
+  AgentInvokeResponse,
+  AgentHistoryItem,
   BrowseResponse,
   DeleteResponse,
   ApiResponse,
   ConversationMessage,
-  MultiAgentResponse,
-  MultiAgentHistoryItem,
+  ConversationSimulationResponse,
+  WorkflowHistoryItem,
   AgentDetails,
+  AgentInfo,
 } from './types'
 
 // Shared types
@@ -109,31 +114,8 @@ export interface C2MessageGenerationResponse extends BaseResponse {}
 // Unified Agents API Types
 // ========================================
 
-export interface AgentInfo {
-  agent_id: string;
-  agent_name: string;
-  display_name: string;
-  description: string;
-  instructions: string;
-  input_field: string;
-  input_label: string;
-  input_placeholder: string;
-  sample_inputs: Array<{ label?: string; value: string }>;
-}
-
 export interface AgentListResponse {
   agents: AgentInfo[];
-}
-
-export interface AgentInvokeResponse {
-  response_text: string;
-  tokens_used?: number;
-  time_taken_ms: number;
-  start_time: string;
-  end_time: string;
-  agent_details: AgentDetails;
-  conversation_id: string;
-  parsed_output?: Record<string, unknown>;
 }
 
 // ========================================
@@ -318,8 +300,8 @@ class ApiClient {
     pageSize: number = 10,
     orderBy: string = 'timestamp',
     orderDirection: 'ASC' | 'DESC' = 'DESC'
-  ): Promise<ApiResponse<BrowseResponse<MultiAgentHistoryItem>>> {
-    return this.request<BrowseResponse<MultiAgentHistoryItem>>(
+  ): Promise<ApiResponse<BrowseResponse<WorkflowHistoryItem>>> {
+    return this.request<BrowseResponse<WorkflowHistoryItem>>(
       `/api/v1/conversation-simulation/browse?page=${page}&page_size=${pageSize}&order_by=${orderBy}&order_direction=${orderDirection}`
     );
   }

@@ -16,7 +16,7 @@ backend/app/
 ├── core/                 # Configuration and settings
 ├── models/               # Shared/Common models
 │   ├── shared.py         # Common API and DB schemas
-│   └── single_agent.py   # Shared schemas for single-agent operations
+│   └── single_agent.py   # Shared schemas for agent operations (note: naming kept for backend compat)
 ├── infrastructure/       # Infrastructure services
 │   ├── ai/
 │   │   └── azure_ai_service.py # Client initialization
@@ -35,7 +35,7 @@ backend/app/
 │       ├── config.py    # Workflow configuration registry
 │       ├── models.py    # API schemas for workflows
 │       ├── routes.py    # Workflow listing endpoints
-│       └── conversation_simulation/  # Multi-agent workflow
+│       └── conversation_simulation/  # Workflow with multiple agents
 │           ├── __init__.py
 │           ├── agents.py    # C1 and C2 agent factories
 │           ├── conversation_simulation_service.py  # Orchestration logic
@@ -45,7 +45,7 @@ backend/app/
 ```
 
 ### Unified Agents Module (modules/agents/)
-A centralized module that provides a single API for all single-agent operations:
+A centralized module that provides a unified API for all agent operations:
 
 #### Centralized Instructions (instructions.py)
 All agent instructions are consolidated in a single file:
@@ -79,7 +79,7 @@ All agent instructions are consolidated in a single file:
 - `POST /api/v1/agents/{agent_id}/download` - Download agent records in eval format (see Features documentation)
 
 ### Workflows Module (modules/workflows/)
-A module for multi-agent workflow configurations:
+A module for workflow configurations that orchestrate multiple agents:
 
 #### Workflow Configuration Registry (config.py)
 - Maintains `WORKFLOW_REGISTRY` dictionary with workflow configurations
@@ -130,8 +130,8 @@ For more details on Azure AI Agent Service and Workflow:
 - [Azure AI Documentation](https://github.com/MicrosoftDocs/azure-ai-docs/tree/main/articles/ai-foundry/default/agents)
 
 #### Feature Services
-- **UnifiedAgentsService** (`modules/agents/agents_service.py`): Handles all single-agent operations. Uses agent configurations from the registry.
-- **ConversationSimulationService**: Multi-agent conversation orchestration (C1/C2). Still uses dedicated module in `modules/conversation_simulation/`.
+- **UnifiedAgentsService** (`modules/agents/agents_service.py`): Handles all agent operations. Uses agent configurations from the registry.
+- **ConversationSimulationService**: Workflow orchestration for multi-turn conversations (C1 service rep/C2 customer). Uses dedicated module in `modules/workflows/conversation_simulation/`.
 
 Services contain:
 - Agent configuration (name, instructions, model deployment)
@@ -176,7 +176,7 @@ Does NOT contain:
 
 ### Routes
 
-#### Unified Agents API (Primary API for Single Agents)
+#### Unified Agents API (Primary API for Agents)
 - `/api/v1/agents/*` - Unified agents API
   - GET `/list` - List all agents with configurations and instructions
   - GET `/{agent_id}` - Get specific agent details
@@ -190,7 +190,7 @@ Does NOT contain:
   - GET `/list` - List all workflows with agent details
   - GET `/{workflow_id}` - Get specific workflow details
 
-#### Conversation Simulation (Multi-Agent Workflow)
+#### Conversation Simulation (Multi-Turn Workflow)
 - `/api/v1/conversation-simulation/*` - Delegates to ConversationSimulationService
   - POST `/simulate` - Simulate conversation between C1 and C2 agents
   - GET `/browse` - Browse past simulations with pagination
@@ -211,21 +211,32 @@ Routes only:
 ```
 frontend/
 ├── app/                        # Next.js App Router pages
-│   ├── agents/                 # Dynamic agents pages
+│   ├── agents/                 # Nested routes for agents
 │   │   └── [agentId]/          # Dynamic route for any agent
-│   │       └── page.tsx
-│   ├── workflows/              # Workflow pages
-│   │   └── conversation_simulation/
-│   │       └── page.tsx
-│   ├── c2-message-generation/  # C2 message generation page
-│   ├── conversation-simulation/ # Conversation simulation page
-│   ├── persona-distribution/   # Persona distribution page
-│   ├── persona-generator/      # Persona generator page
-│   └── transcript-parser/      # Transcript parser page
+│   │       ├── layout.tsx      # Agent layout (loads info, provides context)
+│   │       ├── page.tsx        # Generate page (default)
+│   │       ├── batch/
+│   │       │   └── page.tsx    # Batch processing page
+│   │       └── history/
+│   │           └── page.tsx    # History page
+│   └── workflows/              # Workflow pages
+│       └── conversation_simulation/
+│           └── page.tsx
 ├── components/                 # React components
 │   ├── PageLayout.tsx          # Reusable page layout with navigation
-│   ├── SingleAgentTemplate.tsx # Template for single-agent pages
-│   └── MultiAgentTemplate.tsx  # Template for multi-agent workflows
+│   └── agents/                 # Modular agent components
+│       ├── shared/
+│       │   ├── AgentContext.tsx    # React Context for agent info
+│       │   └── AgentTabs.tsx       # Tab navigation
+│       ├── result/
+│       │   ├── AgentResultModal.tsx # Modal for viewing results
+│       │   └── AgentResultCard.tsx  # Inline result display
+│       ├── instructions/
+│       │   └── AgentInstructionsCard.tsx # Collapsible instructions
+│       ├── batch/
+│       │   └── BatchProcessingSection.tsx # Complete batch UI
+│       └── history/
+│           └── AgentHistoryTable.tsx # Full-featured history table
 └── lib/                        # Utilities and API client
     ├── api-client.ts           # Backend API client (includes agents and workflows APIs)
     ├── types.ts                # Shared TypeScript types
@@ -233,68 +244,94 @@ frontend/
 ```
 
 ### Key Principles
-- **Template-based UI**: Single-agent and multi-agent pages use reusable templates
+- **Modular component architecture**: Reusable components extracted from monolithic pages
+- **Nested routes with layouts**: Agent info loaded once in layout, shared via React Context
+- **URL-based navigation**: Each tab is a separate route with browser back/forward support
 - **Global timezone support**: User can toggle between UTC and IST (default: IST)
 - **Dynamic routing**: Agents pages use dynamic [agentId] routing
 - **Instructions display**: All agent pages show the agent's instruction set
-- Component reusability
+- Component reusability across features
 - Type safety with TypeScript
 - Responsive design with Ant Design
 - Accessible UI with Ant Design components
-- Tab-based interface for generate, batch, and history views
 
 ### Navigation Structure
 The navigation sidebar organizes pages into two main sections:
-- **Agents** - Individual agents for single-agent operations
+- **Agents** - Individual agents that operate independently
   - Persona Distribution Generator
   - Persona Generator
   - Transcript Parser
   - C2 Message Generator
-- **Workflows** - Multi-agent workflows
+- **Workflows** - Multi-agent orchestration with custom logic
   - Conversation Simulation
 
-### Templates
+### Agent Pages Architecture
 
-#### SingleAgentTemplate
-Reusable template for single-agent features with three tabs:
-- **Generate Tab**: Form for creating single requests with sample inputs
-- **Batch Tab**: Process multiple inputs with configurable delay
-- **History Tab**: Paginated view of past results with:
-  - Filter, sort, download, multi-select, delete
-  - **Column visibility controls**: Settings dropdown to show/hide columns
-  - **Document ID and Conversation ID columns**: Hidden by default, can be toggled
-  - **Fixed column widths**: Prevents horizontal scroll issues
-  - **Tooltips**: Hover to see full text for long content
-  - **Copyable IDs**: Document ID and Conversation ID are copyable
+#### Nested Routes Structure
+Agent pages use Next.js nested routes:
+- `/agents/[agentId]` - Generate page (default)
+- `/agents/[agentId]/batch` - Batch processing page
+- `/agents/[agentId]/history` - History page
 
-Configuration via `SingleAgentConfig`:
-- `title`, `description`, `pageKey`
-- `inputLabel`, `inputPlaceholder`, `inputFieldName`
-- `sampleInputs` - Example prompts/inputs
-- API functions: `generateFn`, `browseFn`, `deleteFn`, `downloadFn`
-- Optional: `historyColumns`, `renderParsedOutput`
+#### Layout Component
+The `layout.tsx` file:
+- Loads agent info once via API on mount
+- Provides agent info to all child pages via `AgentContext`
+- Renders tab navigation via `AgentTabs` component
+- Handles loading and error states
 
-Pages using SingleAgentTemplate:
-- Persona Distribution
-- Persona Generator
-- Transcript Parser
-- C2 Message Generation
+#### Reusable Components
 
-#### MultiAgentTemplate
-Reusable template for multi-agent features with three tabs:
-- **Simulate Tab**: Form with configurable input fields and sample configurations
-- **Batch Tab**: Process multiple configurations in batch
-- **History Tab**: Paginated view with expandable rows showing conversation history
+**AgentContext** - React Context for sharing agent info
+- Eliminates prop drilling across pages
+- Loaded once in layout, consumed in all child pages
 
-Configuration via `MultiAgentConfig`:
-- `title`, `description`, `pageKey`
-- `inputFields` - Dynamic input field configuration
-- `sampleConfigs` - Example configurations
-- API functions: `simulateFn`, `browseFn`, `deleteFn`, `downloadFn`
-- Optional: `historyColumns`, `renderConversation`
+**AgentTabs** - Tab-like navigation
+- Uses Next.js Link for client-side navigation
+- Active state based on pathname
+- Horizontal menu styled like tabs
 
-Pages using MultiAgentTemplate:
-- Conversation Simulation
+**AgentResultModal** - Result viewing modal
+- JSON/Plain Text toggle for response viewing
+- Displays metrics (tokens, time, model, agent version)
+- Used in History tab for viewing details
+
+**AgentResultCard** - Inline result display
+- Shows result after generation on Generate page
+- JSON/Plain Text toggle
+- Metrics display
+
+**AgentInstructionsCard** - Collapsible instructions display
+- Show/Hide toggle
+- Pre-formatted text with syntax preservation
+- Used on Generate page
+
+**BatchProcessingSection** - Complete batch processing UI
+- JSON input loading and validation
+- Configurable delay between items
+- Progress bar and stop functionality
+- Results table with status indicators
+
+**AgentHistoryTable** - Full-featured history table
+- Auto-loads on mount
+- Sorting, filtering, pagination
+- Column visibility controls
+- Agent version filtering
+- Bulk delete and download
+- Row selection with multi-select
+- Fixed column widths to prevent horizontal scroll
+- Tooltips for long content
+- Copyable IDs
+
+#### Workflow Pages
+
+Workflows that orchestrate multiple agents (e.g., conversation simulation) have custom implementations:
+- Each workflow has unique UI requirements and orchestration logic
+- No shared template - each page implements its own three-tab structure
+- Tab structure: Simulate, Batch Processing, History
+- Custom conversation rendering and history columns
+- Expandable rows in history table for viewing multi-turn conversation details
+- Workflows manage stateful interactions between multiple agents
 
 ### Timezone Context
 Global timezone management via React Context:
@@ -304,13 +341,13 @@ Global timezone management via React Context:
 - Default: IST
 - Persisted to localStorage
 
-### Pages
-Each feature has a dedicated page that configures and renders the appropriate template:
-- `/c2-message-generation` - SingleAgentTemplate with C2 message generation config
-- `/persona-distribution` - SingleAgentTemplate with persona distribution config
-- `/persona-generator` - SingleAgentTemplate with persona generator config
-- `/transcript-parser` - SingleAgentTemplate with transcript parser config
-- `/conversation-simulation` - MultiAgentTemplate with conversation simulation config
+### Routing
+Agent pages use URL-based navigation:
+- `/agents/persona_generator` - Persona Generator (Generate tab)
+- `/agents/persona_generator/batch` - Batch Processing tab
+- `/agents/persona_generator/history` - History tab
+- Browser back/forward navigation works
+- URLs are shareable
 
 ## Data Flow
 
@@ -370,10 +407,10 @@ Each feature has a dedicated page that configures and renders the appropriate te
 - Per-message metrics in conversations
 - All metrics visible in UI
 
-## Multi-Agent Workflow (Conversation Simulation)
+## Workflow Pattern: Conversation Simulation
 
 ### Architecture
-The conversation simulation uses a shared conversation multi-agent workflow where:
+The conversation simulation workflow orchestrates multiple agents through a shared conversation where:
 1. Single conversation is created at the start
 2. Conversation is reused across all agent invocations for context continuity
 3. Agents operate sequentially by adding messages and creating responses
