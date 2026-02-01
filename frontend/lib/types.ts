@@ -116,6 +116,27 @@ export interface HistoryColumnConfig<T = AgentHistoryItem> {
   visible?: boolean
 }
 
+/**
+ * Agent version info for multi-agent download
+ * Matches backend: AgentVersionInfo (eval format specific)
+ */
+export interface AgentVersionInfo {
+  agent_id: string
+  agent_name: string
+  version: string
+  conversation_count: number
+  scenario_name: string
+}
+
+/**
+ * Agent version selection for multi-agent download
+ * Matches backend: AgentVersionSelection (eval format specific)
+ */
+export interface AgentVersionSelection {
+  agent_id: string
+  version: string
+}
+
 // ============================================================================
 // Workflow Types (for multi-agent workflows)
 // ============================================================================

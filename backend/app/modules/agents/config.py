@@ -15,6 +15,9 @@ from .instructions import (
     TRANSCRIPT_PARSER_AGENT_INSTRUCTIONS,
     C2_MESSAGE_GENERATOR_AGENT_INSTRUCTIONS,
     C1_AGENT_INSTRUCTIONS,
+    SIMULATION_PROMPT_VALIDATING_AGENT_INSTRUCTIONS,
+    TRANSCRIPT_BASED_SIMULATION_PARSER_AGENT_INSTRUCTIONS,
+    SIMULATION_PROMPT_AGENT_INSTRUCTIONS,
 )
 
 
@@ -167,6 +170,104 @@ AGENT_REGISTRY: Dict[str, AgentConfig] = {
             {
                 "label": "Resolution confirmation",
                 "value": "Generate a representative's message confirming that a customer's issue has been resolved and asking if there's anything else they can help with.",
+            },
+        ],
+    ),
+    "simulation_prompt_validator": AgentConfig(
+        agent_id="simulation_prompt_validator",
+        agent_name="SimulationPromptValidatingAgent",
+        display_name="Simulation Prompt Validator",
+        description="Validate simulation JSON prompts for caller/recipient phone number formats, phone number uniqueness, and ConvCount limits. Returns validation errors or empty array if valid.",
+        instructions=SIMULATION_PROMPT_VALIDATING_AGENT_INSTRUCTIONS,
+        container_name="single_turn_conversations",
+        scenario_name="SimulationPromptValidatingAgent",
+        input_field="prompt",
+        input_label="JSON Input",
+        input_placeholder='Enter JSON to validate (e.g., {"ConvCount":10,"Caller":"+18005551234","Recipient":"+18005559876"})...',
+        sample_inputs=[
+            {
+                "label": "Valid JSON with all required fields",
+                "value": '{"ConvCount":10,"Caller":"+18005551234","Recipient":"+18005559876"}',
+            },
+            {
+                "label": "Invalid: ConvCount exceeds limit",
+                "value": '{"ConvCount":100,"Caller":"+18005551234","Recipient":"+18005559876"}',
+            },
+            {
+                "label": "Invalid: Missing phone numbers",
+                "value": '{"ConvCount":10,"Caller":"","Recipient":""}',
+            },
+            {
+                "label": "Invalid: Same caller and recipient",
+                "value": '{"ConvCount":10,"Caller":"+18007770999","Recipient":"+18007770999"}',
+            },
+            {
+                "label": "Invalid: Malformed phone numbers",
+                "value": '{"ConvCount":5,"Caller":"+1800-555-1234","Recipient":"+185555394A2"}',
+            },
+        ],
+    ),
+    "transcript_based_simulation_parser": AgentConfig(
+        agent_id="transcript_based_simulation_parser",
+        agent_name="TranscriptBasedSimulationParserAgent",
+        display_name="Transcript Based Simulation Parser",
+        description="Extract conversation GUIDs and target phone numbers from transcript-based simulation requests. Returns structured JSON with targetPhoneNumber and conversationIDs.",
+        instructions=TRANSCRIPT_BASED_SIMULATION_PARSER_AGENT_INSTRUCTIONS,
+        container_name="single_turn_conversations",
+        scenario_name="TranscriptBasedSimulationParserAgent",
+        input_field="prompt",
+        input_label="Input Message",
+        input_placeholder="Enter message with conversation IDs and target phone number (e.g., 'Simulate based on conversations...')...",
+        sample_inputs=[
+            {
+                "label": "Multiple conversation IDs with target phone",
+                "value": "Simulate based on these conversations' transcripts against number +18556215741. Conversation IDs are: 4d8dda54-029a-f011-bbd3-6045bd04d7c7, 37dc7b0c-d300-40a2-9746-2cf981e04316, fea51dd0-cabd-e56c-bd02-c7865f78eef1",
+            },
+            {
+                "label": "Two conversation IDs with different format",
+                "value": "Run transcript based simulation for Conversation IDs: 6d14de35-58ae-f011-bbd3-000d3a33b1cc, 7614de35-58ae-f011-bbd3-000d3a33b1cc against target number +19876543210",
+            },
+            {
+                "label": "Single conversation with target",
+                "value": "Simulate transcript for conversation ID 1c47463d-58ae-f011-bbd3-000d3a33b1cc to phone number +14155552671",
+            },
+            {
+                "label": "Multiple IDs with international phone",
+                "value": "Transcript based simulation for given Conversation IDs 7f14de35-58ae-f011-bbd3-000d3a33b1cc, 1c47463d-58ae-f011-bbd3-000d3a33b1cc, dd7a8a94-a0a2-f011-bbd3-0022480c3dbb and do it with this target phone number +447911123456",
+            },
+        ],
+    ),
+    "simulation_prompt": AgentConfig(
+        agent_id="simulation_prompt",
+        agent_name="SimulationPromptAgent",
+        display_name="Simulation Prompt",
+        description="Detect simulation requests and respond with 'RunSimulation' for valid prompts. Rejects non-simulation requests and inappropriate content.",
+        instructions=SIMULATION_PROMPT_AGENT_INSTRUCTIONS,
+        container_name="single_turn_conversations",
+        scenario_name="SimulationPromptAgent",
+        input_field="prompt",
+        input_label="Prompt",
+        input_placeholder="Enter a simulation request (e.g., 'Simulate 10 customer service calls about billing issues')...",
+        sample_inputs=[
+            {
+                "label": "Basic simulation request",
+                "value": "Simulate 10 customer service calls about billing issues",
+            },
+            {
+                "label": "Detailed simulation with parameters",
+                "value": "Run a simulation of 25 conversations where customers call about product returns. 60% should be frustrated, 40% should be neutral.",
+            },
+            {
+                "label": "Transcript-based simulation",
+                "value": "Simulate based on transcript from conversation ID abc123 to phone number +18005551234",
+            },
+            {
+                "label": "Non-simulation request (should reject)",
+                "value": "What is the weather like today?",
+            },
+            {
+                "label": "Technical support simulation",
+                "value": "I need to simulate 15 technical support calls about internet connectivity issues",
             },
         ],
     ),

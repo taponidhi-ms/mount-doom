@@ -14,6 +14,10 @@ import {
   RobotOutlined,
   BranchesOutlined,
   GlobalOutlined,
+  CheckCircleOutlined,
+  FileTextOutlined,
+  ThunderboltOutlined,
+  DownloadOutlined,
 } from '@ant-design/icons'
 import { Button, Typography, Layout, Menu, theme, Select, Space, Tooltip } from 'antd'
 import type { MenuProps } from 'antd'
@@ -31,7 +35,10 @@ const AGENT_ICON_MAP: Record<string, React.ReactNode> = {
   persona_generator: <UserAddOutlined />,
   transcript_parser: <FileSearchOutlined />,
   c2_message_generation: <MessageOutlined />,
-  c1_message_generation: <CommentOutlined />
+  c1_message_generation: <CommentOutlined />,
+  simulation_prompt_validator: <CheckCircleOutlined />,
+  transcript_based_simulation_parser: <FileTextOutlined />,
+  simulation_prompt: <ThunderboltOutlined />
 }
 const DEFAULT_AGENT_ICON = <RobotOutlined />
 
@@ -113,11 +120,17 @@ export default function PageLayout({
         getItem('Transcript Parser', '/agents/transcript_parser', <FileSearchOutlined />),
         getItem('C2 Message Generator', '/agents/c2_message_generation', <MessageOutlined />),
         getItem('C1 Message Generator', '/agents/c1_message_generation', <CommentOutlined />),
+        getItem('Simulation Prompt Validator', '/agents/simulation_prompt_validator', <CheckCircleOutlined />),
+        getItem('Transcript Based Simulation Parser', '/agents/transcript_based_simulation_parser', <FileTextOutlined />),
+        getItem('Simulation Prompt', '/agents/simulation_prompt', <ThunderboltOutlined />),
       ]
 
   const items: MenuItem[] = [
     getItem('Home', '/', <HomeOutlined />),
-    getItem('Agents', 'agents', <RobotOutlined />, agentMenuItems),
+    getItem('Agents', 'agents', <RobotOutlined />, [
+      ...agentMenuItems,
+      getItem('Downloads', '/agents/download', <DownloadOutlined />),
+    ]),
     getItem('Workflows', 'workflows', <BranchesOutlined />, [
       getItem('Conversation Simulation', '/workflows/conversation_simulation', <CommentOutlined />),
     ]),

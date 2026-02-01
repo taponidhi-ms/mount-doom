@@ -12,9 +12,13 @@ import structlog
 from app.models.shared import BrowseResponse
 from app.infrastructure.db.cosmos_db_service import cosmos_db_service
 
-from .config import get_agent_config, get_all_agents
-from .models import AgentInfo, AgentListResponse, AgentInvokeRequest, AgentInvokeResponse
+from .config import get_agent_config, get_all_agents, AGENT_REGISTRY
+from .models import (
+    AgentInfo, AgentListResponse, AgentInvokeRequest, AgentInvokeResponse,
+    AgentVersionInfo, MultiAgentDownloadRequest
+)
 from .agents_service import unified_agents_service
+from datetime import datetime
 
 logger = structlog.get_logger()
 
@@ -48,6 +52,157 @@ async def list_agents():
     
     logger.info("Returning agent list", count=len(agents))
     return AgentListResponse(agents=agents)
+
+
+@router.get("/versions", response_model=list[AgentVersionInfo])
+async def list_agent_versions():
+    """
+    Get all unique agent+version combinations with conversation counts.
+
+    Returns a list of all agent versions that have conversations in the database,
+    along with the count of conversations for each version.
+    """
+    logger.info("Listing all agent versions")
+
+    try:
+        # Get version summary from Cosmos DB
+        summary = await cosmos_db_service.get_agent_version_summary(
+            cosmos_db_service.SINGLE_TURN_CONVERSATIONS_CONTAINER
+        )
+
+        # Map agent_name to agent_id and get scenario_name from config
+        result = []
+        for item in summary:
+            agent_name = item["agent_name"]
+            version = item["agent_version"]
+            count = item["count"]
+
+            # Find agent_id by matching agent_name in registry
+            agent_id = None
+            scenario_name = agent_name  # fallback to agent_name
+
+            for aid, config in AGENT_REGISTRY.items():
+                if config.agent_name == agent_name:
+                    agent_id = aid
+                    scenario_name = config.scenario_name or config.agent_name
+                    break
+
+            # Only include if we found a matching agent_id
+            if agent_id:
+                result.append(AgentVersionInfo(
+                    agent_id=agent_id,
+                    agent_name=agent_name,
+                    version=version,
+                    conversation_count=count,
+                    scenario_name=scenario_name
+                ))
+            else:
+                logger.warning("Agent not found in registry", agent_name=agent_name)
+
+        logger.info("Returning agent versions list", count=len(result))
+        return result
+
+    except Exception as e:
+        logger.error("Error listing agent versions", error=str(e), exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Error listing agent versions: {str(e)}")
+
+
+@router.post("/download-multi")
+async def download_multi_agent_records(request: MultiAgentDownloadRequest) -> Response:
+    """
+    Download conversations from multiple agent+version combinations in eval format.
+
+    Takes a list of agent_id+version selections and returns a single JSON file
+    with all matching conversations in a flat list.
+    """
+    logger.info("Received multi-agent download request", selections=len(request.selections))
+
+    if not request.selections:
+        raise HTTPException(status_code=400, detail="No selections provided")
+
+    # Validate all agent_ids exist
+    for selection in request.selections:
+        config = get_agent_config(selection.agent_id)
+        if not config:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Agent not found: {selection.agent_id}"
+            )
+
+    try:
+        all_conversations = []
+
+        # Query conversations for each selection
+        for selection in request.selections:
+            config = get_agent_config(selection.agent_id)
+            agent_name = config.agent_name
+            version = selection.version
+
+            logger.info("Querying conversations",
+                       agent_id=selection.agent_id,
+                       agent_name=agent_name,
+                       version=version)
+
+            try:
+                # Query all conversations for this agent+version
+                items = await cosmos_db_service.query_by_agent_and_version(
+                    config.container_name,
+                    agent_name,
+                    version
+                )
+
+                # Transform to eval format
+                for item in items:
+                    document_id = item.get("id", "")
+                    instructions = item.get("agent_instructions", "")
+                    prompt = item.get("prompt", "")
+                    response = item.get("response", "")
+                    scenario_name = config.scenario_name or config.agent_name
+
+                    # Build eval format record
+                    # agent_prompt is a literal template string - eval framework will substitute values
+                    record = {
+                        "Id": document_id,
+                        "instructions": instructions,
+                        "prompt": prompt,
+                        "agent_prompt": "[SYSTEM]\n{{instructions}}\n\n[USER]\n{{prompt}}",
+                        "agent_response": response,
+                        "scenario_name": scenario_name
+                    }
+                    all_conversations.append(record)
+
+                logger.info("Retrieved conversations",
+                           agent_id=selection.agent_id,
+                           version=version,
+                           count=len(items))
+
+            except Exception as e:
+                logger.warning("Failed to retrieve conversations for selection",
+                             agent_id=selection.agent_id,
+                             version=version,
+                             error=str(e))
+                continue
+
+        # Generate filename with timestamp
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"multi_agent_evals_{timestamp}.json"
+
+        result = {"conversations": all_conversations}
+        json_str = json.dumps(result, indent=2)
+
+        logger.info("Returning multi-agent download data in eval format",
+                   total_conversations=len(all_conversations),
+                   filename=filename)
+
+        return Response(
+            content=json_str,
+            media_type="application/json",
+            headers={"Content-Disposition": f'attachment; filename="{filename}"'}
+        )
+
+    except Exception as e:
+        logger.error("Error downloading multi-agent records", error=str(e), exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Error downloading: {str(e)}")
 
 
 @router.get("/{agent_id}", response_model=AgentInfo)

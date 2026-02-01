@@ -15,6 +15,8 @@ import type {
   AgentHistoryItem,
   AgentInfo,
   ConversationSimulationResponse,
+  AgentVersionInfo,
+  AgentVersionSelection,
 } from './types'
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
@@ -401,6 +403,20 @@ class ApiClient {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(ids),
+    });
+  }
+
+  async listAgentVersions(): Promise<ApiResponse<AgentVersionInfo[]>> {
+    return this.request<AgentVersionInfo[]>('/api/v1/agents/versions');
+  }
+
+  async downloadMultiAgent(selections: AgentVersionSelection[]): Promise<ApiResponse<Blob>> {
+    return this.requestBlob('/api/v1/agents/download-multi', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ selections }),
     });
   }
 

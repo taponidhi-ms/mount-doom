@@ -1,7 +1,7 @@
 from azure.cosmos import CosmosClient, PartitionKey, exceptions, DatabaseProxy
 from azure.identity import DefaultAzureCredential
 from app.core.config import settings
-from typing import Optional, Dict, Any, Union
+from typing import Optional, Dict, Any, Union, List
 from pydantic import BaseModel
 import structlog
 import warnings
@@ -264,6 +264,125 @@ class CosmosDBService:
         except Exception as e:
             logger.error("Error browsing container",
                         container=container_name,
+                        error=str(e),
+                        exc_info=True)
+            raise
+
+    async def get_agent_version_summary(
+        self,
+        container_name: str
+    ) -> List[Dict[str, Any]]:
+        """
+        Get summary of all unique agent versions with conversation counts.
+
+        Args:
+            container_name: Name of the container to query
+
+        Returns:
+            List of dicts with agent_name, agent_version, and count
+            Example: [{"agent_name": "persona_generator", "agent_version": "v12345678", "count": 42}]
+        """
+        try:
+            logger.info("Getting agent version summary", container=container_name)
+
+            container = await self.ensure_container(container_name)
+
+            # Note: Cosmos DB SQL doesn't support GROUP BY in the traditional sense
+            # We need to get all documents and group them in memory
+            query = "SELECT c.agent_name, c.agent_version FROM c"
+
+            items = list(container.query_items(
+                query=query,
+                enable_cross_partition_query=True
+            ))
+
+            # Group by agent_name and agent_version in memory
+            version_counts: Dict[tuple, int] = {}
+            for item in items:
+                agent_name = item.get("agent_name")
+                agent_version = item.get("agent_version")
+                if agent_name and agent_version:
+                    key = (agent_name, agent_version)
+                    version_counts[key] = version_counts.get(key, 0) + 1
+
+            # Convert to list of dicts
+            result = [
+                {
+                    "agent_name": agent_name,
+                    "agent_version": agent_version,
+                    "count": count
+                }
+                for (agent_name, agent_version), count in sorted(version_counts.items())
+            ]
+
+            logger.info("Agent version summary retrieved",
+                       container=container_name,
+                       unique_versions=len(result),
+                       total_conversations=sum(item["count"] for item in result))
+
+            return result
+
+        except Exception as e:
+            logger.error("Error getting agent version summary",
+                        container=container_name,
+                        error=str(e),
+                        exc_info=True)
+            raise
+
+    async def query_by_agent_and_version(
+        self,
+        container_name: str,
+        agent_name: str,
+        version: str
+    ) -> List[Dict[str, Any]]:
+        """
+        Query all conversations for a specific agent and version.
+
+        Args:
+            container_name: Name of the container to query
+            agent_name: The agent's name to filter by
+            version: The agent's version to filter by
+
+        Returns:
+            List of documents matching the criteria, ordered by timestamp DESC
+        """
+        try:
+            logger.info("Querying conversations by agent and version",
+                       container=container_name,
+                       agent_name=agent_name,
+                       version=version)
+
+            container = await self.ensure_container(container_name)
+
+            query = """
+                SELECT * FROM c
+                WHERE c.agent_name = @agent_name
+                AND c.agent_version = @version
+                ORDER BY c.timestamp DESC
+            """
+
+            items = list(container.query_items(
+                query=query,
+                parameters=[
+                    {"name": "@agent_name", "value": agent_name},
+                    {"name": "@version", "value": version}
+                ],
+                enable_cross_partition_query=True
+            ))
+
+            logger.info("Conversations queried successfully",
+                       container=container_name,
+                       agent_name=agent_name,
+                       version=version,
+                       count=len(items))
+
+            return items
+
+        except Exception as e:
+            logger.error("Error querying by agent and version",
+                        container=container_name,
+                        agent_name=agent_name,
+                        version=version,
                         error=str(e),
                         exc_info=True)
             raise

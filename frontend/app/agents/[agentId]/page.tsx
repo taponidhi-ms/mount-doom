@@ -3,9 +3,11 @@
 import { useState } from 'react'
 import { useParams } from 'next/navigation'
 import { Button, Card, Input, Space, Typography, message, Alert } from 'antd'
+import { BulbOutlined } from '@ant-design/icons'
 import { useAgentContext } from '@/components/agents/shared/AgentContext'
 import AgentInstructionsCard from '@/components/agents/instructions/AgentInstructionsCard'
 import AgentResultCard from '@/components/agents/result/AgentResultCard'
+import SampleInputsModal from '@/components/agents/sample-inputs/SampleInputsModal'
 import { apiClient } from '@/lib/api-client'
 import type { AgentInvokeResponse } from '@/lib/api-client'
 
@@ -21,6 +23,7 @@ export default function AgentGeneratePage() {
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<AgentInvokeResponse | null>(null)
   const [error, setError] = useState('')
+  const [showSamplesModal, setShowSamplesModal] = useState(false)
 
   const handleSubmit = async () => {
     if (!input.trim()) {
@@ -53,44 +56,27 @@ export default function AgentGeneratePage() {
       <Card title={`Generate with ${agentInfo.display_name}`}>
         <Space direction="vertical" size="middle" style={{ width: '100%' }}>
           <div>
-            <Text strong>{agentInfo.input_label}</Text>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+              <Text strong>{agentInfo.input_label}</Text>
+              {agentInfo.sample_inputs && agentInfo.sample_inputs.length > 0 && (
+                <Button
+                  type="default"
+                  icon={<BulbOutlined />}
+                  size="small"
+                  onClick={() => setShowSamplesModal(true)}
+                >
+                  Try Sample Input
+                </Button>
+              )}
+            </div>
             <TextArea
               value={input}
               onChange={(e) => setInput(e.target.value)}
               placeholder={agentInfo.input_placeholder}
               rows={6}
-              style={{ marginTop: 8 }}
               disabled={loading}
             />
           </div>
-
-          {agentInfo.sample_inputs && agentInfo.sample_inputs.length > 0 && (
-            <div style={{ marginTop: 16 }}>
-              <Text strong>Sample {agentInfo.input_label}s</Text>
-              <Space direction="vertical" style={{ width: '100%', marginTop: 8 }}>
-                {agentInfo.sample_inputs.map((sample, index) => (
-                  <Card key={index} size="small" style={{ background: '#f9f9f9' }}>
-                    <Space
-                      align="start"
-                      style={{ width: '100%', justifyContent: 'space-between' }}
-                    >
-                      <Text style={{ fontSize: 13, color: '#666' }}>
-                        {sample.label || sample.value.substring(0, 80) + '...'}
-                      </Text>
-                      <Button
-                        size="small"
-                        type="link"
-                        onClick={() => setInput(sample.value)}
-                        style={{ padding: 0, marginLeft: 8 }}
-                      >
-                        Try it
-                      </Button>
-                    </Space>
-                  </Card>
-                ))}
-              </Space>
-            </div>
-          )}
 
           <Button
             type="primary"
@@ -108,6 +94,16 @@ export default function AgentGeneratePage() {
       </Card>
 
       {result && <AgentResultCard result={result} />}
+
+      {agentInfo.sample_inputs && (
+        <SampleInputsModal
+          open={showSamplesModal}
+          onClose={() => setShowSamplesModal(false)}
+          sampleInputs={agentInfo.sample_inputs}
+          onSelect={setInput}
+          inputLabel={agentInfo.input_label}
+        />
+      )}
     </Space>
   )
 }

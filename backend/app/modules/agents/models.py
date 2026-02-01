@@ -67,3 +67,25 @@ class InvokeOnConversationResult(BaseModel):
     response_text: str
     tokens_used: Optional[int] = None
     timestamp: datetime
+
+
+# Multi-agent download models (eval format specific)
+
+class AgentVersionInfo(BaseModel):
+    """Information about an agent version with conversation count."""
+    agent_id: str
+    agent_name: str
+    version: str
+    conversation_count: int
+    scenario_name: str
+
+
+class AgentVersionSelection(BaseModel):
+    """Selection of a specific agent and version for download."""
+    agent_id: str
+    version: str
+
+
+class MultiAgentDownloadRequest(BaseModel):
+    """Request to download conversations from multiple agent versions."""
+    selections: List[AgentVersionSelection]

@@ -11,6 +11,38 @@ Mount Doom is a fullstack AI agent simulation platform for multi-agent conversat
 - Frontend: Next.js 15, TypeScript, Ant Design
 - Authentication: Azure DefaultAzureCredential (automatic token refresh)
 
+## Documentation Update Policy
+
+**CRITICAL: Always update documentation before committing code changes.**
+
+Before creating any git commit, you MUST update the following documentation files to reflect your changes:
+
+1. **CLAUDE.md** (this file) - Update relevant sections:
+   - Architecture changes → Update architecture sections
+   - New features → Update feature descriptions
+   - New conventions → Update Key Conventions section
+   - API changes → Update relevant API sections
+
+2. **Memory Banks** (`.memory-banks/` directory):
+   - **architecture.md** - Update for architectural changes (new services, components, data flow changes)
+   - **conventions.md** - Update for new coding standards, patterns, or best practices
+   - **features.md** - Update for new features, feature changes, or workflow updates
+
+3. **README.md** - Update if user-facing changes (setup instructions, new features, deployment changes)
+
+**When to Update**:
+- Adding new agents or workflows
+- Adding new API endpoints
+- Changing database schema or structure
+- Adding new UI pages or components
+- Changing configuration or setup process
+- Adding new dependencies or technologies
+- Modifying existing features significantly
+
+**Commit Message Format**:
+- Include what was changed AND which documentation was updated
+- Example: `feat: Add multi-agent download feature\n\nUpdated CLAUDE.md and .memory-banks/features.md with multi-agent download documentation`
+
 ## Development Commands
 
 ### Backend
@@ -251,13 +283,50 @@ response = openai_client.responses.create(
 - Supports Cosmos DB Emulator (set `COSMOS_DB_USE_EMULATOR=true`)
 - No Azure authentication needed for emulator (uses emulator key)
 
-## Download Feature (Eval Format)
+## Download Features (Eval Format)
 
-**Purpose**: All agent features support downloading conversations in a standardized format optimized for evaluation (evals) purposes.
+### Single-Agent Download
+
+**Purpose**: Download conversations from a single agent in eval format.
 
 **API Endpoint**: `POST /api/v1/agents/{agent_id}/download`
 - Request body: Array of document IDs to download
 - Response: JSON file with conversations in eval format
+- Filename: `{agent_id}_evals.json`
+
+### Multi-Agent Download
+
+**Purpose**: Download conversations from multiple agents with version filtering in a single eval-formatted file.
+
+**API Endpoints**:
+- `GET /api/v1/agents/versions` - List all agent+version combinations with conversation counts
+- `POST /api/v1/agents/download-multi` - Download selected agent+version combinations
+
+**Multi-Agent Download Request**:
+```json
+{
+  "selections": [
+    {"agent_id": "persona_generator", "version": "v12345678"},
+    {"agent_id": "transcript_parser", "version": "vabcdef01"}
+  ]
+}
+```
+
+**Response**: Single JSON file with flat list of conversations from all selected agent+version combinations
+- Filename: `multi_agent_evals_{timestamp}.json`
+
+**Frontend Integration**:
+- Dedicated page at `/agents/download` for multi-agent selection
+- Table showing all agent versions with conversation counts
+- Checkbox selection for specific agent+version combinations
+- Real-time count of selected versions and total conversations
+- Download button triggers browser download
+
+**Key Features**:
+- Version-specific filtering (only conversations from selected versions)
+- Flat list format (all conversations together, compatible with eval framework)
+- No hard data size limits (typical: 1,000 conversations ≈ 2-5 MB)
+- Implementation specific to eval format (not generalized for future formats)
 
 **Download Format**:
 ```json

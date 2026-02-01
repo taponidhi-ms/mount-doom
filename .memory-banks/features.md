@@ -305,6 +305,87 @@ Each agent config now includes a `scenario_name` field for eval downloads:
 
 ---
 
+## Multi-Agent Download Feature
+
+**Purpose**: Download conversations from multiple agents with version filtering in a single eval-formatted file.
+
+**Workflow**:
+1. User navigates to `/agents/download` page
+2. Frontend fetches all available agent+version combinations with conversation counts
+3. User selects specific agent+version combinations via checkboxes
+4. User clicks "Download Selected" button
+5. Frontend sends selections to backend
+6. Backend queries Cosmos DB for conversations matching each agent+version pair
+7. Backend combines all conversations into flat list with eval format
+8. Browser downloads single JSON file with all selected conversations
+
+**Backend Implementation**:
+- **GET `/api/v1/agents/versions`**: Lists all unique agent+version combinations
+  - Queries `single_turn_conversations` container
+  - Groups by agent_name and agent_version in memory
+  - Maps agent_name to agent_id using AGENT_REGISTRY
+  - Returns list with conversation counts per version
+- **POST `/api/v1/agents/download-multi`**: Downloads selected conversations
+  - Validates all agent_ids exist in AGENT_REGISTRY
+  - For each selection, queries conversations by agent_name and agent_version
+  - Transforms to eval format (same as single-agent download)
+  - Returns single JSON file with flat list of all conversations
+  - Filename: `multi_agent_evals_{timestamp}.json`
+
+**Cosmos DB Queries**:
+- `get_agent_version_summary(container_name)`: Returns all unique agent+version combos with counts
+- `query_by_agent_and_version(container_name, agent_name, version)`: Returns conversations for specific agent+version
+
+**Frontend Implementation**:
+- **Page**: `/agents/download` (new dedicated page)
+- **Components**:
+  - Table showing agent versions with checkboxes
+  - Columns: Agent, Scenario Name, Version, Conversations
+  - Alert showing selection summary (versions count, total conversations)
+  - Download button (disabled when nothing selected)
+- **Key Features**:
+  - Row selection with checkboxes
+  - Real-time count of selected versions and total conversations
+  - Loading states during fetch and download
+  - Error handling with messages
+  - Uses `::` separator for row keys (to handle agent_ids with underscores)
+
+**Data Format**:
+Same eval format as single-agent download, but with conversations from multiple agents:
+```json
+{
+  "conversations": [
+    {
+      "Id": "document-uuid",
+      "instructions": "Full agent instruction set",
+      "prompt": "User's input prompt",
+      "agent_prompt": "[SYSTEM]\n{{instructions}}\n\n[USER]\n{{prompt}}",
+      "agent_response": "Agent's generated response",
+      "scenario_name": "AgentName"
+    }
+    // ... more conversations from different agents
+  ]
+}
+```
+
+**Key Features**:
+- Version-specific filtering (only conversations matching selected version)
+- Flat list format (all conversations together)
+- Compatible with eval framework
+- No hard data size limits (typical: 1,000 conversations ≈ 2-5 MB)
+- Implementation specific to eval format (not generalized)
+
+**Route Order Critical**:
+- `/download-multi` must be defined BEFORE `/{agent_id}` catch-all route
+- Correct order: `/list`, `/versions`, `/download-multi`, `/{agent_id}`, `/{agent_id}/invoke`, etc.
+
+**Navigation**:
+- "Downloads" link added to Agents submenu in sidebar
+- Uses DownloadOutlined icon
+- Route: `/agents/download`
+
+---
+
 ## Workflows API
 
 **Purpose**: Provides configuration and metadata for workflows that orchestrate multiple agents.
