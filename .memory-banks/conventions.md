@@ -373,11 +373,14 @@ export default function WorkflowPage() {
 
 ## Local Tooling Conventions
 
-### Local Evals Runner
-- `LocalEvalsRunner/` is a repo-root folder for running CXA AI Evals locally.
+### CXA Evals Runner
+- `cxa_evals/` is a repo-root folder for running CXA AI Evals locally.
 - The CLI executable `Microsoft.CXA.AIEvals.Cli.exe` is manually downloaded and must not be committed.
-- Any folder named `output` under `LocalEvalsRunner/` must not be committed.
-- Evals input files should be stored under per-agent/per-eval folders with the names `cxa_evals_config.json` and `cxa_evals_input_data.json`.
+- The `output/` directory under `cxa_evals/` must not be committed (results are gitignored).
+- Evals now run for `SimulationAgent` at once - no need for separate per-agent runs.
+- The `scenario_name` field in input files distinguishes between different agent types.
+- Config files: `default_config.json` (default metrics) and `cutom_config.json` (custom rules).
+- Input files are stored in `cxa_evals/input/` directory.
 
 ### UI Components (Ant Design)
 Standard components used across pages:

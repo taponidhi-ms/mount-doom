@@ -65,7 +65,9 @@ tmp/
 temp/
 *.tmp
 
-# Local evals runner (local-only artifacts)
-/LocalEvalsRunner/Microsoft.CXA.AIEvals.Cli.exe
-/LocalEvalsRunner/**/output/
-/LocalEvalsRunner/**/output/**
+# CXA Evals
+/cxa_evals/Microsoft.CXA.AIEvals.Cli.exe
+/cxa_evals/output/
+/cxa_evals/output/**
+/cxa_evals/**/output/
+/cxa_evals/**/output/**

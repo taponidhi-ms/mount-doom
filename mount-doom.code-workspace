@@ -9,12 +9,8 @@
       "name": "Frontend"
     },
     {
-      "path": "LocalEvalsRunner",
-      "name": "LocalEvalsRunner"
-    },
-    {
-      "path": "notes",
-      "name": "Notes"
+      "path": "cxa_evals",
+      "name": "CXAEvals"
     },
     {
       "path": ".",
