@@ -59,6 +59,7 @@ export interface AgentInvokeResponse {
   agent_details: AgentDetails
   conversation_id: string
   parsed_output?: Record<string, unknown>
+  from_cache?: boolean
 }
 
 /**
@@ -85,6 +86,7 @@ export interface AgentHistoryItem {
   agent_instructions?: string
   prompt_category?: string  // Category of the prompt
   prompt_tags?: string[]    // Tags associated with the prompt
+  from_cache?: boolean      // Whether response was from cache
 }
 
 /**

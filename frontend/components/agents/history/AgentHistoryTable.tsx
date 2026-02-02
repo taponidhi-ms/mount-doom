@@ -23,6 +23,7 @@ import {
   SortAscendingOutlined,
   SortDescendingOutlined,
   SettingOutlined,
+  DatabaseOutlined,
 } from '@ant-design/icons'
 import { apiClient } from '@/lib/api-client'
 import type { BrowseResponse, AgentHistoryItem } from '@/lib/api-client'
@@ -70,6 +71,7 @@ export default function AgentHistoryTable({
     response: true,
     prompt_category: true,  // Visible by default
     prompt_tags: true,      // Visible by default
+    source: false,          // Hidden by default
     tokens: true,
     time: true,
     actions: true,
@@ -268,6 +270,18 @@ export default function AgentHistoryTable({
             ))}
           </Space>
         )
+      },
+    },
+    {
+      title: 'Source',
+      dataIndex: 'from_cache',
+      key: 'source',
+      width: 100,
+      visible: visibleColumns.source,
+      render: (fromCache: boolean | undefined) => {
+        if (fromCache === true) return <Tag color="cyan" icon={<DatabaseOutlined />}>Cache</Tag>
+        if (fromCache === false) return <Tag color="green">New</Tag>
+        return <Tag color="default">Unknown</Tag>  // Historical records
       },
     },
     {

@@ -1,7 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { Card, Space, Typography, Segmented, Alert } from 'antd'
+import { Card, Space, Typography, Segmented, Alert, Tag } from 'antd'
+import { DatabaseOutlined, ThunderboltOutlined } from '@ant-design/icons'
 import type { AgentInvokeResponse } from '@/lib/api-client'
 
 const { Text, Paragraph } = Typography
@@ -25,7 +26,22 @@ export default function AgentResultCard({ result }: AgentResultCardProps) {
   const jsonCheck = tryParseJSON(result.response_text)
 
   return (
-    <Card title="Result">
+    <Card
+      title={
+        <Space>
+          <span>Result</span>
+          {result.from_cache ? (
+            <Tag color="cyan" icon={<DatabaseOutlined />}>
+              From Cache
+            </Tag>
+          ) : (
+            <Tag color="green" icon={<ThunderboltOutlined />}>
+              Newly Generated
+            </Tag>
+          )}
+        </Space>
+      }
+    >
       <Space orientation="vertical" size="middle" style={{ width: '100%' }}>
         <div>
           <div

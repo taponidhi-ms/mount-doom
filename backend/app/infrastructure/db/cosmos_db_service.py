@@ -387,6 +387,77 @@ class CosmosDBService:
                         exc_info=True)
             raise
 
+    async def query_cached_response(
+        self,
+        container_name: str,
+        prompt: str,
+        agent_name: str,
+        agent_version: str
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Query for cached response matching prompt + agent + version.
+
+        Args:
+            container_name: Name of the container to query
+            prompt: The exact prompt text (case-sensitive, whitespace-sensitive)
+            agent_name: The agent's name to filter by
+            agent_version: The agent's version to filter by
+
+        Returns:
+            Most recent matching document or None if no match found
+        """
+        try:
+            logger.debug("Querying for cached response",
+                        container=container_name,
+                        agent_name=agent_name,
+                        agent_version=agent_version,
+                        prompt_length=len(prompt))
+
+            container = await self.ensure_container(container_name)
+
+            # Query for exact match on prompt, agent_name, and agent_version
+            # Order by timestamp DESC to get most recent match
+            query = """
+                SELECT TOP 1 * FROM c
+                WHERE c.prompt = @prompt
+                AND c.agent_name = @agent_name
+                AND c.agent_version = @agent_version
+                ORDER BY c.timestamp DESC
+            """
+
+            items = list(container.query_items(
+                query=query,
+                parameters=[
+                    {"name": "@prompt", "value": prompt},
+                    {"name": "@agent_name", "value": agent_name},
+                    {"name": "@agent_version", "value": agent_version}
+                ],
+                enable_cross_partition_query=True
+            ))
+
+            if items:
+                logger.info("Cache hit found",
+                           container=container_name,
+                           agent_name=agent_name,
+                           agent_version=agent_version,
+                           document_id=items[0].get("id"))
+                return items[0]
+            else:
+                logger.debug("Cache miss - no matching document found",
+                            container=container_name,
+                            agent_name=agent_name,
+                            agent_version=agent_version)
+                return None
+
+        except Exception as e:
+            # Graceful fallback - don't block generation on cache errors
+            logger.warning("Error querying cached response (graceful fallback)",
+                          container=container_name,
+                          agent_name=agent_name,
+                          agent_version=agent_version,
+                          error=str(e))
+            return None
+
 
 # Singleton instance
 cosmos_db_service = CosmosDBService()

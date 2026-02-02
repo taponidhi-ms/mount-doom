@@ -274,7 +274,8 @@ async def invoke_agent(agent_id: str, request: AgentInvokeRequest):
             start_time=result.start_time,
             end_time=result.end_time,
             agent_details=result.agent_details,
-            conversation_id=result.conversation_id
+            conversation_id=result.conversation_id,
+            from_cache=result.from_cache
         )
 
     except Exception as e:

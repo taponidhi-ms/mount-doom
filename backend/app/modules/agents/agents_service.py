@@ -76,13 +76,59 @@ class UnifiedAgentsService:
         start_ms = time.time() * 1000
 
         try:
-            # Create agent
+            # Create agent to get version
             logger.info(f"Creating agent: {config.agent_name}")
             agent = azure_ai_service.create_agent(
                 agent_name=config.agent_name,
                 instructions=config.instructions
             )
-            logger.info("Agent ready", agent_version=agent.agent_version_object.version)
+            current_version = agent.agent_version_object.version
+            logger.info("Agent ready", agent_version=current_version)
+
+            # Check cache before generating
+            logger.debug("Checking cache for existing response",
+                        agent_name=config.agent_name,
+                        agent_version=current_version)
+            cached_doc = await cosmos_db_service.query_cached_response(
+                container_name=config.container_name,
+                prompt=input_text,
+                agent_name=config.agent_name,
+                agent_version=current_version
+            )
+
+            if cached_doc:
+                # Cache hit - return cached result
+                logger.info("Cache hit! Returning cached response",
+                           document_id=cached_doc.get("id"),
+                           conversation_id=cached_doc.get("conversation_id"))
+
+                end_time = datetime.now(timezone.utc)
+                end_ms = time.time() * 1000
+                cache_retrieval_time_ms = end_ms - start_ms
+
+                # Reconstruct agent details from cached document
+                agent_details = {
+                    "agent_name": cached_doc.get("agent_name"),
+                    "agent_version": cached_doc.get("agent_version"),
+                    "instructions": cached_doc.get("agent_instructions"),
+                    "model_deployment_name": cached_doc.get("agent_model"),
+                    "created_at": cached_doc.get("agent_created_at")
+                }
+
+                logger.info("=" * 60)
+                return AgentInvokeResult(
+                    response_text=cached_doc.get("response", ""),
+                    tokens_used=cached_doc.get("tokens_used"),
+                    time_taken_ms=cache_retrieval_time_ms,  # Time to retrieve from cache
+                    start_time=start_time,
+                    end_time=end_time,
+                    agent_details=agent_details,
+                    conversation_id=cached_doc.get("conversation_id", ""),
+                    from_cache=True
+                )
+
+            # Cache miss - proceed with normal generation
+            logger.info("Cache miss - generating new response")
 
             # Create conversation with initial message
             logger.info("Creating conversation...")
@@ -143,7 +189,7 @@ class UnifiedAgentsService:
 
             logger.info("=" * 60)
 
-            # Return AgentInvokeResult instance
+            # Return AgentInvokeResult instance (newly generated)
             return AgentInvokeResult(
                 response_text=response_text,
                 tokens_used=tokens_used,
@@ -151,7 +197,8 @@ class UnifiedAgentsService:
                 start_time=start_time,
                 end_time=end_time,
                 agent_details=agent.agent_details.model_dump(),
-                conversation_id=conversation_id
+                conversation_id=conversation_id,
+                from_cache=False
             )
 
         except Exception as e:
@@ -394,6 +441,7 @@ class UnifiedAgentsService:
                 "agent_created_at": agent_details.created_at.isoformat() if isinstance(agent_details.created_at, datetime) else agent_details.created_at,
                 "prompt_category": prompt_category,
                 "prompt_tags": prompt_tags or []
+                # NOTE: from_cache is NOT stored in DB - it's a runtime property of API responses only
             }
 
             await cosmos_db_service.save_document(

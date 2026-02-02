@@ -41,6 +41,7 @@ class AgentInvokeResponse(BaseModel):
     end_time: datetime
     agent_details: Dict[str, Any]
     conversation_id: str
+    from_cache: bool = False
 
 
 # Service layer models (used internally by agents_service)
@@ -54,6 +55,7 @@ class AgentInvokeResult(BaseModel):
     end_time: datetime
     agent_details: Dict[str, Any]
     conversation_id: str
+    from_cache: bool = False
 
 
 class CreateConversationResult(BaseModel):

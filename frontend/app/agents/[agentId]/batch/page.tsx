@@ -18,6 +18,7 @@ export default function AgentBatchPage() {
         agentId={agentId}
         inputLabel={agentInfo.input_label}
         inputField={agentInfo.input_field}
+        sampleInputs={agentInfo.sample_inputs}
       />
     </Space>
   )

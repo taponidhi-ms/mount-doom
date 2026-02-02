@@ -2,8 +2,9 @@
 
 import { useState } from 'react'
 import { Card, Space, Typography, Button, Input, Select, Progress, Table, Tag, message } from 'antd'
+import { PlusOutlined, DatabaseOutlined } from '@ant-design/icons'
 import { apiClient } from '@/lib/api-client'
-import type { AgentInvokeResponse } from '@/lib/api-client'
+import type { AgentInvokeResponse, SampleInput } from '@/lib/api-client'
 
 const { TextArea } = Input
 const { Text, Paragraph } = Typography
@@ -14,12 +15,15 @@ interface BatchItem {
   status: 'pending' | 'running' | 'completed' | 'failed'
   result?: AgentInvokeResponse
   error?: string
+  category?: string
+  tags?: string[]
 }
 
 interface BatchProcessingSectionProps {
   agentId: string
   inputLabel: string
   inputField: string
+  sampleInputs: SampleInput[]
   onBatchComplete?: () => void
 }
 
@@ -27,6 +31,7 @@ export default function BatchProcessingSection({
   agentId,
   inputLabel,
   inputField,
+  sampleInputs,
   onBatchComplete,
 }: BatchProcessingSectionProps) {
   const [batchItems, setBatchItems] = useState<BatchItem[]>([])
@@ -88,6 +93,20 @@ export default function BatchProcessingSection({
     }
   }
 
+  const loadAllSamples = () => {
+    const items: BatchItem[] = sampleInputs.map((sample, index) => ({
+      key: `sample-${index}-${Date.now()}`,
+      input: sample.value,
+      status: 'pending',
+      category: sample.category,
+      tags: sample.tags,
+    }))
+    setBatchItems(items)
+    setBatchProgress(0)
+    setCurrentBatchIndex(-1)
+    message.success(`Loaded ${items.length} sample prompts`)
+  }
+
   const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
   const runBatch = async () => {
@@ -110,7 +129,12 @@ export default function BatchProcessingSection({
       setBatchItems([...newItems])
 
       try {
-        const response = await apiClient.invokeAgent(agentId, newItems[i].input)
+        const response = await apiClient.invokeAgent(
+          agentId,
+          newItems[i].input,
+          newItems[i].category,
+          newItems[i].tags
+        )
 
         if (response.data) {
           newItems[i].status = 'completed'
@@ -167,6 +191,20 @@ export default function BatchProcessingSection({
       },
     },
     {
+      title: 'Source',
+      key: 'source',
+      width: 100,
+      render: (_: unknown, record: BatchItem) => {
+        if (record.status === 'completed' && record.result?.from_cache) {
+          return <Tag color="cyan" icon={<DatabaseOutlined />}>Cache</Tag>
+        }
+        if (record.status === 'completed') {
+          return <Tag color="green">New</Tag>
+        }
+        return '-'
+      },
+    },
+    {
       title: 'Result',
       key: 'result',
       width: 150,
@@ -215,6 +253,14 @@ export default function BatchProcessingSection({
         <Space>
           <Button onClick={loadBatchItemsFromText} disabled={batchLoading}>
             Load Items
+          </Button>
+          <Button
+            onClick={loadAllSamples}
+            type="primary"
+            icon={<PlusOutlined />}
+            disabled={batchLoading}
+          >
+            Load All Sample Prompts ({sampleInputs.length})
           </Button>
           <Select
             value={batchDelay}
