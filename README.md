@@ -61,7 +61,22 @@ Simulate complex multi-turn conversations between customer service representativ
 
 ### Download for Evals
 
-All single-agent features support downloading conversations in a standardized evaluation format:
+All agent features support downloading conversations in a standardized evaluation format for testing and analysis.
+
+**Single-Agent Download**:
+1. Navigate to any agent page (Persona Distribution, Persona Generator, Transcript Parser, C2 Message Generator)
+2. Go to the History tab
+3. Select conversations using checkboxes
+4. Click the "Download" button
+5. Save the JSON file for evaluation purposes
+
+**Multi-Agent Download** (New):
+Download conversations from multiple agents and versions in one file:
+1. Navigate to Agents > Downloads page
+2. Select agent+version combinations using checkboxes
+3. Optionally specify conversation count limits per selection (e.g., 10 conversations of Agent A, 5 of Agent B)
+4. Click "Download Selected"
+5. Receive a single JSON file with all selected conversations
 
 **Download Format**:
 ```json
@@ -73,18 +88,19 @@ All single-agent features support downloading conversations in a standardized ev
       "prompt": "User's input prompt",
       "agent_prompt": "[SYSTEM]\n{instructions}\n\n[USER]\n{prompt}",
       "agent_response": "Agent's generated response",
-      "scenario_name": "AgentName"
+      "scenario_name": "AgentName",
+      "prompt_category": "Valid",
+      "prompt_tags": "billing,technical"
     }
   ]
 }
 ```
 
-**How to Use**:
-1. Navigate to any single-agent feature (Persona Distribution, Persona Generator, Transcript Parser, C2 Message Generator)
-2. Go to the History tab
-3. Select conversations using checkboxes
-4. Click the "Download" button
-5. Save the JSON file for evaluation purposes
+**Key Features**:
+- Version-specific filtering (only conversations from selected versions)
+- Conversation count limits for creating smaller test subsets
+- Compatible with eval frameworks
+- Flat list format combining all selections
 
 ## Quick Start
 

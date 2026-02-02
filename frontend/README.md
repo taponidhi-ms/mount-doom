@@ -10,6 +10,7 @@ Individual agents that operate independently and return results immediately:
 - **Persona Generator** - Generate exact customer personas with metadata
 - **Transcript Parser** - Parse transcripts to extract intent, subject, and sentiment
 - **C2 Message Generator** - Generate customer messages for conversation simulations
+- **Multi-Agent Downloads** - Download conversations from multiple agents with version filtering and conversation count limits
 
 ### Workflows
 Multi-agent orchestration with custom logic and stateful conversations:
@@ -74,6 +75,8 @@ npm start
 frontend/
 ├── app/                                     # Next.js App Router pages
 │   ├── agents/                              # Nested routes for agents
+│   │   ├── download/                        # Multi-agent download page
+│   │   │   └── page.tsx                     # Download with conversation limits
 │   │   └── [agentId]/                       # Dynamic agent routes
 │   │       ├── layout.tsx                   # Agent layout (loads info, provides context)
 │   │       ├── page.tsx                     # Generate page (default)
@@ -127,7 +130,7 @@ Agent pages use nested routes with reusable components:
 - **AgentResultModal** - View result details with JSON/Plain Text toggle
 - **AgentResultCard** - Inline result display
 - **AgentInstructionsCard** - Collapsible instructions display
-- **BatchProcessingSection** - Complete batch processing UI
+- **BatchProcessingSection** - Complete batch processing UI with View button for detailed results
 - **AgentHistoryTable** - Full-featured history table
 
 **Workflow Pages:**

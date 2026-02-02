@@ -245,8 +245,31 @@ The API will be available at:
 - `GET /api/v1/agents/{agent_id}/browse` - Browse agent history with pagination
 - `POST /api/v1/agents/{agent_id}/delete` - Delete agent records
 - `POST /api/v1/agents/{agent_id}/download` - Download agent records as JSON
+- `GET /api/v1/agents/versions` - List all agent+version combinations with conversation counts
+- `POST /api/v1/agents/download-multi` - Download from multiple agents with optional conversation limits
 
 **Available agent_ids**: `persona_distribution`, `persona_generator`, `transcript_parser`, `c2_message_generation`
+
+**Multi-Agent Download**:
+The `/download-multi` endpoint accepts a list of agent+version selections with optional limits:
+```json
+{
+  "selections": [
+    {
+      "agent_id": "persona_distribution",
+      "version": "v12abc345",
+      "limit": 10  // Optional: download only 10 conversations
+    },
+    {
+      "agent_id": "c2_message_generation",
+      "version": "v98xyz789"
+      // No limit: downloads all conversations
+    }
+  ]
+}
+```
+
+This enables creating smaller eval subsets for testing strategies before full evaluations.
 
 ### Workflows API
 
