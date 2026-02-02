@@ -42,10 +42,14 @@ out/
 # IDE
 .vscode/
 .idea/
-.claude/
 *.swp
 *.swo
 *~
+
+# Claude Code (track rules, ignore settings/skills)
+.claude/
+!.claude/rules/
+!.claude/rules/**
 
 # OS
 .DS_Store
