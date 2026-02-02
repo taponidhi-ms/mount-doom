@@ -19,7 +19,7 @@ Mount Doom is an enterprise-grade simulation platform that enables:
 mount-doom/
 ├── backend/          # FastAPI backend with Azure AI integration
 ├── frontend/         # Next.js frontend with TypeScript and Ant Design
-├── .memory-banks/    # Project context and conventions
+├── CLAUDE.md         # Comprehensive project documentation for Claude Code
 └── README.md         # This file
 ```
 
