@@ -71,6 +71,7 @@ All agent instructions are consolidated in a single file:
 - Generic service that can invoke any agent by agent_id
 - Uses agent config to determine instructions and container
 - Handles conversation creation, response extraction, JSON parsing
+- **Response caching**: Checks database for cached responses before generation (exact match on prompt + agent + version)
 - **Internal persistence**: `invoke_agent()` method handles timing, metrics, and database persistence internally
 - **Returns Result models**: Service methods return `*Result` models (e.g., `AgentInvokeResult`) for internal use
 - **Saves results to database**: Calls `CosmosDBService.save_document()` internally when `persist=True`
@@ -173,6 +174,11 @@ Methods:
   - **Supports filtering by agent_name** - Optional parameter to filter results by specific agent
   - Returns paginated results with total count and page info
   - Used by all browse endpoints
+- `query_cached_response()` - Query for cached agent responses
+  - Exact match on prompt + agent_name + agent_version
+  - Returns most recent matching document or None
+  - Used by response caching feature
+  - Graceful error handling (returns None on errors)
 
 Does NOT contain:
 - Feature-specific business logic
@@ -356,30 +362,35 @@ Agent pages use URL-based navigation:
 
 ## Data Flow
 
-### Generation/Processing Flow
+### Generation/Processing Flow (with Response Caching)
 1. User interacts with frontend UI (Generate tab)
 2. Frontend calls API client methods
 3. API client sends HTTP requests to backend
 4. **Backend Route Handler**:
    - Validates request parameters
    - Calls appropriate service method
-5. **Service Layer**:
+5. **Service Layer** (with caching):
+   - Creates agent to get current version
+   - **Checks cache**: Queries CosmosDBService for existing response (prompt + agent + version)
+   - **Cache hit**: Returns cached response immediately with `from_cache=true` (skip steps 6-7)
+   - **Cache miss**: Proceeds with generation
    - Orchestrates business logic
    - Uses AzureAIService to create agents/clients
    - Manages conversation flow
    - Tracks metrics (tokens, timing)
    - Defines document structure for persistence
    - Calls CosmosDBService.save_document() to persist data
-6. **AzureAIService**:
+6. **AzureAIService** (only on cache miss):
    - Creates agents or gets clients
    - Communicates with Azure AI API
 7. **CosmosDBService**:
-   - Provides generic infrastructure for Cosmos DB operations
+   - For cache check: Queries for matching response with `query_cached_response()`
+   - For cache miss: Provides generic infrastructure for Cosmos DB operations
    - Ensures containers exist
    - Saves documents with generic save_document() method
-8. Backend returns response to frontend
-9. Frontend displays results with metrics in Generate tab
-10. Frontend reloads history to show new result
+8. Backend returns response to frontend (with `from_cache` field)
+9. Frontend displays results with cache indicator badge in Generate tab
+10. Frontend reloads history to show new result (if newly generated)
 
 ### Browse/History Flow
 1. User switches to History tab

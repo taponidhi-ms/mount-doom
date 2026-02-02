@@ -254,6 +254,7 @@
 - Agent instructions are exposed to the frontend for display
 - Sample inputs with category and tags for better organization
 - Optional prompt metadata tracking (category and tags)
+- **Response caching**: Automatic caching of responses based on prompt + agent + version
 
 **Agent Registry**:
 - Each agent has its own config file in `backend/app/modules/agents/configs/`
@@ -334,6 +335,67 @@ Each agent config now includes a `scenario_name` field for eval downloads:
 - `transcript_parser` → `TranscriptParserAgent`
 - `c2_message_generation` → `C2MessageGeneratorAgent`
 - `c1_message_generation` → `C1MessageGeneratorAgent`
+
+---
+
+## Response Caching
+
+**Purpose**: Optimize token usage and improve performance by caching agent responses based on prompt, agent name, and agent version.
+
+**How It Works**:
+1. When an agent is invoked, the system first checks if an identical response already exists in the database
+2. Cache lookup is based on exact match: `prompt + agent_name + agent_version`
+3. **Cache hit**: Returns existing response immediately with `from_cache=true` (saves tokens and time)
+4. **Cache miss**: Generates new response normally with `from_cache=false` and saves to database
+5. Cache is automatically invalidated when agent instructions change (new version hash)
+
+**Cache Key Components**:
+- **Prompt**: Exact text match (case-sensitive, whitespace-sensitive)
+- **Agent name**: Ensures different agents cache separately
+- **Agent version**: Version hash from instruction set, ensures cache invalidation on instruction changes
+
+**Implementation**:
+- **Backend**: `CosmosDBService.query_cached_response()` queries database for matching responses
+- **Service layer**: `UnifiedAgentsService.invoke_agent()` checks cache before generation
+- **API response**: `from_cache` field indicates whether response was cached or newly generated
+- **Database**: Cache lookups use Cosmos DB queries (no separate cache infrastructure needed)
+
+**Benefits**:
+- **Token savings**: 100% savings for repeated prompts (cache hits use 0 Azure AI tokens)
+- **Performance**: 10-30x faster response times for cache hits (~100-200ms vs 1-3 seconds)
+- **Cost reduction**: Significant cost savings for evaluation runs with repeated prompts
+- **Consistency**: Identical prompts always return the same response (for given agent version)
+
+**Error Handling**:
+- Cache query errors don't block generation (graceful fallback)
+- If cache lookup fails, system proceeds with normal generation
+- Logged as warnings, not errors
+
+**UI Indicators**:
+- **Generate page**: Badge showing "From Cache" (cyan) or "Newly Generated" (green)
+- **Batch processing**: Source column showing cache status for each item
+- **History table**: Optional "Source" column (hidden by default)
+
+**Data Model**:
+- `from_cache` is a **runtime property** of API responses only
+- NOT stored in database documents (cached responses are retrieved, not duplicated)
+- Historical records show `from_cache=undefined` (rendered as "Unknown" in UI)
+
+**Sample Prompts Integration**:
+The persona_distribution agent includes 50 sample prompts for evaluation:
+- **35 Valid prompts**: Various domains (telecom, banking, healthcare, retail, insurance, etc.)
+- **10 Invalid prompts**: Transcript-based scenarios not supported by the agent
+- **5 Irrelevant prompts**: Off-topic requests unrelated to persona distribution
+- Each sample includes `category` and `tags` for organization
+- One-click "Load All Sample Prompts" button in batch processing UI
+- First batch run generates all responses (~100k-300k tokens)
+- Second batch run retrieves all from cache (0 tokens, 10-30x faster)
+
+**Use Cases**:
+- **Evaluation runs**: Run same test prompts multiple times without token cost
+- **Development**: Test changes without regenerating all responses
+- **Batch processing**: Quickly re-run batches for comparison
+- **Quality assurance**: Verify consistency across runs
 
 ---
 

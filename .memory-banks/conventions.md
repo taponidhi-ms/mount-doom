@@ -47,20 +47,28 @@ When running Python commands, pip operations, or testing imports:
 class AgentInvokeResult(BaseModel):
     response_text: str
     tokens_used: Optional[int] = None
+    from_cache: bool = False  # Runtime property
     # ... other fields
 
 # API layer
 class AgentInvokeResponse(BaseModel):
     response_text: str
     tokens_used: Optional[int] = None
+    from_cache: bool = False  # Passed through from Result
     # ... same fields as Result
 
 # Route transforms Result → Response
 @router.post("/invoke")
 async def invoke_agent(...) -> AgentInvokeResponse:
     result = await service.invoke_agent(...)
-    return AgentInvokeResponse(**result.model_dump())
+    return AgentInvokeResponse(**result.model_dump())  # Includes from_cache
 ```
+
+**Important**: The `from_cache` field is a **runtime property** of API responses only:
+- Indicates whether THIS specific API call was served from cache
+- Should be included in Result and Response models
+- Should NOT be stored in database documents
+- Database documents represent stored conversations, not API call metadata
 
 ### File Organization
 - **Full Vertical Slices**: Each module in `app/modules/` contains all code for a feature:
@@ -137,6 +145,80 @@ AGENT_CONFIG = AgentConfig(
 - `load_agent_registry()` automatically discovers `*_config.py` files
 - Agent appears in API endpoints immediately after adding config file
 - Logs show successful loading on server start
+
+### Response Caching Pattern
+
+**Purpose**: Optimize token usage and performance by caching agent responses.
+
+**Implementation Pattern**:
+```python
+async def invoke_agent(self, agent_id: str, input_text: str, ...):
+    # 1. Create agent to get version
+    agent = azure_ai_service.create_agent(name, instructions)
+    current_version = agent.agent_version_object.version
+
+    # 2. Check cache
+    cached_doc = await cosmos_db_service.query_cached_response(
+        container_name=container,
+        prompt=input_text,
+        agent_name=agent_name,
+        agent_version=current_version
+    )
+
+    # 3. Return cached response if found
+    if cached_doc:
+        return AgentInvokeResult(
+            response_text=cached_doc.get("response"),
+            tokens_used=cached_doc.get("tokens_used"),
+            # ... reconstruct from cached_doc
+            from_cache=True  # ✅ Cache hit
+        )
+
+    # 4. Generate new response on cache miss
+    # ... normal generation flow ...
+
+    # 5. Return with from_cache=False
+    return AgentInvokeResult(
+        response_text=response_text,
+        # ... other fields
+        from_cache=False  # ✅ Newly generated
+    )
+```
+
+**Cache Key Strategy**:
+- **Exact match** on: `prompt + agent_name + agent_version`
+- Case-sensitive and whitespace-sensitive matching
+- Agent version ensures cache invalidation when instructions change
+- Different agents cache separately (same prompt, different agent = different cache entries)
+
+**Best Practices**:
+1. **Check cache before generation**: Avoids unnecessary Azure AI API calls
+2. **Graceful error handling**: Cache query errors should not block generation
+3. **Log cache hits/misses**: Use `logger.info()` for cache hits, `logger.debug()` for details
+4. **Don't persist `from_cache`**: It's a runtime property, not a document property
+5. **Return cached metrics**: Include original tokens_used and time_taken_ms from cached document
+
+**Error Handling**:
+```python
+try:
+    cached_doc = await cosmos_db_service.query_cached_response(...)
+except Exception as e:
+    logger.warning("Cache query failed, proceeding with generation", error=str(e))
+    cached_doc = None  # Graceful fallback
+```
+
+**Database Query**:
+```python
+async def query_cached_response(...) -> Optional[Dict[str, Any]]:
+    query = """
+        SELECT TOP 1 * FROM c
+        WHERE c.prompt = @prompt
+        AND c.agent_name = @agent_name
+        AND c.agent_version = @agent_version
+        ORDER BY c.timestamp DESC
+    """
+    # Returns most recent match or None
+```
 
 ### Configuration (.env)
 - Backend settings are loaded from `backend/.env` via `app/core/config.py` using an absolute path, so starting the server from the repo root (or other folders) still picks up the correct environment.

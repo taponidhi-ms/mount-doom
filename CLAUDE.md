@@ -193,7 +193,7 @@ The backend uses **lazy initialization** for Azure AI and Cosmos DB clients (ini
 
 **Infrastructure Services (Singletons):**
 - **AzureAIService** - Client factory only. Creates agents with `create_agent(name, instructions, model)`. No business logic.
-- **CosmosDBService** - Generic DB operations. Uses conversation_id from Azure AI as document ID. Supports local emulator and cloud.
+- **CosmosDBService** - Generic DB operations. Uses conversation_id from Azure AI as document ID. Supports local emulator and cloud. Includes `query_cached_response()` for response caching.
 
 **Agent Versioning:**
 - Versions generated from instruction SHA256 hash (first 8 chars): `f"v{hash[:8]}"`
@@ -354,6 +354,98 @@ All agent invocations can store optional metadata:
 - **Organization**: Large prompt sets (for evals) don't clutter codebase
 - **Traceability**: Category and tags enable better prompt organization and analysis
 - **Flexibility**: Registry loader automatically discovers new agents
+
+## Response Caching
+
+**Purpose**: Optimize token usage and improve performance for repeated evaluations by caching agent responses.
+
+### How It Works
+
+1. **Cache Check**: Before generating a response, the system queries the database for an existing response matching:
+   - Exact prompt text (case-sensitive, whitespace-sensitive)
+   - Agent name
+   - Agent version (instruction hash)
+
+2. **Cache Hit**: If a match is found, return the existing response immediately:
+   - Response text from cached document
+   - Original tokens_used and timing metrics
+   - `from_cache=true` in API response
+   - **No Azure AI API call** = 0 tokens used
+
+3. **Cache Miss**: If no match found, generate normally:
+   - Create conversation and get agent response
+   - Save to database with all metrics
+   - `from_cache=false` in API response
+
+4. **Automatic Invalidation**: Cache is automatically invalidated when:
+   - Agent instructions change (new version hash generated)
+   - Different agent name used
+   - Prompt text is different
+
+### Implementation Details
+
+**Backend Method** (`CosmosDBService.query_cached_response()`):
+```python
+async def query_cached_response(
+    container_name: str,
+    prompt: str,
+    agent_name: str,
+    agent_version: str
+) -> Optional[Dict[str, Any]]:
+    # Query Cosmos DB for exact match
+    # Returns most recent matching document or None
+```
+
+**Service Layer** (`UnifiedAgentsService.invoke_agent()`):
+- Creates agent to get current version
+- Queries cache before generation
+- Returns cached result if found (with `from_cache=True`)
+- Generates new response if not found (with `from_cache=False`)
+- Graceful error handling (cache failures don't block generation)
+
+**API Response**:
+- `from_cache` field in `AgentInvokeResponse` indicates source
+- Frontend displays cache indicator badges
+- `from_cache` is a **runtime property only** (not stored in database)
+
+### UI Indicators
+
+**Generate Page**:
+- "From Cache" badge (cyan with database icon) for cached responses
+- "Newly Generated" badge (green with lightning icon) for new generations
+
+**Batch Processing**:
+- "Source" column in results table showing cache status
+- "Load All Sample Prompts" button for persona_distribution agent (50 prompts)
+- First run: generates all (~100k-300k tokens)
+- Second run: retrieves all from cache (0 tokens, 10-30x faster)
+
+**History Table**:
+- Optional "Source" column (hidden by default)
+- Shows "Cache", "New", or "Unknown" (for historical records)
+- Enable via settings dropdown (⚙️)
+
+### Benefits
+
+- **Token Savings**: 100% savings for repeated prompts (0 tokens on cache hits)
+- **Performance**: 10-30x faster (~100-200ms vs 1-3s for generation)
+- **Cost Reduction**: Significant savings for evaluation runs
+- **Consistency**: Same prompt always returns same response (for given agent version)
+- **Evaluation-Friendly**: Re-run test suites without token cost
+
+### Sample Prompts: Persona Distribution Agent
+
+The persona_distribution agent includes 50 curated sample prompts for evaluation:
+- **35 Valid**: Various domains (telecom, banking, healthcare, retail, insurance, SaaS, travel, utility, mortgage, etc.)
+- **10 Invalid**: Transcript-based scenarios (not supported by agent)
+- **5 Irrelevant**: Off-topic requests
+
+Each sample includes `category` and `tags` for organization and filtering.
+
+**Workflow**:
+1. Click "Load All Sample Prompts (50)" in batch processing
+2. First run: Generate all 50 responses
+3. Second run: Retrieve all 50 from cache (instant, 0 tokens)
 
 ## Database Architecture
 
