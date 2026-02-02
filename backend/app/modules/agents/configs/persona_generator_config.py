@@ -2,6 +2,7 @@
 
 from ..config import AgentConfig
 from ..instructions import PERSONA_GENERATOR_AGENT_INSTRUCTIONS
+from .shared_sample_inputs import SIMULATION_SAMPLE_INPUTS
 
 
 # Define agent configuration
@@ -16,24 +17,5 @@ AGENT_CONFIG = AgentConfig(
     input_field="prompt",
     input_label="Prompt",
     input_placeholder="Describe the personas you want to generate (e.g., 'Generate 5 personas for technical support')...",
-    sample_inputs=[
-        {
-            "label": "Technical support personas with varied sentiments",
-            "value": "Generate 5 personas for technical support with varied sentiments (Frustrated, Confused, Angry) regarding internet connectivity issues.",
-            "category": "Valid",
-            "tags": ["technical-support", "internet", "negative-sentiments", "connectivity"]
-        },
-        {
-            "label": "Travel agency personas",
-            "value": "I need 3 personas for a travel agency. One planning a honeymoon (Happy), one cancelling a trip due to illness (Sad), and one inquiring about visa requirements (Neutral).",
-            "category": "Valid",
-            "tags": ["travel", "multi-sentiment", "specific-scenarios", "honeymoon", "visa"]
-        },
-        {
-            "label": "E-commerce return personas with metadata",
-            "value": "Create 4 personas for an e-commerce return process. Include metadata like 'OrderValue', 'CustomerLoyaltyTier', and 'ReturnReason'.",
-            "category": "Valid",
-            "tags": ["e-commerce", "returns", "metadata-rich", "loyalty"]
-        },
-    ]
+    sample_inputs=SIMULATION_SAMPLE_INPUTS  # Use shared sample inputs
 )

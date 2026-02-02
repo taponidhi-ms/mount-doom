@@ -144,6 +144,13 @@ AGENT_CONFIG = AgentConfig(
 - Tags: domain-specific keywords for filtering and analysis
 - Large eval prompt sets are encouraged (config files are designed to scale)
 
+**Shared Sample Inputs**:
+- Use `shared_sample_inputs.py` to avoid duplication across multiple agents
+- Import and reuse sample input lists when agents share similar evaluation criteria
+- Example: `SIMULATION_SAMPLE_INPUTS` is shared by persona_distribution, simulation_prompt, and persona_generator agents
+- Pattern: `from .shared_sample_inputs import SIMULATION_SAMPLE_INPUTS`
+- Each agent can still define custom sample inputs if needed by using a list literal
+
 **Registry Auto-Discovery**:
 - No manual registration needed
 - `load_agent_registry()` automatically discovers `*_config.py` files

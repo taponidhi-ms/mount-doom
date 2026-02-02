@@ -50,9 +50,12 @@ A centralized module providing a single API for all single-agent operations:
 - Instructions: `PERSONA_DISTRIBUTION_AGENT_INSTRUCTIONS`, `PERSONA_GENERATOR_AGENT_INSTRUCTIONS`, `TRANSCRIPT_PARSER_AGENT_INSTRUCTIONS`, `C2_MESSAGE_GENERATOR_AGENT_INSTRUCTIONS`
 
 **Agent Configuration Registry** (`config.py`):
-- Maintains `AGENT_REGISTRY` dictionary with all agent configurations
-- Each `AgentConfig` contains: agent_id, agent_name, display_name, description, instructions, container_name, input fields
+- Dynamically loads agent configurations from individual `configs/*_config.py` files
+- Each config file exports an `AGENT_CONFIG` with: agent_id, agent_name, display_name, description, instructions, container_name, sample_inputs
 - Provides helper functions: `get_agent_config()`, `get_all_agents()`, `list_agent_ids()`
+- **Shared Sample Inputs** (`configs/shared_sample_inputs.py`): Reusable sample prompt sets across multiple agents
+  - `SIMULATION_SAMPLE_INPUTS` (50 prompts) - Used by persona_distribution, simulation_prompt, and persona_generator agents
+  - Avoids duplication and ensures consistency in evaluation datasets
 
 **Unified Agents Service** (`agents_service.py`):
 - Generic service that can invoke any agent by agent_id
