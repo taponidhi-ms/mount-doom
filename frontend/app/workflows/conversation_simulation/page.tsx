@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import {
   Button,
   Card,
@@ -24,6 +24,8 @@ import {
   DeleteOutlined,
   SortAscendingOutlined,
   SortDescendingOutlined,
+  PauseOutlined,
+  PlayCircleOutlined,
 } from '@ant-design/icons'
 import PageLayout from '@/components/PageLayout'
 import { apiClient } from '@/lib/api-client'
@@ -70,11 +72,15 @@ export default function ConversationSimulationPage() {
   // Batch state
   const [batchItems, setBatchItems] = useState<BatchItem[]>([])
   const [batchLoading, setBatchLoading] = useState(false)
+  const [batchPaused, setBatchPaused] = useState(false)
   const [batchProgress, setBatchProgress] = useState(0)
   const [currentBatchIndex, setCurrentBatchIndex] = useState(-1)
   const [batchJsonInput, setBatchJsonInput] = useState('')
-  const [stopBatchRequested, setStopBatchRequested] = useState(false)
   const [batchDelay, setBatchDelay] = useState(5)
+
+  // Use refs to avoid closure issues in async batch loop
+  const stopBatchRef = useRef(false)
+  const pauseBatchRef = useRef(false)
 
   // Detail modal
   const [detailModalVisible, setDetailModalVisible] = useState(false)
@@ -199,15 +205,34 @@ export default function ConversationSimulationPage() {
 
     setBatchLoading(true)
     setBatchProgress(0)
-    setStopBatchRequested(false)
+    setBatchPaused(false)
+    stopBatchRef.current = false
+    pauseBatchRef.current = false
 
     const newItems = [...batchItems]
 
     for (let i = 0; i < newItems.length; i++) {
-      if (stopBatchRequested) {
+      // Check stop flag
+      if (stopBatchRef.current) {
         message.info('Batch processing stopped by user.')
         break
       }
+
+      // Skip already completed or failed items
+      if (newItems[i].status === 'completed' || newItems[i].status === 'failed') {
+        continue
+      }
+
+      // Wait while paused
+      while (pauseBatchRef.current) {
+        await sleep(100) // Check every 100ms if still paused
+        if (stopBatchRef.current) {
+          message.info('Batch processing stopped by user.')
+          break
+        }
+      }
+
+      if (stopBatchRef.current) break
 
       setCurrentBatchIndex(i)
       newItems[i].status = 'running'
@@ -235,15 +260,21 @@ export default function ConversationSimulationPage() {
       setBatchItems([...newItems])
       setBatchProgress(Math.round(((i + 1) / newItems.length) * 100))
 
-      if (i < newItems.length - 1 && !stopBatchRequested) {
+      // Delay before next item (if not stopped and not last item)
+      if (i < newItems.length - 1 && !stopBatchRef.current) {
         await sleep(batchDelay * 1000)
       }
     }
 
     setBatchLoading(false)
+    setBatchPaused(false)
     setCurrentBatchIndex(-1)
-    setStopBatchRequested(false)
-    message.success('Batch processing completed!')
+    stopBatchRef.current = false
+    pauseBatchRef.current = false
+
+    if (!stopBatchRef.current) {
+      message.success('Batch processing completed!')
+    }
 
     if (historyData) {
       loadHistory(1)
@@ -251,7 +282,27 @@ export default function ConversationSimulationPage() {
   }
 
   const handleStopBatch = () => {
-    setStopBatchRequested(true)
+    stopBatchRef.current = true
+    pauseBatchRef.current = false
+    setBatchPaused(false)
+  }
+
+  const handlePauseBatch = () => {
+    pauseBatchRef.current = true
+    setBatchPaused(true)
+    message.info('Batch processing paused')
+  }
+
+  const handleResumeBatch = () => {
+    pauseBatchRef.current = false
+    setBatchPaused(false)
+    message.info('Batch processing resumed')
+  }
+
+  const handleDeleteBatchItem = (key: string) => {
+    const newItems = batchItems.filter((item) => item.key !== key)
+    setBatchItems(newItems)
+    message.success('Item deleted')
   }
 
   const handleDeleteSelected = async () => {
@@ -482,6 +533,31 @@ export default function ConversationSimulationPage() {
         return '-'
       },
     },
+    {
+      title: 'Actions',
+      key: 'actions',
+      width: 100,
+      align: 'center' as const,
+      render: (_: unknown, record: BatchItem) => {
+        if (record.status === 'pending' && !batchLoading) {
+          return (
+            <Popconfirm
+              title="Delete this item?"
+              description="This action cannot be undone."
+              onConfirm={() => handleDeleteBatchItem(record.key)}
+              okText="Delete"
+              cancelText="Cancel"
+              okButtonProps={{ danger: true }}
+            >
+              <Button type="link" danger icon={<DeleteOutlined />} size="small">
+                Delete
+              </Button>
+            </Popconfirm>
+          )
+        }
+        return '-'
+      },
+    },
   ]
 
   const rowSelection = {
@@ -684,21 +760,47 @@ export default function ConversationSimulationPage() {
                     <Button
                       type="primary"
                       onClick={runBatch}
-                      loading={batchLoading}
-                      disabled={batchItems.length === 0}
+                      loading={batchLoading && !batchPaused}
+                      disabled={batchItems.length === 0 || batchLoading}
                     >
                       {batchLoading
-                        ? `Processing ${currentBatchIndex + 1}/${batchItems.length}`
+                        ? batchPaused
+                          ? `Paused at ${currentBatchIndex + 1}/${batchItems.length}`
+                          : `Processing ${currentBatchIndex + 1}/${batchItems.length}`
                         : 'Start Batch'}
                     </Button>
-                    {batchLoading && (
-                      <Button danger onClick={handleStopBatch}>
-                        Stop Batch
-                      </Button>
+                    {batchLoading && !batchPaused && (
+                      <>
+                        <Button icon={<PauseOutlined />} onClick={handlePauseBatch}>
+                          Pause
+                        </Button>
+                        <Button danger onClick={handleStopBatch}>
+                          Stop
+                        </Button>
+                      </>
+                    )}
+                    {batchLoading && batchPaused && (
+                      <>
+                        <Button
+                          type="primary"
+                          icon={<PlayCircleOutlined />}
+                          onClick={handleResumeBatch}
+                        >
+                          Resume
+                        </Button>
+                        <Button danger onClick={handleStopBatch}>
+                          Stop
+                        </Button>
+                      </>
                     )}
                   </Space>
 
-                  {batchLoading && <Progress percent={batchProgress} status="active" />}
+                  {batchLoading && (
+                    <Progress
+                      percent={batchProgress}
+                      status={batchPaused ? 'normal' : 'active'}
+                    />
+                  )}
 
                   <Table
                     dataSource={batchItems}
