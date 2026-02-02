@@ -186,7 +186,7 @@ export default function AgentHistoryTable({
       ellipsis: { showTitle: false },
       visible: visibleColumns.document_id,
       render: (text: string) => (
-        <Tooltip title={text} overlayStyle={{ maxWidth: 500 }}>
+        <Tooltip title={text} styles={{ root: { maxWidth: 500 } }}>
           <Text copyable={{ text }}>{text}</Text>
         </Tooltip>
       ),
@@ -200,7 +200,7 @@ export default function AgentHistoryTable({
       visible: visibleColumns.conversation_id,
       render: (text: string) =>
         text ? (
-          <Tooltip title={text} overlayStyle={{ maxWidth: 500 }}>
+          <Tooltip title={text} styles={{ root: { maxWidth: 500 } }}>
             <Text copyable={{ text }}>{text}</Text>
           </Tooltip>
         ) : (
@@ -215,7 +215,7 @@ export default function AgentHistoryTable({
       ellipsis: { showTitle: false },
       visible: visibleColumns.input,
       render: (text: string) => (
-        <Tooltip title={text} overlayStyle={{ maxWidth: 500 }}>
+        <Tooltip title={text} styles={{ root: { maxWidth: 500 } }}>
           <div style={{ maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis' }}>
             {text || 'N/A'}
           </div>
@@ -236,7 +236,7 @@ export default function AgentHistoryTable({
             : text
           : 'N/A'
         return (
-          <Tooltip title={text} overlayStyle={{ maxWidth: 500 }}>
+          <Tooltip title={text} styles={{ root: { maxWidth: 500 } }}>
             <div style={{ maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis' }}>
               {displayText}
             </div>

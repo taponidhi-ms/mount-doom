@@ -310,7 +310,7 @@ export default function ConversationSimulationPage() {
 
   const renderConversation = (history: ConversationMessage[]) => {
     return (
-      <Space direction="vertical" size="small" style={{ width: '100%' }}>
+      <Space orientation="vertical" size="small" style={{ width: '100%' }}>
         {history.map((msg, index) => {
           const isAgent = msg.role === 'agent'
           const isCustomer = msg.role === 'customer'
@@ -337,7 +337,7 @@ export default function ConversationSimulationPage() {
                 background: bgColor,
               }}
             >
-              <Space direction="vertical" size="small" style={{ width: '100%' }}>
+              <Space orientation="vertical" size="small" style={{ width: '100%' }}>
                 <div>
                   <Tag color={tagColor}>{tagLabel}</Tag>
                   <Text type="secondary" style={{ fontSize: 12 }}>
@@ -462,7 +462,7 @@ export default function ConversationSimulationPage() {
       render: (_: unknown, record: BatchItem) => {
         if (record.status === 'completed' && record.result) {
           return (
-            <Space direction="vertical" size={0}>
+            <Space orientation="vertical" size={0}>
               <Text type="secondary" style={{ fontSize: 12 }} copyable>
                 {record.result.conversation_id}
               </Text>
@@ -512,9 +512,9 @@ export default function ConversationSimulationPage() {
       key: 'simulate',
       label: 'Simulate',
       children: (
-        <Space direction="vertical" size="large" style={{ width: '100%' }}>
+        <Space orientation="vertical" size="large" style={{ width: '100%' }}>
           <Card title="Simulation Configuration">
-            <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+            <Space orientation="vertical" size="middle" style={{ width: '100%' }}>
               <div>
                 <Text strong>Customer Intent</Text>
                 <Input
@@ -563,14 +563,14 @@ export default function ConversationSimulationPage() {
 
               <div style={{ marginTop: 16 }}>
                 <Text strong>Sample Configurations</Text>
-                <Space direction="vertical" style={{ width: '100%', marginTop: 8 }}>
+                <Space orientation="vertical" style={{ width: '100%', marginTop: 8 }}>
                   {sampleConfigs.map((sample, index) => (
                     <Card key={index} size="small" style={{ background: '#f9f9f9' }}>
                       <Space
                         align="start"
                         style={{ width: '100%', justifyContent: 'space-between' }}
                       >
-                        <Space direction="vertical" size={0}>
+                        <Space orientation="vertical" size={0}>
                           <Text style={{ fontSize: 13, color: '#666' }}>
                             <strong>Intent:</strong> {sample.customerIntent}
                           </Text>
@@ -605,7 +605,7 @@ export default function ConversationSimulationPage() {
 
           {result && (
             <Card title="Simulation Result">
-              <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+              <Space orientation="vertical" size="middle" style={{ width: '100%' }}>
                 <Space size="large" wrap>
                   <div>
                     <Text type="secondary">Status: </Text>
@@ -645,9 +645,9 @@ export default function ConversationSimulationPage() {
       key: 'batch',
       label: 'Batch Processing',
       children: (
-        <Space direction="vertical" size="large" style={{ width: '100%' }}>
+        <Space orientation="vertical" size="large" style={{ width: '100%' }}>
           <Card title="Batch Processing">
-            <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+            <Space orientation="vertical" size="middle" style={{ width: '100%' }}>
               <div>
                 <Text strong>Paste JSON Array</Text>
                 <Text type="secondary" style={{ display: 'block', marginBottom: 8 }}>
@@ -728,7 +728,7 @@ export default function ConversationSimulationPage() {
       key: 'history',
       label: 'History',
       children: (
-        <Space direction="vertical" size="large" style={{ width: '100%' }}>
+        <Space orientation="vertical" size="large" style={{ width: '100%' }}>
           <Card
             title="History"
             extra={
@@ -853,7 +853,7 @@ export default function ConversationSimulationPage() {
         width={900}
       >
         {selectedRecord && (
-          <Space direction="vertical" style={{ width: '100%' }}>
+          <Space orientation="vertical" style={{ width: '100%' }}>
             <Space size="large" wrap>
               <div>
                 <Text type="secondary">Conversation ID: </Text>

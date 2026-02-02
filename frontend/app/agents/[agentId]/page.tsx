@@ -63,11 +63,11 @@ export default function AgentGeneratePage() {
   if (!agentInfo) return null
 
   return (
-    <Space direction="vertical" size="large" style={{ width: '100%' }}>
+    <Space orientation="vertical" size="large" style={{ width: '100%' }}>
       <AgentInstructionsCard instructions={agentInfo.instructions} />
 
       <Card title={`Generate with ${agentInfo.display_name}`}>
-        <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+        <Space orientation="vertical" size="middle" style={{ width: '100%' }}>
           {/* Main Input */}
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>

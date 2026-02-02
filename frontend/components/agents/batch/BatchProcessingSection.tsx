@@ -173,7 +173,7 @@ export default function BatchProcessingSection({
       render: (_: unknown, record: BatchItem) => {
         if (record.status === 'completed' && record.result) {
           return (
-            <Space direction="vertical" size={0}>
+            <Space orientation="vertical" size={0}>
               <Text type="secondary" style={{ fontSize: 12 }}>
                 {record.result.tokens_used || 'N/A'} tokens
               </Text>
@@ -197,7 +197,7 @@ export default function BatchProcessingSection({
 
   return (
     <Card title="Batch Processing">
-      <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+      <Space orientation="vertical" size="middle" style={{ width: '100%' }}>
         <div>
           <Text strong>Paste JSON Array</Text>
           <Paragraph type="secondary" style={{ marginBottom: 8 }}>

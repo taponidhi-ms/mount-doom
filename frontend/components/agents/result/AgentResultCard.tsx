@@ -26,7 +26,7 @@ export default function AgentResultCard({ result }: AgentResultCardProps) {
 
   return (
     <Card title="Result">
-      <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+      <Space orientation="vertical" size="middle" style={{ width: '100%' }}>
         <div>
           <div
             style={{

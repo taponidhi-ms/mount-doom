@@ -132,7 +132,7 @@ export default function MultiAgentDownloadPage() {
       title="Multi-Agent Downloads"
       description="Download conversations from multiple agents and versions in eval format"
     >
-      <Space direction="vertical" size="large" style={{ width: '100%' }}>
+      <Space orientation="vertical" size="large" style={{ width: '100%' }}>
         <Alert
           message={
             selectedRowKeys.length > 0

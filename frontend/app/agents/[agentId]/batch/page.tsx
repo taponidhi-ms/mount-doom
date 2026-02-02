@@ -13,7 +13,7 @@ export default function AgentBatchPage() {
   if (!agentInfo) return null
 
   return (
-    <Space direction="vertical" size="large" style={{ width: '100%' }}>
+    <Space orientation="vertical" size="large" style={{ width: '100%' }}>
       <BatchProcessingSection
         agentId={agentId}
         inputLabel={agentInfo.input_label}

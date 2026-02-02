@@ -46,7 +46,7 @@ export default function SampleInputsModal({
       width={700}
       style={{ top: 40 }}
     >
-      <Space direction="vertical" size="middle" style={{ width: '100%', marginTop: 16 }}>
+      <Space orientation="vertical" size="middle" style={{ width: '100%', marginTop: 16 }}>
         {sampleInputs.map((sample, index) => (
           <Card
             key={index}
@@ -59,7 +59,7 @@ export default function SampleInputsModal({
             }}
             onClick={() => handleSelect(sample)}
           >
-            <Space direction="vertical" size="small" style={{ width: '100%' }}>
+            <Space orientation="vertical" size="small" style={{ width: '100%' }}>
               <Text strong style={{ fontSize: 14, color: '#1890ff' }}>
                 {sample.label}
               </Text>
