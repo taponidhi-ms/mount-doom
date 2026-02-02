@@ -2017,12 +2017,6 @@ When making changes to any feature, **ALWAYS validate compatibility between back
 
 ## Important Notes
 
-**Notes Directory Policy:**
-- The `notes/` directory is for personal notes and ad-hoc artifacts
-- Do not read, parse, or reference files in `notes/` for context
-- Do not import or depend on `notes/` contents from application code
-- All project context is maintained in this CLAUDE.md file
-
 **Authentication:**
 - DefaultAzureCredential automatically handles token refresh
 - No manual token management needed
