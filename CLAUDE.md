@@ -22,17 +22,35 @@ Mount Doom is a fullstack AI agent simulation platform for multi-agent conversat
 
 ## Documentation Update Policy
 
-**CRITICAL: Always update documentation before committing code changes.**
+**CRITICAL: Always update documentation BEFORE committing code changes.**
+
+### Workflow for Code Changes
+
+When making code changes, follow this workflow:
+
+1. **Make code changes** - Implement the feature, bug fix, or improvement
+2. **Update documentation** - Update all relevant documentation files (see below)
+3. **Stage files** - Add both code and documentation files to git staging
+4. **Create commit** - Commit with a message documenting both code and documentation changes
+
+**NEVER commit code changes without updating documentation first.**
+
+### Documentation Files to Update
 
 Before creating any git commit, you MUST update the following documentation files to reflect your changes:
 
-1. **CLAUDE.md** (this file) - Update if making changes to:
+1. **README files** - Update if making user-facing changes:
+   - `README.md` (root) - New features, setup changes, architecture overview
+   - `backend/README.md` - Backend API changes, new endpoints, configuration
+   - `frontend/README.md` - Frontend features, component changes, UI updates
+
+2. **CLAUDE.md** (this file) - Update if making changes to:
    - Project overview
    - Development commands
    - Critical policies (Server Management, Python venv, Documentation Update Policy)
    - Environment configuration
 
-2. **`.claude/rules/` files** - Update relevant rule files when making changes to:
+3. **`.claude/rules/` files** - Update relevant rule files when making changes to:
    - Architecture (`backend/architecture.md` or `frontend/architecture.md`)
    - Conventions (`backend/conventions.md` or `frontend/conventions.md`)
    - API patterns (`backend/api-patterns.md`)
@@ -41,11 +59,30 @@ Before creating any git commit, you MUST update the following documentation file
    - Database patterns (`database.md`)
    - Logging (`logging.md`)
 
-3. **README.md** - Update if user-facing changes (setup instructions, new features, deployment changes)
+### Commit Message Format
 
-**Commit Message Format**:
 - Include what was changed AND which documentation was updated
-- Example: `feat: Add multi-agent download feature\n\nUpdated features.md with multi-agent download documentation`
+- Example: `feat: Add multi-agent download feature\n\nUpdated features.md and README.md with multi-agent download documentation`
+
+### Examples
+
+**Good workflow:**
+```
+1. Add conversation limit feature to backend and frontend
+2. Update .claude/rules/features.md with limit feature documentation
+3. Update README.md with multi-agent download instructions
+4. Update backend/README.md with new API endpoints
+5. git add [code files] .claude/rules/features.md README.md backend/README.md
+6. git commit -m "feat: Add conversation limits..."
+```
+
+**Bad workflow (DO NOT DO THIS):**
+```
+1. Add conversation limit feature to backend and frontend
+2. git add [code files]
+3. git commit -m "feat: Add conversation limits..."
+4. [Documentation never updated or updated in separate commit]
+```
 
 ## Development Commands
 
