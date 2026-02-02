@@ -13,6 +13,7 @@ import {
   Dropdown,
   Checkbox,
   Typography,
+  Tag,
   message,
 } from 'antd'
 import {
@@ -67,6 +68,8 @@ export default function AgentHistoryTable({
     conversation_id: false,
     input: true,
     response: true,
+    prompt_category: true,  // Visible by default
+    prompt_tags: true,      // Visible by default
     tokens: true,
     time: true,
     actions: true,
@@ -242,6 +245,32 @@ export default function AgentHistoryTable({
       },
     },
     {
+      title: 'Category',
+      dataIndex: 'prompt_category',
+      key: 'prompt_category',
+      width: 120,
+      visible: visibleColumns.prompt_category,
+      render: (category: string) => category ? <Tag color="blue">{category}</Tag> : '-',
+    },
+    {
+      title: 'Tags',
+      dataIndex: 'prompt_tags',
+      key: 'prompt_tags',
+      width: 200,
+      ellipsis: { showTitle: false },
+      visible: visibleColumns.prompt_tags,
+      render: (tags: string[]) => {
+        if (!tags || tags.length === 0) return '-'
+        return (
+          <Space size={[0, 4]} wrap>
+            {tags.map((tag, i) => (
+              <Tag key={i} color="green">{tag}</Tag>
+            ))}
+          </Space>
+        )
+      },
+    },
+    {
       title: 'Tokens',
       dataIndex: 'tokens_used',
       key: 'tokens',
@@ -402,6 +431,35 @@ export default function AgentHistoryTable({
                         }
                       >
                         Response Preview
+                      </Checkbox>
+                    ),
+                  },
+                  {
+                    key: 'prompt_category',
+                    label: (
+                      <Checkbox
+                        checked={visibleColumns.prompt_category}
+                        onChange={(e) =>
+                          setVisibleColumns({
+                            ...visibleColumns,
+                            prompt_category: e.target.checked,
+                          })
+                        }
+                      >
+                        Category
+                      </Checkbox>
+                    ),
+                  },
+                  {
+                    key: 'prompt_tags',
+                    label: (
+                      <Checkbox
+                        checked={visibleColumns.prompt_tags}
+                        onChange={(e) =>
+                          setVisibleColumns({ ...visibleColumns, prompt_tags: e.target.checked })
+                        }
+                      >
+                        Tags
                       </Checkbox>
                     ),
                   },

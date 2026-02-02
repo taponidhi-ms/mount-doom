@@ -83,6 +83,8 @@ export interface AgentHistoryItem {
   }
   agent_version?: string
   agent_instructions?: string
+  prompt_category?: string  // Category of the prompt
+  prompt_tags?: string[]    // Tags associated with the prompt
 }
 
 /**
@@ -104,6 +106,8 @@ export interface AgentInfo {
 export interface SampleInput {
   label?: string
   value: string
+  category?: string  // Optional category like "Valid", "Invalid", "Edge Case"
+  tags?: string[]    // Optional tags for organization
 }
 
 export interface HistoryColumnConfig<T = AgentHistoryItem> {

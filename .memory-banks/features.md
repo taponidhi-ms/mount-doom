@@ -252,13 +252,41 @@
 - Invoke any agent by agent_id with a generic input
 - Browse, delete, and download agent history records
 - Agent instructions are exposed to the frontend for display
+- Sample inputs with category and tags for better organization
+- Optional prompt metadata tracking (category and tags)
 
 **Agent Registry**:
-The agent configuration is centralized in `backend/app/modules/agents/config.py`:
-- `persona_distribution` - Persona Distribution Generator Agent
-- `persona_generator` - Persona Generator Agent
-- `transcript_parser` - Transcript Parser Agent
-- `c2_message_generation` - C2 Message Generator Agent
+- Each agent has its own config file in `backend/app/modules/agents/configs/`
+- Dynamic registry loader in `config.py` discovers all config files automatically
+- Eight agents supported:
+  - `persona_distribution` - Persona Distribution Generator Agent
+  - `persona_generator` - Persona Generator Agent
+  - `transcript_parser` - Transcript Parser Agent
+  - `c2_message_generation` - C2 Message Generator Agent
+  - `c1_message_generation` - C1 Message Generator Agent
+  - `simulation_prompt_validator` - Simulation Prompt Validator Agent
+  - `transcript_based_simulation_parser` - Transcript Based Simulation Parser Agent
+  - `simulation_prompt` - Simulation Prompt Agent
+
+**Sample Inputs Enhancement**:
+Each agent's sample inputs include metadata:
+- `label`: Display name for the sample
+- `value`: The actual prompt text
+- `category` (optional): Categorization like "Valid", "Invalid", "Edge Case"
+- `tags` (optional): List of tags (e.g., `["billing", "technical"]`)
+
+**UI Display**:
+- Category shown as blue Tag component
+- Tags shown as green Tag components
+- When user selects sample, category and tags auto-populate in form
+- User can manually enter or edit category and tags (optional fields)
+
+**Prompt Metadata Tracking**:
+- All invocations can include optional `prompt_category` and `prompt_tags`
+- Stored in database with conversation
+- Displayed in history table (visible columns by default)
+- Users can hide/show columns via column settings (⚙️)
+- Included in eval downloads (tags concatenated with comma)
 
 **API Endpoints**:
 - GET `/api/v1/agents/list` - List all agents
@@ -281,7 +309,9 @@ All agents support downloading conversations in a standardized eval format for e
       "prompt": "User's input prompt",
       "agent_prompt": "[SYSTEM]\n{instructions}\n\n[USER]\n{prompt}",
       "agent_response": "Agent's generated response",
-      "scenario_name": "AgentName"
+      "scenario_name": "AgentName",
+      "prompt_category": "Valid",
+      "prompt_tags": "billing,technical"
     }
   ]
 }
@@ -294,6 +324,8 @@ All agents support downloading conversations in a standardized eval format for e
 - `agent_prompt`: Literal template string `"[SYSTEM]\n{{instructions}}\n\n[USER]\n{{prompt}}"` (eval framework substitutes values from sibling fields)
 - `agent_response`: Agent's generated response text
 - `scenario_name`: Agent's scenario identifier (from agent config, defaults to agent_name)
+- `prompt_category`: Category of the prompt (e.g., "Valid", "Invalid", "Edge Case") - optional, empty string if not provided
+- `prompt_tags`: Tags associated with the prompt, concatenated with comma (e.g., "billing,technical") - optional, empty string if not provided
 
 **Agent Configuration**:
 Each agent config now includes a `scenario_name` field for eval downloads:

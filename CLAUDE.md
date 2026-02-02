@@ -175,11 +175,14 @@ The backend uses **lazy initialization** for Azure AI and Cosmos DB clients (ini
 **Unified API Architecture:**
 
 1. **Agents API** (`app/modules/agents/`)
-   - **Centralized registry**: All agent configurations in `config.py` (AGENT_REGISTRY)
+   - **Individual config files**: Each agent has its own config file in `configs/` directory
+   - **Dynamic registry loader**: `load_agent_registry()` discovers and loads all agent configs automatically
    - **Centralized instructions**: All agent instructions in `instructions.py`
    - **Unified endpoints**: Single API for all agents (`/api/v1/agents/{agent_id}/invoke`)
    - **Generic service**: `agents_service.py` handles any agent by agent_id
-   - Four agents: persona_distribution, persona_generator, transcript_parser, c2_message_generation
+   - **Sample inputs with metadata**: Each sample has optional `category` and `tags` for organization
+   - **Prompt tracking**: All invocations store optional `prompt_category` and `prompt_tags` fields
+   - Eight agents: persona_distribution, persona_generator, transcript_parser, c2_message_generation, c1_message_generation, simulation_prompt_validator, transcript_based_simulation_parser, simulation_prompt
    - Each agent operates independently and returns results immediately
 
 2. **Workflows API** (`app/modules/workflows/`)
@@ -264,6 +267,93 @@ response = openai_client.responses.create(
     input=""
 )
 ```
+
+## Agent Configuration Architecture
+
+### Individual Config Files
+
+Each agent has its own configuration file in `backend/app/modules/agents/configs/`:
+- Clear separation of concerns
+- Easy to manage large sample prompt sets for evaluation
+- Each config file exports an `AGENT_CONFIG` variable
+- Config files: `persona_distribution_config.py`, `persona_generator_config.py`, `transcript_parser_config.py`, `c2_message_generation_config.py`, `c1_message_generation_config.py`, `simulation_prompt_validator_config.py`, `transcript_based_simulation_parser_config.py`, `simulation_prompt_config.py`
+
+**Example config structure:**
+```python
+from ..config import AgentConfig
+from ..instructions import AGENT_INSTRUCTIONS
+
+AGENT_CONFIG = AgentConfig(
+    agent_id="agent_id",
+    agent_name="AgentName",
+    display_name="Display Name",
+    description="...",
+    instructions=AGENT_INSTRUCTIONS,
+    container_name="single_turn_conversations",
+    scenario_name="ScenarioName",
+    input_field="prompt",
+    input_label="Prompt",
+    input_placeholder="...",
+    sample_inputs=[
+        {
+            "label": "Sample 1",
+            "value": "...",
+            "category": "Valid",
+            "tags": ["tag1", "tag2"]
+        }
+    ]
+)
+```
+
+### Registry System
+
+- **Dynamic discovery** via `load_agent_registry()` function in `config.py`
+- Automatically loads all `*_config.py` files from configs/ directory
+- Uses Python's `pkgutil.iter_modules()` to discover config modules
+- Each config module must export an `AGENT_CONFIG` variable
+- Maintains backward compatibility - rest of codebase uses `AGENT_REGISTRY` dictionary
+- Logs successful loading of each agent config
+
+### Sample Inputs Enhancement
+
+Sample inputs now include metadata for better organization and eval tracking:
+- **`label`**: Display name for the sample (required)
+- **`value`**: The actual prompt text (required)
+- **`category`** (optional): Categorization like "Valid", "Invalid", "Edge Case", "Complex"
+- **`tags`** (optional): List of tags for organization (e.g., `["billing", "technical"]`, `["positive-sentiment"]`)
+
+**UI Display:**
+- Category shown as blue Tag component
+- Tags shown as green Tag components
+- Displayed above the prompt value in sample inputs modal
+- Helps users quickly identify prompt types
+
+### Prompt Metadata Tracking
+
+All agent invocations can store optional metadata:
+- **`prompt_category`**: Category from sample input or user input
+- **`prompt_tags`**: Tags from sample input or user input (stored as array)
+
+**Storage and Display:**
+- Stored in Cosmos DB alongside prompt and response
+- Displayed in history table as columns (visible by default)
+- Users can hide/show columns via settings dropdown (⚙️)
+- Included in eval format downloads (tags concatenated with comma)
+
+**User Workflow:**
+1. User selects a sample input → category and tags auto-populate
+2. User can manually enter category and tags (optional fields)
+3. Fields sent to API during agent invocation
+4. Stored in database for tracking and filtering
+5. Available in history table and downloads
+
+### Benefits
+
+- **Scalability**: Each agent config can grow independently without bloating central file
+- **Maintainability**: Easy to find and update specific agent configurations
+- **Organization**: Large prompt sets (for evals) don't clutter codebase
+- **Traceability**: Category and tags enable better prompt organization and analysis
+- **Flexibility**: Registry loader automatically discovers new agents
 
 ## Database Architecture
 

@@ -56,11 +56,16 @@ All agent instructions are consolidated in a single file:
 - `C1_AGENT_INSTRUCTIONS`
 
 #### Agent Configuration Registry (config.py)
-- Maintains `AGENT_REGISTRY` dictionary with all agent configurations
-- Each `AgentConfig` contains: agent_id, agent_name, display_name, description, instructions, container_name, scenario_name, input_field, input_label, input_placeholder
+- **Individual config files**: Each agent has its own config file in `configs/` directory
+- **Dynamic registry loader**: `load_agent_registry()` discovers and loads configs from `configs/*.py` files
+- Each config file exports an `AGENT_CONFIG` variable with complete agent configuration
+- Maintains `AGENT_REGISTRY` dictionary populated by dynamic loader
+- Each `AgentConfig` contains: agent_id, agent_name, display_name, description, instructions, container_name, scenario_name, input_field, input_label, input_placeholder, sample_inputs
+- Sample inputs include optional `category` and `tags` fields for organization and eval tracking
 - `scenario_name`: Used for eval downloads, defaults to agent_name if not specified
-- Imports instructions from centralized `instructions.py`
+- Instructions imported from centralized `instructions.py` by individual config files
 - Provides helper functions: `get_agent_config()`, `get_all_agents()`, `list_agent_ids()`
+- Eight agents: persona_distribution, persona_generator, transcript_parser, c2_message_generation, c1_message_generation, simulation_prompt_validator, transcript_based_simulation_parser, simulation_prompt
 
 #### Unified Agents Service (agents_service.py)
 - Generic service that can invoke any agent by agent_id

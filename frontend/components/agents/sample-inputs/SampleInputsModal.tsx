@@ -1,6 +1,6 @@
 'use client'
 
-import { Modal, Card, Typography, Space, Button } from 'antd'
+import { Modal, Card, Typography, Space, Tag } from 'antd'
 import { BulbOutlined } from '@ant-design/icons'
 
 const { Text, Paragraph } = Typography
@@ -8,13 +8,15 @@ const { Text, Paragraph } = Typography
 interface SampleInput {
   label: string
   value: string
+  category?: string
+  tags?: string[]
 }
 
 interface SampleInputsModalProps {
   open: boolean
   onClose: () => void
   sampleInputs: SampleInput[]
-  onSelect: (value: string) => void
+  onSelect: (value: string, category?: string, tags?: string[]) => void
   inputLabel?: string
 }
 
@@ -25,8 +27,8 @@ export default function SampleInputsModal({
   onSelect,
   inputLabel = 'Input'
 }: SampleInputsModalProps) {
-  const handleSelect = (value: string) => {
-    onSelect(value)
+  const handleSelect = (sample: SampleInput) => {
+    onSelect(sample.value, sample.category, sample.tags)
     onClose()
   }
 
@@ -55,12 +57,25 @@ export default function SampleInputsModal({
               border: '1px solid #e8e8e8',
               transition: 'all 0.3s'
             }}
-            onClick={() => handleSelect(sample.value)}
+            onClick={() => handleSelect(sample)}
           >
             <Space direction="vertical" size="small" style={{ width: '100%' }}>
               <Text strong style={{ fontSize: 14, color: '#1890ff' }}>
                 {sample.label}
               </Text>
+
+              {/* Category and Tags */}
+              {(sample.category || (sample.tags && sample.tags.length > 0)) && (
+                <Space size="small" wrap>
+                  {sample.category && (
+                    <Tag color="blue">{sample.category}</Tag>
+                  )}
+                  {sample.tags && sample.tags.map((tag, i) => (
+                    <Tag key={i} color="green">{tag}</Tag>
+                  ))}
+                </Space>
+              )}
+
               <Paragraph
                 style={{
                   marginBottom: 0,

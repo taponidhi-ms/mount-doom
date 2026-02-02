@@ -5,7 +5,7 @@
   },
   {
     "title": "Commercial Banking Workstream Test",
-    "prompt": "I've updated my Voice Agent for the Commercial Banking workstream. Please simulate phone conversations to test the against all possible customer queries—make sure the scenarios cover a wide range of intents and varied customer behaviours, including calm, frustrated, and others. You can call the contact center number at +1-812‑415‑2345."
+    "prompt": "I've updated my Voice Agent for the Commercial Banking workstream. Please simulate phone conversations to test the against all possible customer queries—make sure the scenarios cover a wide range of intents and varied customer behaviours, including calm, frustrated, and others. You can call the contact center number at +1-812-415-2345."
   },
   {
     "title": "Telecom Workstream with Specific Intents",
@@ -17,7 +17,7 @@
   },
   {
     "title": "Load Test with 50 Concurrent Calls",
-    "prompt": "I want to load‑test my workstream using the phone number +1-456-465-6545 with 50 concurrent inbound voice calls. The calls can be related to any type of customer issue. At the end of the simulation, show me the KPI scorecard."
+    "prompt": "I want to load-test my workstream using the phone number +1-456-465-6545 with 50 concurrent inbound voice calls. The calls can be related to any type of customer issue. At the end of the simulation, show me the KPI scorecard."
   },
   {
     "title": "Specific Issue Validation - Contoso Flowers",
@@ -25,7 +25,7 @@
   },
   {
     "title": "Historical Transcripts from Genesys",
-    "prompt": "Attached are eight historical transcripts from my previous Genesys contact center. Please review these transcripts and simulate similar conversations on the phone number +1 524‑556‑3526. Share the bot's containment rate, conversation wait times, and handle times at the end of the simulation."
+    "prompt": "Attached are eight historical transcripts from my previous Genesys contact center. Please review these transcripts and simulate similar conversations on the phone number +1 524-556-3526. Share the bot's containment rate, conversation wait times, and handle times at the end of the simulation."
   },
   {
     "title": "General Contact Center Setup Test",
@@ -41,7 +41,7 @@
   },
   {
     "title": "Multi-Intent with KPI Metrics",
-    "prompt": "Simulate realistic phone conversations for these intents: billing inquiry, password reset, order status, and product return. For each intent, generate a mix of caller personas. Execute all simulated calls against the configured Voice Agent and routing by dialing +1‑800‑555‑0100 for every interaction. At the end of the simulation, provide a KPI scorecard that includes: session rejection rate, number of transfers between representatives, and the count of representatives who accepted the conversations."
+    "prompt": "Simulate realistic phone conversations for these intents: billing inquiry, password reset, order status, and product return. For each intent, generate a mix of caller personas. Execute all simulated calls against the configured Voice Agent and routing by dialing +1-800-555-0100 for every interaction. At the end of the simulation, provide a KPI scorecard that includes: session rejection rate, number of transfers between representatives, and the count of representatives who accepted the conversations."
   },
   {
     "title": "E-commerce Returns and Exchanges",

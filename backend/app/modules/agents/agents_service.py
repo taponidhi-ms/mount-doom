@@ -6,7 +6,7 @@ It uses the agent configuration registry to determine which agent to use.
 """
 
 from datetime import datetime, timezone
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 import time
 from typing_extensions import Literal
 import uuid
@@ -44,6 +44,8 @@ class UnifiedAgentsService:
         self,
         agent_id: str,
         input_text: str,
+        prompt_category: Optional[str] = None,
+        prompt_tags: Optional[List[str]] = None,
         persist: bool = True
     ) -> AgentInvokeResult:
         """
@@ -124,7 +126,9 @@ class UnifiedAgentsService:
             if persist:
                 logger.info("Persisting agent result to database",
                            agent_id=agent_id,
-                           conversation_id=conversation_id)
+                           conversation_id=conversation_id,
+                           prompt_category=prompt_category,
+                           prompt_tags=prompt_tags)
                 await self._save_agent_result(
                     agent_id=agent_id,
                     input_text=input_text,
@@ -132,7 +136,9 @@ class UnifiedAgentsService:
                     tokens_used=tokens_used,
                     time_taken_ms=time_taken_ms,
                     agent_details=agent.agent_details,
-                    conversation_id=conversation_id
+                    conversation_id=conversation_id,
+                    prompt_category=prompt_category,
+                    prompt_tags=prompt_tags
                 )
 
             logger.info("=" * 60)
@@ -347,7 +353,9 @@ class UnifiedAgentsService:
         tokens_used: Optional[int],
         time_taken_ms: float,
         agent_details: AgentDetails,
-        conversation_id: str
+        conversation_id: str,
+        prompt_category: Optional[str] = None,
+        prompt_tags: Optional[List[str]] = None
     ):
         """
         Private method to save the agent invocation result to Cosmos DB.
@@ -383,7 +391,9 @@ class UnifiedAgentsService:
                 "agent_version": agent_details.agent_version,
                 "agent_instructions": agent_details.instructions,
                 "agent_model": agent_details.model_deployment_name,
-                "agent_created_at": agent_details.created_at.isoformat() if isinstance(agent_details.created_at, datetime) else agent_details.created_at
+                "agent_created_at": agent_details.created_at.isoformat() if isinstance(agent_details.created_at, datetime) else agent_details.created_at,
+                "prompt_category": prompt_category,
+                "prompt_tags": prompt_tags or []
             }
 
             await cosmos_db_service.save_document(

@@ -86,8 +86,57 @@ async def invoke_agent(...) -> AgentInvokeResponse:
   - `CosmosDBService`: Database persistence
 - Services are singletons
 - Configuration in core/config.py
-- Agent configuration is centralized in `modules/agents/config.py`
+- Agent configurations are in individual files in `modules/agents/configs/` directory
+- Registry loader in `modules/agents/config.py` discovers and loads all configs
 - Workflow configuration is centralized in `modules/workflows/config.py`
+
+### Adding New Agents
+
+To add a new agent, create a new config file in `app/modules/agents/configs/`:
+
+**File naming**: `{agent_name}_config.py` (must end with `_config`)
+
+**Structure**:
+```python
+"""Configuration for {Agent Name} Agent."""
+
+from ..config import AgentConfig
+from ..instructions import {AGENT}_INSTRUCTIONS
+
+AGENT_CONFIG = AgentConfig(
+    agent_id="agent_id",  # Unique ID (lowercase, underscores)
+    agent_name="AgentName",  # Azure AI agent name
+    display_name="Display Name",  # UI display name
+    description="...",  # Brief description
+    instructions={AGENT}_INSTRUCTIONS,  # From instructions.py
+    container_name="single_turn_conversations",  # Cosmos DB container
+    scenario_name="ScenarioName",  # For eval downloads
+    input_field="prompt",  # DB field name
+    input_label="Prompt",  # UI label
+    input_placeholder="...",  # UI placeholder
+    sample_inputs=[
+        {
+            "label": "Sample 1",
+            "value": "...",
+            "category": "Valid",  # Optional: "Valid", "Invalid", "Edge Case", etc.
+            "tags": ["tag1", "tag2"]  # Optional: list of tags
+        }
+    ]
+)
+```
+
+**Sample Input Guidelines**:
+- Add category to help users understand prompt type
+- Use tags for organization (e.g., `["billing", "technical"]`, `["positive-sentiment"]`)
+- Categories: "Valid", "Invalid", "Edge Case", "Complex", "Simple"
+- Tags: domain-specific keywords for filtering and analysis
+- Large eval prompt sets are encouraged (config files are designed to scale)
+
+**Registry Auto-Discovery**:
+- No manual registration needed
+- `load_agent_registry()` automatically discovers `*_config.py` files
+- Agent appears in API endpoints immediately after adding config file
+- Logs show successful loading on server start
 
 ### Configuration (.env)
 - Backend settings are loaded from `backend/.env` via `app/core/config.py` using an absolute path, so starting the server from the repo root (or other folders) still picks up the correct environment.

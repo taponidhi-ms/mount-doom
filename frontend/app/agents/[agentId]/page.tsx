@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useParams } from 'next/navigation'
-import { Button, Card, Input, Space, Typography, message, Alert } from 'antd'
+import { Button, Card, Input, Space, Typography, message, Alert, Form, Select } from 'antd'
 import { BulbOutlined } from '@ant-design/icons'
 import { useAgentContext } from '@/components/agents/shared/AgentContext'
 import AgentInstructionsCard from '@/components/agents/instructions/AgentInstructionsCard'
@@ -20,10 +20,18 @@ export default function AgentGeneratePage() {
   const { agentInfo } = useAgentContext()
 
   const [input, setInput] = useState('')
+  const [promptCategory, setPromptCategory] = useState<string>('')
+  const [promptTags, setPromptTags] = useState<string[]>([])
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<AgentInvokeResponse | null>(null)
   const [error, setError] = useState('')
   const [showSamplesModal, setShowSamplesModal] = useState(false)
+
+  const handleSampleSelect = (value: string, category?: string, tags?: string[]) => {
+    setInput(value)
+    setPromptCategory(category || '')
+    setPromptTags(tags || [])
+  }
 
   const handleSubmit = async () => {
     if (!input.trim()) {
@@ -35,7 +43,12 @@ export default function AgentGeneratePage() {
     setError('')
     setResult(null)
 
-    const response = await apiClient.invokeAgent(agentId, input)
+    const response = await apiClient.invokeAgent(
+      agentId,
+      input,
+      promptCategory || undefined,
+      promptTags.length > 0 ? promptTags : undefined
+    )
     setLoading(false)
 
     if (response.data) {
@@ -55,6 +68,7 @@ export default function AgentGeneratePage() {
 
       <Card title={`Generate with ${agentInfo.display_name}`}>
         <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+          {/* Main Input */}
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
               <Text strong>{agentInfo.input_label}</Text>
@@ -78,6 +92,37 @@ export default function AgentGeneratePage() {
             />
           </div>
 
+          {/* Category Input (Optional) */}
+          <Form.Item
+            label="Category (Optional)"
+            help="Categorize this prompt (e.g., Valid, Invalid, Edge Case)"
+            style={{ marginBottom: 0 }}
+          >
+            <Input
+              value={promptCategory}
+              onChange={(e) => setPromptCategory(e.target.value)}
+              placeholder="Enter category..."
+              disabled={loading}
+            />
+          </Form.Item>
+
+          {/* Tags Input (Optional) */}
+          <Form.Item
+            label="Tags (Optional)"
+            help="Add tags to organize this prompt"
+            style={{ marginBottom: 0 }}
+          >
+            <Select
+              mode="tags"
+              style={{ width: '100%' }}
+              value={promptTags}
+              onChange={setPromptTags}
+              placeholder="Enter tags and press Enter..."
+              tokenSeparators={[',']}
+              disabled={loading}
+            />
+          </Form.Item>
+
           <Button
             type="primary"
             size="large"
@@ -100,7 +145,7 @@ export default function AgentGeneratePage() {
           open={showSamplesModal}
           onClose={() => setShowSamplesModal(false)}
           sampleInputs={agentInfo.sample_inputs}
-          onSelect={setInput}
+          onSelect={handleSampleSelect}
           inputLabel={agentInfo.input_label}
         />
       )}

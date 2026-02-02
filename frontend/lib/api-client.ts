@@ -369,11 +369,17 @@ class ApiClient {
 
   async invokeAgent(
     agentId: string,
-    input: string
+    input: string,
+    promptCategory?: string,
+    promptTags?: string[]
   ): Promise<ApiResponse<AgentInvokeResponse>> {
     return this.request<AgentInvokeResponse>(`/api/v1/agents/${agentId}/invoke`, {
       method: 'POST',
-      body: JSON.stringify({ input }),
+      body: JSON.stringify({
+        input,
+        prompt_category: promptCategory,
+        prompt_tags: promptTags
+      }),
     });
   }
 

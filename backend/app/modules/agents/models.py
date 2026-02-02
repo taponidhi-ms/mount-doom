@@ -17,7 +17,7 @@ class AgentInfo(BaseModel):
     input_field: str
     input_label: str
     input_placeholder: str
-    sample_inputs: List[Dict[str, str]] = []
+    sample_inputs: List[Dict[str, Any]] = []  # Changed to Any to support tags as list
 
 
 class AgentListResponse(BaseModel):
@@ -28,6 +28,8 @@ class AgentListResponse(BaseModel):
 class AgentInvokeRequest(BaseModel):
     """Request to invoke an agent (API layer)."""
     input: str  # The input text (prompt or transcript depending on agent)
+    prompt_category: Optional[str] = None  # Optional category for the prompt (e.g., "Valid", "Invalid")
+    prompt_tags: Optional[List[str]] = None  # Optional tags for the prompt
 
 
 class AgentInvokeResponse(BaseModel):

@@ -158,6 +158,8 @@ async def download_multi_agent_records(request: MultiAgentDownloadRequest) -> Re
                     prompt = item.get("prompt", "")
                     response = item.get("response", "")
                     scenario_name = config.scenario_name or config.agent_name
+                    prompt_category = item.get("prompt_category", "")
+                    prompt_tags = item.get("prompt_tags", [])
 
                     # Build eval format record
                     # agent_prompt is a literal template string - eval framework will substitute values
@@ -167,7 +169,9 @@ async def download_multi_agent_records(request: MultiAgentDownloadRequest) -> Re
                         "prompt": prompt,
                         "agent_prompt": "[SYSTEM]\n{{instructions}}\n\n[USER]\n{{prompt}}",
                         "agent_response": response,
-                        "scenario_name": scenario_name
+                        "scenario_name": scenario_name,
+                        "prompt_category": prompt_category,
+                        "prompt_tags": ",".join(prompt_tags) if prompt_tags else ""
                     }
                     all_conversations.append(record)
 
@@ -252,6 +256,8 @@ async def invoke_agent(agent_id: str, request: AgentInvokeRequest):
         result = await unified_agents_service.invoke_agent(
             agent_id=agent_id,
             input_text=request.input,
+            prompt_category=request.prompt_category,
+            prompt_tags=request.prompt_tags,
             persist=True
         )
 
@@ -401,6 +407,8 @@ async def download_agent_records(agent_id: str, ids: list[str]) -> Response:
                 prompt = item.get("prompt", "")
                 response = item.get("response", "")
                 scenario_name = config.scenario_name or config.agent_name
+                prompt_category = item.get("prompt_category", "")
+                prompt_tags = item.get("prompt_tags", [])
 
                 # Build eval format record
                 # agent_prompt is a literal template string - eval framework will substitute values
@@ -410,7 +418,9 @@ async def download_agent_records(agent_id: str, ids: list[str]) -> Response:
                     "prompt": prompt,
                     "agent_prompt": "[SYSTEM]\n{{instructions}}\n\n[USER]\n{{prompt}}",
                     "agent_response": response,
-                    "scenario_name": scenario_name
+                    "scenario_name": scenario_name,
+                    "prompt_category": prompt_category,
+                    "prompt_tags": ",".join(prompt_tags) if prompt_tags else ""
                 }
                 conversations.append(record)
 
