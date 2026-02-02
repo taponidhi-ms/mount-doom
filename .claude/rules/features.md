@@ -285,14 +285,17 @@ The persona_distribution agent includes 50 sample prompts for evaluation:
 **Frontend Implementation**:
 - Dedicated page at `/agents/download`
 - Table showing agent versions with checkboxes
-- Columns: Agent, Scenario Name, Version, Conversations
-- Alert showing selection summary (versions count, total conversations)
+- Columns: Agent, Scenario Name, Version, Total, Limit
+- **Limit column**: Optional InputNumber to specify conversation count per agent+version
+- Alert showing selection summary (versions count, total conversations respecting limits)
 - Download button (disabled when nothing selected)
 - Row selection with checkboxes
 - Real-time count of selected versions and total conversations
 
 **Key Features**:
 - Version-specific filtering (only conversations matching selected version)
+- **Conversation count limits**: Users can specify how many conversations to download per selection
+- **Flexible subsets**: Create smaller eval samples (e.g., 10 of Agent A, 5 of Agent B)
 - Flat list format (all conversations together)
 - Compatible with eval framework
 - No hard data size limits (typical: 1,000 conversations ≈ 2-5 MB)
@@ -367,6 +370,10 @@ The workflow configuration is centralized in `backend/app/modules/workflows/conf
 - **Agent instructions display**: All agent pages show the agent's instruction set (collapsible)
 - **Workflow instructions display**: Workflow pages show all agent instructions in collapsible panels
 - **Dynamic navigation**: Sidebar with "Agents" and "Workflows" sections
+- **Batch processing View button**: View detailed results for completed batch items in a modal
+  - Shows full input and response with JSON/Plain Text toggle
+  - Displays metrics (tokens, time, cache status)
+  - Consistent with history table result viewing experience
 
 ### History Table Enhancements
 - **Column visibility controls**: Settings dropdown (⚙️) to show/hide columns

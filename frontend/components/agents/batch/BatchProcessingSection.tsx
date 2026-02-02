@@ -1,8 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { Card, Space, Typography, Button, Input, Select, Progress, Table, Tag, message } from 'antd'
-import { PlusOutlined, DatabaseOutlined } from '@ant-design/icons'
+import { Card, Space, Typography, Button, Input, Select, Progress, Table, Tag, message, Modal, Segmented, Alert } from 'antd'
+import { PlusOutlined, DatabaseOutlined, EyeOutlined } from '@ant-design/icons'
 import { apiClient } from '@/lib/api-client'
 import type { AgentInvokeResponse, SampleInput } from '@/lib/api-client'
 
@@ -41,6 +41,9 @@ export default function BatchProcessingSection({
   const [batchJsonInput, setBatchJsonInput] = useState('')
   const [stopBatchRequested, setStopBatchRequested] = useState(false)
   const [batchDelay, setBatchDelay] = useState(5)
+  const [viewModalVisible, setViewModalVisible] = useState(false)
+  const [selectedItem, setSelectedItem] = useState<BatchItem | null>(null)
+  const [viewMode, setViewMode] = useState<'text' | 'json'>('text')
 
   const loadBatchItemsFromText = () => {
     if (!batchJsonInput.trim()) {
@@ -170,6 +173,25 @@ export default function BatchProcessingSection({
     setStopBatchRequested(true)
   }
 
+  const handleViewResult = (item: BatchItem) => {
+    setSelectedItem(item)
+    setViewModalVisible(true)
+  }
+
+  const handleCloseModal = () => {
+    setViewModalVisible(false)
+    setViewMode('text')
+  }
+
+  const tryParseJSON = (text: string): { isValid: boolean; parsed?: any } => {
+    try {
+      const parsed = JSON.parse(text)
+      return { isValid: true, parsed }
+    } catch {
+      return { isValid: false }
+    }
+  }
+
   const batchColumns = [
     {
       title: inputLabel,
@@ -226,6 +248,27 @@ export default function BatchProcessingSection({
             <Text type="danger" style={{ fontSize: 12 }}>
               {record.error}
             </Text>
+          )
+        }
+        return '-'
+      },
+    },
+    {
+      title: 'Actions',
+      key: 'actions',
+      width: 100,
+      align: 'center' as const,
+      render: (_: unknown, record: BatchItem) => {
+        if (record.status === 'completed' && record.result) {
+          return (
+            <Button
+              type="link"
+              icon={<EyeOutlined />}
+              onClick={() => handleViewResult(record)}
+              size="small"
+            >
+              View
+            </Button>
           )
         }
         return '-'
@@ -306,6 +349,141 @@ export default function BatchProcessingSection({
             />
           </>
         )}
+
+        {/* Result View Modal */}
+        <Modal
+          title="Batch Item Result"
+          open={viewModalVisible}
+          onCancel={handleCloseModal}
+          footer={null}
+          width={800}
+          afterClose={() => setViewMode('text')}
+        >
+          {selectedItem && selectedItem.result && (
+            <Space orientation="vertical" style={{ width: '100%' }} size="large">
+              <div>
+                <Text strong>{inputLabel}:</Text>
+                <Paragraph
+                  style={{
+                    background: '#f5f5f5',
+                    padding: 12,
+                    borderRadius: 8,
+                    marginTop: 8,
+                  }}
+                >
+                  {selectedItem.input}
+                </Paragraph>
+              </div>
+
+              <div>
+                <div
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    marginBottom: 8,
+                  }}
+                >
+                  <Text strong>Response:</Text>
+                  <Segmented
+                    options={['Plain Text', 'JSON']}
+                    value={viewMode === 'text' ? 'Plain Text' : 'JSON'}
+                    onChange={(value) => setViewMode(value === 'JSON' ? 'json' : 'text')}
+                    size="small"
+                  />
+                </div>
+
+                {(() => {
+                  const responseText = selectedItem.result.response_text
+                  const jsonCheck = tryParseJSON(responseText)
+
+                  if (viewMode === 'json') {
+                    if (jsonCheck.isValid) {
+                      return (
+                        <pre
+                          style={{
+                            background: '#e6f7ff',
+                            padding: 12,
+                            borderRadius: 8,
+                            whiteSpace: 'pre-wrap',
+                            wordWrap: 'break-word',
+                            marginTop: 0,
+                            maxHeight: 500,
+                            overflow: 'auto',
+                          }}
+                        >
+                          {JSON.stringify(jsonCheck.parsed, null, 2)}
+                        </pre>
+                      )
+                    } else {
+                      return (
+                        <>
+                          <Alert
+                            message="Invalid JSON"
+                            description="Response is not valid JSON. Showing as plain text."
+                            type="warning"
+                            showIcon
+                            style={{ marginBottom: 8 }}
+                          />
+                          <Paragraph
+                            style={{
+                              background: '#f5f5f5',
+                              padding: 12,
+                              borderRadius: 8,
+                              marginTop: 0,
+                              whiteSpace: 'pre-wrap',
+                              maxHeight: 500,
+                              overflow: 'auto',
+                            }}
+                          >
+                            {responseText}
+                          </Paragraph>
+                        </>
+                      )
+                    }
+                  } else {
+                    return (
+                      <Paragraph
+                        style={{
+                          background: '#f5f5f5',
+                          padding: 12,
+                          borderRadius: 8,
+                          marginTop: 0,
+                          whiteSpace: 'pre-wrap',
+                          maxHeight: 500,
+                          overflow: 'auto',
+                        }}
+                      >
+                        {responseText}
+                      </Paragraph>
+                    )
+                  }
+                })()}
+              </div>
+
+              <Space size="large" wrap>
+                <div>
+                  <Text type="secondary">Tokens: </Text>
+                  <Text strong>{selectedItem.result.tokens_used || 'N/A'}</Text>
+                </div>
+                <div>
+                  <Text type="secondary">Time: </Text>
+                  <Text strong>
+                    {Math.round(selectedItem.result.time_taken_ms)} ms
+                  </Text>
+                </div>
+                {selectedItem.result.from_cache && (
+                  <div>
+                    <Text type="secondary">Source: </Text>
+                    <Tag color="cyan" icon={<DatabaseOutlined />}>
+                      Cache
+                    </Tag>
+                  </div>
+                )}
+              </Space>
+            </Space>
+          )}
+        </Modal>
       </Space>
     </Card>
   )

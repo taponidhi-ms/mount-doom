@@ -141,6 +141,7 @@ export interface AgentVersionInfo {
 export interface AgentVersionSelection {
   agent_id: string
   version: string
+  limit?: number  // Optional limit on number of conversations to download
 }
 
 // ============================================================================

@@ -137,18 +137,21 @@ async def download_multi_agent_records(request: MultiAgentDownloadRequest) -> Re
             config = get_agent_config(selection.agent_id)
             agent_name = config.agent_name
             version = selection.version
+            limit = selection.limit
 
             logger.info("Querying conversations",
                        agent_id=selection.agent_id,
                        agent_name=agent_name,
-                       version=version)
+                       version=version,
+                       limit=limit)
 
             try:
-                # Query all conversations for this agent+version
+                # Query conversations for this agent+version (with optional limit)
                 items = await cosmos_db_service.query_by_agent_and_version(
                     config.container_name,
                     agent_name,
-                    version
+                    version,
+                    limit=limit
                 )
 
                 # Transform to eval format
@@ -158,7 +161,7 @@ async def download_multi_agent_records(request: MultiAgentDownloadRequest) -> Re
                     prompt = item.get("prompt", "")
                     response = item.get("response", "")
                     scenario_name = config.scenario_name or config.agent_name
-                    prompt_category = item.get("prompt_category", "")
+                    prompt_category = item.get("prompt_category") or ""  # Convert None to empty string
                     prompt_tags = item.get("prompt_tags", [])
 
                     # Build eval format record
@@ -408,7 +411,7 @@ async def download_agent_records(agent_id: str, ids: list[str]) -> Response:
                 prompt = item.get("prompt", "")
                 response = item.get("response", "")
                 scenario_name = config.scenario_name or config.agent_name
-                prompt_category = item.get("prompt_category", "")
+                prompt_category = item.get("prompt_category") or ""  # Convert None to empty string
                 prompt_tags = item.get("prompt_tags", [])
 
                 # Build eval format record

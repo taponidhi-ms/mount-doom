@@ -333,15 +333,17 @@ class CosmosDBService:
         self,
         container_name: str,
         agent_name: str,
-        version: str
+        version: str,
+        limit: Optional[int] = None
     ) -> List[Dict[str, Any]]:
         """
-        Query all conversations for a specific agent and version.
+        Query conversations for a specific agent and version.
 
         Args:
             container_name: Name of the container to query
             agent_name: The agent's name to filter by
             version: The agent's version to filter by
+            limit: Optional maximum number of conversations to return
 
         Returns:
             List of documents matching the criteria, ordered by timestamp DESC
@@ -350,16 +352,26 @@ class CosmosDBService:
             logger.info("Querying conversations by agent and version",
                        container=container_name,
                        agent_name=agent_name,
-                       version=version)
+                       version=version,
+                       limit=limit)
 
             container = await self.ensure_container(container_name)
 
-            query = """
-                SELECT * FROM c
-                WHERE c.agent_name = @agent_name
-                AND c.agent_version = @version
-                ORDER BY c.timestamp DESC
-            """
+            # Build query with optional TOP clause
+            if limit is not None and limit > 0:
+                query = f"""
+                    SELECT TOP {limit} * FROM c
+                    WHERE c.agent_name = @agent_name
+                    AND c.agent_version = @version
+                    ORDER BY c.timestamp DESC
+                """
+            else:
+                query = """
+                    SELECT * FROM c
+                    WHERE c.agent_name = @agent_name
+                    AND c.agent_version = @version
+                    ORDER BY c.timestamp DESC
+                """
 
             items = list(container.query_items(
                 query=query,
@@ -374,6 +386,7 @@ class CosmosDBService:
                        container=container_name,
                        agent_name=agent_name,
                        version=version,
+                       limit=limit,
                        count=len(items))
 
             return items

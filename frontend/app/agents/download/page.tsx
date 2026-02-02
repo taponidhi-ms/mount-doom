@@ -1,9 +1,9 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
-import { Table, Button, Space, Alert, message } from 'antd'
+import { Table, Button, Space, Alert, message, InputNumber, Tooltip } from 'antd'
 import type { TableColumnsType, TableProps } from 'antd'
-import { DownloadOutlined } from '@ant-design/icons'
+import { DownloadOutlined, InfoCircleOutlined } from '@ant-design/icons'
 import PageLayout from '@/components/PageLayout'
 import { apiClient } from '@/lib/api-client'
 import type { AgentVersionInfo, AgentVersionSelection } from '@/lib/types'
@@ -11,6 +11,7 @@ import type { AgentVersionInfo, AgentVersionSelection } from '@/lib/types'
 export default function MultiAgentDownloadPage() {
   const [agentVersions, setAgentVersions] = useState<AgentVersionInfo[]>([])
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([])
+  const [limits, setLimits] = useState<Record<string, number | undefined>>({})
   const [loading, setLoading] = useState(false)
   const [downloading, setDownloading] = useState(false)
 
@@ -36,12 +37,18 @@ export default function MultiAgentDownloadPage() {
     }
   }
 
-  // Calculate total conversations for selected versions
+  // Calculate total conversations for selected versions (respecting limits)
   const totalConversations = useMemo(() => {
     return agentVersions
       .filter((av) => selectedRowKeys.includes(`${av.agent_id}::${av.version}`))
-      .reduce((sum, av) => sum + av.conversation_count, 0)
-  }, [selectedRowKeys, agentVersions])
+      .reduce((sum, av) => {
+        const key = `${av.agent_id}::${av.version}`
+        const limit = limits[key]
+        // Use limit if set, otherwise use conversation_count
+        const count = limit !== undefined ? Math.min(limit, av.conversation_count) : av.conversation_count
+        return sum + count
+      }, 0)
+  }, [selectedRowKeys, agentVersions, limits])
 
   // Handle selection changes
   const onSelectChange: TableProps<AgentVersionInfo>['rowSelection'] = {
@@ -60,10 +67,15 @@ export default function MultiAgentDownloadPage() {
 
     setDownloading(true)
     try {
-      // Parse selections from row keys
+      // Parse selections from row keys and include limits
       const selections: AgentVersionSelection[] = selectedRowKeys.map((key) => {
         const [agent_id, version] = (key as string).split('::')
-        return { agent_id, version }
+        const limit = limits[key as string]
+        return {
+          agent_id,
+          version,
+          ...(limit !== undefined && { limit }) // Only include limit if set
+        }
       })
 
       const response = await apiClient.downloadMultiAgent(selections)
@@ -98,6 +110,14 @@ export default function MultiAgentDownloadPage() {
     }
   }
 
+  // Handle limit change
+  const handleLimitChange = (key: string, value: number | null) => {
+    setLimits((prev) => ({
+      ...prev,
+      [key]: value ?? undefined,
+    }))
+  }
+
   // Table columns
   const columns: TableColumnsType<AgentVersionInfo> = [
     {
@@ -119,11 +139,37 @@ export default function MultiAgentDownloadPage() {
       width: 120,
     },
     {
-      title: 'Conversations',
+      title: 'Total',
       dataIndex: 'conversation_count',
       key: 'conversation_count',
-      width: 120,
+      width: 100,
       align: 'right',
+    },
+    {
+      title: (
+        <Space>
+          Limit
+          <Tooltip title="Optional: Specify number of conversations to download. Leave empty to download all.">
+            <InfoCircleOutlined style={{ cursor: 'help' }} />
+          </Tooltip>
+        </Space>
+      ),
+      key: 'limit',
+      width: 150,
+      align: 'center',
+      render: (_, record) => {
+        const key = `${record.agent_id}::${record.version}`
+        return (
+          <InputNumber
+            min={1}
+            max={record.conversation_count}
+            placeholder="All"
+            value={limits[key]}
+            onChange={(value) => handleLimitChange(key, value)}
+            style={{ width: '100%' }}
+          />
+        )
+      },
     },
   ]
 

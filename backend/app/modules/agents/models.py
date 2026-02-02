@@ -88,6 +88,7 @@ class AgentVersionSelection(BaseModel):
     """Selection of a specific agent and version for download."""
     agent_id: str
     version: str
+    limit: Optional[int] = None  # Optional limit on number of conversations to download
 
 
 class MultiAgentDownloadRequest(BaseModel):
