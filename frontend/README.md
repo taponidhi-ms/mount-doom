@@ -139,6 +139,15 @@ Agent pages use nested routes with reusable components:
 - Custom conversation rendering and history columns
 - Expandable rows for viewing conversation details
 
+### File Upload Support
+
+All agent pages support file uploads to populate prompts:
+- **Upload File button** - Upload text files (HTML, TXT, JSON, XML, CSV) to populate the prompt field
+- **File info display** - Shows uploaded file name and size
+- **Clear button** - Remove uploaded file and clear the prompt
+- **Supported formats**: `.txt`, `.html`, `.htm`, `.xml`, `.json`, `.csv`
+- **Use cases**: Upload D365 HTML transcripts, JSON data, or any text content
+
 ### Global Timezone Support
 
 - Context provider: `TimezoneProvider` in layout.tsx

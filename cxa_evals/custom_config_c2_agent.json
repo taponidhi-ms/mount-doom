@@ -2,7 +2,7 @@
     "team_name": "Omnichannel",
     "agent_name": "SimulationAgent",
     "source": {
-        "source_folder_path": "input\\small_sample_conversations.json",
+        "source_folder_path": "input\\all_c2_conversations.json",
         "source_file_type": "json",
         "variable_columns": [
             "instructions",
@@ -24,27 +24,16 @@
                 "scenario_name": "C2MessageGeneratorAgent",
                 "rules": [
                     {
-                        "rule_name": "persona_adherence",
-                        "rule_category": "Conversationality",
-                        "rule_description": "The customer should maintain consistency with their assigned persona throughout the conversation. Customer intent: {customer_intent}, sentiment: {customer_sentiment}, subject: {conversation_subject}. The customer's messages should align with these characteristics and not contradict them.",
-                        "scoring_hint": ""
+                        "rule_name": "persona_consistency",
+                        "rule_category": "Accuracy",
+                        "rule_description": "The generated message must maintain the customer persona without acting as a support agent. The message should reflect the assigned intent and subject while sounding like a real customer.",
+                        "scoring_hint": "**BE LENIENT - When in doubt, PASS.** ONLY FAIL if the message contains ACTUAL support agent phrases. ACCEPTABLE customer language (DO NOT PENALIZE): 'I'll be waiting', 'I'll be watching', 'I expect changes', 'I need a callback', 'please make sure', 'what action you'll take', providing phone number when asked, stating availability, expressing skepticism, repeating concerns, using 'please' politely, threatening to leave/cancel. UNACCEPTABLE (ONLY these should fail): 'I understand your concern' (empathy phrase), 'Let me help you' (offering assistance), 'I apologize on behalf of' (company apology), providing troubleshooting steps, offering solutions to the agent. **KEY POINT**: Real customers say 'I'll be waiting', 'I need', 'I expect', 'please' - these are NORMAL, not agent-like. Only fail for ACTUAL support phrases."
                     },
                     {
-                        "rule_name": "goal_pursuit",
+                        "rule_name": "goal_oriented_progression",
                         "rule_category": "Usefulness",
-                        "rule_description": "The customer should actively work towards achieving their goal. The customer's messages should reflect their intent to accomplish this goal. Customer intent: {customer_intent}, sentiment: {customer_sentiment}, subject: {conversation_subject}. The customer should not deviate from this goal or introduce unrelated objectives.",
-                        "scoring_hint": ""
-                    }
-                ]
-            },
-            {
-                "scenario_name": "PersonaDistributionGeneratorAgent",
-                "rules": [
-                    {
-                        "rule_name": "persona_distribution",
-                        "rule_category": "Accuracy",
-                        "rule_description": "The generated personas for valid prompts should reflect a diverse and accurate distribution based on the user's specifications. The invalid prompts should be appropriately handled and should not be processed by the assistant.",
-                        "scoring_hint": ""
+                        "rule_description": "The generated message should demonstrate realistic customer behavior working towards resolution. This includes expressing frustration, applying pressure, or acknowledging next steps.",
+                        "scoring_hint": "**BE LENIENT - When in doubt, PASS.** Realistic customer progression includes: repeating the same concern multiple times, expressing skepticism about promises, threatening to cancel/leave (applying pressure), saying 'I'll be waiting/watching', asking what comes next, providing requested information (phone, email), accepting or rejecting offered solutions. Remember: customers DO repeat themselves, express doubt, and apply pressure - this IS goal-oriented behavior (ensuring they're taken seriously). NOT all messages need to 'advance' the conversation - repetition and pressure ARE valid tactics."
                     }
                 ]
             }

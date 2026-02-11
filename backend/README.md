@@ -47,7 +47,7 @@ A centralized module providing a single API for all single-agent operations:
 
 **Centralized Instructions** (`instructions.py`):
 - All agent instructions consolidated in one file
-- Instructions: `PERSONA_DISTRIBUTION_AGENT_INSTRUCTIONS`, `PERSONA_GENERATOR_AGENT_INSTRUCTIONS`, `TRANSCRIPT_PARSER_AGENT_INSTRUCTIONS`, `C2_MESSAGE_GENERATOR_AGENT_INSTRUCTIONS`
+- Instructions: `PERSONA_DISTRIBUTION_AGENT_INSTRUCTIONS`, `PERSONA_GENERATOR_AGENT_INSTRUCTIONS`, `TRANSCRIPT_PARSER_AGENT_INSTRUCTIONS`, `D365_TRANSCRIPT_PARSER_AGENT_INSTRUCTIONS`, `C2_MESSAGE_GENERATOR_AGENT_INSTRUCTIONS`
 
 **Agent Configuration Registry** (`config.py`):
 - Dynamically loads agent configurations from individual `configs/*_config.py` files
@@ -66,6 +66,7 @@ A centralized module providing a single API for all single-agent operations:
 - **PersonaDistributionGeneratorAgent** - Generates persona distributions from simulation prompts
 - **PersonaGeneratorAgent** - Generates customer personas
 - **TranscriptParserAgent** - Parses transcripts to extract intent, subject, sentiment
+- **D365TranscriptParserAgent** - Parses Dynamics 365 HTML transcripts into conversation format (agent/customer roles)
 - **C2MessageGeneratorAgent** - Generates customer messages for simulations
 
 ### Agent Versioning
@@ -81,11 +82,12 @@ A centralized module providing a single API for all single-agent operations:
 1. **Persona Distribution** - Generate persona distributions from simulation prompts with structured JSON output
 2. **Persona Generation** - Generate exact customer personas from natural language descriptions
 3. **Transcript Parser** - Parse customer-representative transcripts to extract intent, subject, and sentiment
-4. **C2 Message Generation** - Generate customer messages for use in conversation simulations
+4. **D365 Transcript Parser** - Parse HTML transcripts from Dynamics 365 Customer Service Workspace into conversation format
+5. **C2 Message Generation** - Generate customer messages for use in conversation simulations
 
 ### Multi-Agent Workflows
 
-5. **Conversation Simulation** - Multi-turn conversation between C1 (service rep) and C2 (customer) agents
+6. **Conversation Simulation** - Multi-turn conversation between C1 (service rep) and C2 (customer) agents
 
 ### Key Capabilities
 

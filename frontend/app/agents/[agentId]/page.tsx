@@ -2,8 +2,9 @@
 
 import { useState } from 'react'
 import { useParams } from 'next/navigation'
-import { Button, Card, Input, Space, Typography, message, Alert, Form, Select } from 'antd'
-import { BulbOutlined } from '@ant-design/icons'
+import { Button, Card, Input, Space, Typography, message, Alert, Form, Select, Upload } from 'antd'
+import { BulbOutlined, UploadOutlined, DeleteOutlined } from '@ant-design/icons'
+import type { UploadFile } from 'antd'
 import { useAgentContext } from '@/components/agents/shared/AgentContext'
 import AgentInstructionsCard from '@/components/agents/instructions/AgentInstructionsCard'
 import AgentResultCard from '@/components/agents/result/AgentResultCard'
@@ -26,11 +27,37 @@ export default function AgentGeneratePage() {
   const [result, setResult] = useState<AgentInvokeResponse | null>(null)
   const [error, setError] = useState('')
   const [showSamplesModal, setShowSamplesModal] = useState(false)
+  const [uploadedFile, setUploadedFile] = useState<UploadFile | null>(null)
 
   const handleSampleSelect = (value: string, category?: string, tags?: string[]) => {
     setInput(value)
     setPromptCategory(category || '')
     setPromptTags(tags || [])
+  }
+
+  const handleFileUpload = (file: File) => {
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      const content = e.target?.result as string
+      setInput(content)
+      setUploadedFile({
+        uid: file.name,
+        name: file.name,
+        status: 'done',
+        size: file.size,
+      })
+      message.success(`File "${file.name}" loaded successfully`)
+    }
+    reader.onerror = () => {
+      message.error('Failed to read file')
+    }
+    reader.readAsText(file)
+    return false // Prevent default upload behavior
+  }
+
+  const handleClearFile = () => {
+    setUploadedFile(null)
+    message.info('File cleared')
   }
 
   const handleSubmit = async () => {
@@ -72,17 +99,49 @@ export default function AgentGeneratePage() {
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
               <Text strong>{agentInfo.input_label}</Text>
-              {agentInfo.sample_inputs && agentInfo.sample_inputs.length > 0 && (
-                <Button
-                  type="default"
-                  icon={<BulbOutlined />}
-                  size="small"
-                  onClick={() => setShowSamplesModal(true)}
+              <Space size="small">
+                <Upload
+                  beforeUpload={handleFileUpload}
+                  showUploadList={false}
+                  accept=".txt,.html,.htm,.xml,.json,.csv"
                 >
-                  Try Sample Input
-                </Button>
-              )}
+                  <Button
+                    type="default"
+                    icon={<UploadOutlined />}
+                    size="small"
+                    disabled={loading}
+                  >
+                    Upload File
+                  </Button>
+                </Upload>
+                {agentInfo.sample_inputs && agentInfo.sample_inputs.length > 0 && (
+                  <Button
+                    type="default"
+                    icon={<BulbOutlined />}
+                    size="small"
+                    onClick={() => setShowSamplesModal(true)}
+                  >
+                    Try Sample Input
+                  </Button>
+                )}
+              </Space>
             </div>
+            {uploadedFile && (
+              <div style={{ marginBottom: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <Text type="secondary" style={{ fontSize: '12px' }}>
+                  Loaded: {uploadedFile.name} ({(uploadedFile.size! / 1024).toFixed(2)} KB)
+                </Text>
+                <Button
+                  type="text"
+                  size="small"
+                  icon={<DeleteOutlined />}
+                  onClick={handleClearFile}
+                  style={{ padding: 0, height: 'auto' }}
+                >
+                  Clear
+                </Button>
+              </div>
+            )}
             <TextArea
               value={input}
               onChange={(e) => setInput(e.target.value)}
