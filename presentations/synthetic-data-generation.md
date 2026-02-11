@@ -14,9 +14,9 @@ Our conversation simulation system generates realistic customer service conversa
 ```mermaid
 flowchart TD
     Start[Start] --> PersonaGen[Persona Generator Agent]
-    PersonaGen -->|Creates Customer Profile| Profile[Customer Profile Created]
+    PersonaGen -->|Creates Customer Personas| Personas[Customer Personas Created]
 
-    Profile --> ConvSim[Conversation Simulation Workflow]
+    Personas --> ConvSim[Conversation Simulation Workflow]
 
     ConvSim --> C1[C1: Service Representative]
     C1 -->|Greets & Responds| Conv[Conversation]
@@ -33,14 +33,14 @@ flowchart TD
 ```
 
 ### Step 1: Persona Generation
-The **Persona Generator Agent** creates detailed customer profiles including:
+The **Persona Generator Agent** creates detailed customer personas including:
 - **Customer Intent**: What the customer wants to achieve (e.g., billing inquiry, technical support)
 - **Customer Sentiment**: How the customer feels (e.g., frustrated, neutral, satisfied)
 - **Conversation Subject**: The specific topic or issue
 - **Customer Metadata**: Additional context about the customer
 
 ### Step 2: Conversation Simulation
-Once we have a customer profile, the simulation begins:
+Once we have customer personas, the simulation begins:
 
 1. **C1 (Service Representative)** greets the customer and starts the conversation
 2. **C2 (Customer)** responds based on their assigned persona
@@ -57,22 +57,31 @@ Once we have a customer profile, the simulation begins:
 We evaluate the quality of these simulated conversations using three different approaches:
 
 ### 1. Default Metrics
-**What it measures**: General conversation quality using industry-standard metrics
-- **Coherence**: Does the conversation flow naturally?
-- **Fluency**: Are the messages well-written and clear?
-- **Relevance**: Do responses stay on topic?
+**What it measures**: Domain-agnostic quality metrics to evaluate conversation quality
 
-**Best for**: Quick quality checks and baseline comparisons
+The Default Evaluator applies six standard metrics, each scored on a **0-10 scale**:
+
+- **Accuracy**: How well the response matches the ground truth in correctness and coverage; penalizes contradictions and major omissions
+- **Groundedness**: Ensures the response is strictly supported by the provided reference, avoiding unsupported or hallucinated details
+- **Completeness**: Whether the response fully covers all essential aspects without missing key details
+- **Relevance**: Checks that the response stays on-topic and aligned with the user's intent and context
+- **Noise Sensitivity**: Evaluates robustness to minor, irrelevant variations in input; consistent answers despite small changes
+- **Conversationality**: Rates clarity, readability, natural flow, and tone; ensures structure is appropriate for the audience
+
+**Best for**: Quick quality checks and baseline comparisons across different scenarios
 
 ---
 
-### 2. Groundedness
-**What it measures**: How well the responses stick to facts and avoid making things up
-- Ensures the customer and representative stay grounded in reality
-- Prevents hallucinations or unrealistic claims
-- Validates that responses are factual and consistent
+### 2. Groundedness Evaluator
+**What it measures**: How well outputs are anchored to authoritative source material
 
-**Best for**: Ensuring reliability and trustworthiness of conversations
+A specialized evaluator that focuses on **source fidelity**:
+- **Source Alignment**: All factual statements match the authoritative source exactly in meaning
+- **Traceability**: Each fact or metric can be linked to a specific location in the source material
+- **No Unsupported Claims**: No speculative or inferred content unless explicitly labeled as such
+- Ensures every fact, figure, or statement can be traced back to a trusted reference
+
+**Best for**: Compliance-sensitive workflows where traceability is mandatory and ensuring reliability and trustworthiness of conversations
 
 ---
 
@@ -84,7 +93,7 @@ For conversation simulation, we use two custom criteria that match what matters 
 **Category**: Conversationality
 **What we check**: Does the customer stay true to their assigned character?
 
-The customer should maintain consistency with their assigned profile throughout the conversation. We verify that:
+The customer should maintain consistency with their assigned persona throughout the conversation. We verify that:
 - Customer messages align with their assigned **intent**, **sentiment**, and **subject**
 - The customer's behavior matches their persona
 - It's acceptable for sentiment to evolve naturally (e.g., frustrated customer becomes satisfied after receiving help)
@@ -111,12 +120,13 @@ The customer should consistently pursue their stated objective. We verify that:
 ## Scoring System
 
 All evaluations use a consistent scoring approach:
-- **Score Range**: 1 to 10
+- **Score Range**: 0 to 10
 - **Passing Threshold**: 7 or higher
-- **10**: Perfect - meets all criteria excellently
+- **10 (HighScore)**: Fully meets or exceeds the metric's requirements
 - **7-9**: Good - meets criteria with minor issues
 - **4-6**: Fair - significant issues present
 - **1-3**: Poor - fails to meet criteria
+- **0 (LowScore)**: Does not meet the metric's basic requirements
 
 ---
 
