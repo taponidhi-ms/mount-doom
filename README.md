@@ -10,6 +10,7 @@ Mount Doom is an enterprise-grade simulation platform that enables:
 - Persona generation from natural language descriptions
 - C2 customer message generation for simulations
 - Transcript parsing to extract intent, subject, and sentiment from customer-representative conversations
+- File upload support for all agents (HTML, TXT, JSON, XML, CSV files)
 - Comprehensive tracking of tokens, timing, and conversation history
 - Persistent storage in Azure Cosmos DB
 
@@ -51,12 +52,15 @@ Generate exact customer personas with specific intents, sentiments, subjects, an
 #### 3. Transcript Parser
 Parse customer-representative transcripts to extract intent, subject, and sentiment.
 
-#### 4. C2 Message Generator
+#### 4. D365 Transcript Parser
+Parse HTML transcripts exported from Dynamics 365 Customer Service Workspace into structured conversation format. Converts D365 chat transcripts into a multi-turn conversation format with "agent" and "customer" roles.
+
+#### 5. C2 Message Generator
 Generate customer (C2) messages for use in conversation simulations. Simulates realistic customer responses.
 
 ### Multi-Agent Workflows
 
-#### 5. Conversation Simulation
+#### 6. Conversation Simulation
 Simulate complex multi-turn conversations between customer service representatives (C1) and customers (C2) with intelligent orchestration.
 
 ### Download for Evals
@@ -190,6 +194,8 @@ npm start
 - [Backend README](backend/README.md) - Detailed backend documentation
 - [Frontend README](frontend/README.md) - Detailed frontend documentation
 - [CXA Evals Runner](cxa_evals/README.md) - Run CXA AI evals locally
+- [Presentations](presentations/) - Leadership and PM-friendly presentations
+  - [Synthetic Data Generation & Evaluation Strategy](presentations/synthetic-data-generation.md) - Conversation simulation overview and eval strategy
 - API Docs: http://localhost:8000/docs (when backend is running)
 
 ## License

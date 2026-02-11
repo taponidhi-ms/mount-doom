@@ -1,6 +1,6 @@
 # Features Documentation
 
-Mount Doom supports 9 main features across agents and workflows.
+Mount Doom supports 9 main features across agents and workflows (with 9 specialized agents in the Unified Agents API).
 
 ## Feature 1: Persona Distribution Generator
 
@@ -132,6 +132,8 @@ Mount Doom supports 9 main features across agents and workflows.
 
 **Purpose**: Simulate multi-turn conversations with distinct C1/C2 logic using Python control flow.
 
+**Documentation**: See [Synthetic Data Generation & Evaluation Strategy](../presentations/synthetic-data-generation.md) for a leadership-friendly overview of the workflow and evaluation approach.
+
 **Participants**:
 - **C1MessageGeneratorAgent**: Customer Service Representative
 - **C2MessageGeneratorAgent**: Customer (uses c2_message_generation module)
@@ -183,7 +185,7 @@ Mount Doom supports 9 main features across agents and workflows.
 - **Response caching**: Automatic caching of responses based on prompt + agent + version
 
 **Agent Registry**:
-Eight agents supported:
+Nine agents supported:
 - `persona_distribution` - Persona Distribution Generator Agent
 - `persona_generator` - Persona Generator Agent
 - `transcript_parser` - Transcript Parser Agent
@@ -192,6 +194,7 @@ Eight agents supported:
 - `simulation_prompt_validator` - Simulation Prompt Validator Agent
 - `transcript_based_simulation_parser` - Transcript Based Simulation Parser Agent
 - `simulation_prompt` - Simulation Prompt Agent
+- `d365_transcript_parser` - D365 Transcript Parser Agent
 
 **Sample Inputs Enhancement**:
 Each agent's sample inputs include metadata:
