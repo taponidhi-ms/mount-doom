@@ -132,7 +132,9 @@ Mount Doom supports 9 main features across agents and workflows (with 9 speciali
 
 **Purpose**: Simulate multi-turn conversations with distinct C1/C2 logic using Python control flow.
 
-**Documentation**: See [Conversation Simulation & Evaluation Strategy](../presentations/conversation-simulation-eval-strategy.md) for a leadership-friendly overview of the workflow and evaluation approach.
+**Documentation**:
+- [Conversation Simulation & Evaluation Strategy](../presentations/conversation-simulation-eval-strategy.md) - Leadership-friendly overview with eval strategy
+- [Conversation Simulation - Technical Documentation](../presentations/conversation-simulation-technical.md) - Developer documentation with full implementation details
 
 **Participants**:
 - **C1MessageGeneratorAgent**: Customer Service Representative
