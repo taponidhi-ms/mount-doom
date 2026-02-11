@@ -1,5 +1,23 @@
 # Conversation Simulation & Evaluation Strategy
 
+## Table of Contents
+
+- [Overview](#overview)
+- [How It Works](#how-it-works)
+  - [Step 1: Persona Generation](#step-1-persona-generation)
+  - [Step 2: Conversation Simulation](#step-2-conversation-simulation)
+- [Evaluation Strategy](#evaluation-strategy)
+  - [1. Default Metrics](#1-default-metrics)
+  - [2. Groundedness Evaluator](#2-groundedness-evaluator)
+  - [3. Custom Criteria (Our Specialized Evaluation)](#3-custom-criteria-our-specialized-evaluation)
+    - [Criterion 1: Persona Adherence](#criterion-1-persona-adherence)
+    - [Criterion 2: Goal Pursuit](#criterion-2-goal-pursuit)
+- [Scoring System](#scoring-system)
+- [Why This Matters](#why-this-matters)
+  - [Benefits of Conversation Simulation](#benefits-of-conversation-simulation)
+  - [Benefits of Multi-Faceted Evaluation](#benefits-of-multi-faceted-evaluation)
+- [Summary](#summary)
+
 ---
 
 ## Overview
