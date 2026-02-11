@@ -195,7 +195,7 @@ npm start
 - [Frontend README](frontend/README.md) - Detailed frontend documentation
 - [CXA Evals Runner](cxa_evals/README.md) - Run CXA AI evals locally
 - [Presentations](presentations/) - Leadership and PM-friendly presentations
-  - [Synthetic Data Generation & Evaluation Strategy](presentations/synthetic-data-generation.md) - Conversation simulation overview and eval strategy
+  - [Conversation Simulation & Evaluation Strategy](presentations/conversation-simulation-eval-strategy.md) - Conversation simulation overview and eval strategy
 - API Docs: http://localhost:8000/docs (when backend is running)
 
 ## License

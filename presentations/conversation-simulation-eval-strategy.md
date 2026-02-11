@@ -1,5 +1,4 @@
-# Synthetic Data Generation & Evaluation Strategy
-## Conversation Simulation
+# Conversation Simulation & Evaluation Strategy
 
 ---
 
@@ -132,7 +131,7 @@ All evaluations use a consistent scoring approach:
 
 ## Why This Matters
 
-### Benefits of Synthetic Data Generation
+### Benefits of Conversation Simulation
 1. **Scale**: Generate thousands of conversations quickly
 2. **Diversity**: Create scenarios covering various intents, sentiments, and subjects
 3. **Control**: Test specific edge cases and scenarios on demand
@@ -141,7 +140,7 @@ All evaluations use a consistent scoring approach:
 
 ### Benefits of Multi-Faceted Evaluation
 1. **Default Metrics**: Quick sanity checks for basic quality
-2. **Groundedness**: Ensures reliability and prevents misinformation
+2. **Groundedness Evaluator**: Ensures reliability and prevents misinformation
 3. **Custom Criteria**: Validates business-specific requirements
 4. **Comprehensive**: Catches different types of issues across multiple dimensions
 
@@ -149,7 +148,7 @@ All evaluations use a consistent scoring approach:
 
 ## Summary
 
-Our synthetic data generation system creates realistic customer service conversations by:
+Our conversation simulation system creates realistic customer service conversations by:
 1. Generating detailed customer personas
 2. Simulating natural back-and-forth conversations between customers and service representatives
 3. Evaluating conversations using multiple quality lenses (default, groundedness, custom)
